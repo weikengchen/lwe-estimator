@@ -585,7 +585,7 @@ def usvp(n, alpha, q, tau=0.2, tau_prob=0.1, success_probability=0.99):
     repeat = ZZ(ceil(success_probability/tau_prob))
 
     m = lattice_redution_opt_m(n, q, delta_0)
-    prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
+    # prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
     r = bkz_runtime_delta(delta_0, m, success_probability/tau_prob)
     r[u"#calls"] = repeat*m  # TODO: this shouldn't be hardcoded
     r = report_reorder(r, ["bkz2", "#calls"])
