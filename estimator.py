@@ -212,10 +212,24 @@ def bkz_runtime_k_sieve(k, n):
 
 def bkz_runtime_k_bkz2(k, n):
     """
-    Runtime estimation given `k` and assuming BKZ 2.0 estimates are correct.
+    Runtime estimation given `k` and assuming [CN11]_ estimates are correct.
+
+    The constants in this function were derived as follows based on Table 3 in [CN11]_::
+
+        sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 250]
+        sage: nodes = [40.8, 45.3, 50.3, 56.3, 63.3, 69.4, 79.9, 89.1, 99.1, 103.3, 111.1, 175.2]
+        sage: times = [c + log(200,2).n() for c in nodes]
+        sage: T = zip(dim, nodes)
+        sage: var("a,b,c,k")
+        sage: f = a*k^2 + b*k + c
+        sage: f = f.function(k)
+        sage: f.subs(find_fit(T, f, solution_dict=True))
+        k |--> 0.002897773577138274*k^2 - 0.1226624805533656*k + 31.4749723637768
+
+    .. [CN11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better Lattice Security Estimates. AsiaCrypt 2011.
     """
     repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2, 2))
-    return RR(0.00119*k**2 + 0.2275*k + 21.59 + repeat)
+    return RR(0.002897773577138052*k**2 - 0.12266248055336093*k + 23.831116173986075 + repeat)
 
 
 def bkz_runtime_delta_bkz2(delta, n):
