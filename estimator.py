@@ -207,7 +207,7 @@ def bkz_runtime_k_sieve(k, n):
     """
     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
     """
-    return RR(0.3774*k + 20  + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2, 2)))
+    return RR(0.3774*k + 20  + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
@@ -228,7 +228,7 @@ def bkz_runtime_k_bkz2(k, n):
 
     .. [CN11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better Lattice Security Estimates. AsiaCrypt 2011.
     """
-    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2, 2))
+    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
     return RR(0.002897773577138052*k**2 - 0.12266248055336093*k + 23.831116173986075 + repeat)
 
 
@@ -244,7 +244,7 @@ def bkz_runtime_k_fplll(k, n):
     """
     Runtime estimation extrapolated from fpLLL 4.0.4 experiments
     """
-    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2, 2))
+    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
     return RR(0.013487467331762426*k**2 - 0.28245244492771304*k + 21.017892848466957 + repeat)
 
 
