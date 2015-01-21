@@ -112,7 +112,11 @@ def unpack_lwe(lwe):
     """
     n = lwe.n
     q = lwe.K.order()
-    alpha = alphaf(sigmaf(lwe.D.sigma), q)
+    try:
+        alpha = alphaf(sigmaf(lwe.D.sigma), q)
+    except AttributeError:
+        # older versions of Sage use stddev, not sigma
+        alpha = alphaf(sigmaf(lwe.D.stddev), q)
     return n, alpha, q
 
 
