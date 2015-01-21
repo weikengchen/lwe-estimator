@@ -1,4 +1,3 @@
-# -*- mode: sage -*-
 # -*- coding: utf-8 -*-
 """
 Complexity estimates for solving LWE.
