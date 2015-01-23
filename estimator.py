@@ -765,20 +765,53 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
 # 6.2 Lattice Reduction Small Secret #
 ######################################
 
+def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
+    size = secret_bounds[1]-secret_bounds[0] + 1
+    best = None
+    step_size = 16
+    while step_size >= n:
+        step_size /= 2
+    i = 0
+    while True:
+        try:
+            # some implementations make use of the secret_bounds parameter
+            current = f(n-i, alpha, q, secret_bounds=secret_bounds, **kwds)
+        except TypeError:
+            current = f(n-i, alpha, q, **kwds)
+        current = report_repeat(current, size**i)
+
+        key = list(current)[0]
+        if best is None:
+            best = current
+            i += step_size
+        else:
+            if best[key] > current[key]:
+                best = current
+                i += step_size
+            else:
+                step_size = -1*step_size/2
+                i += step_size
+
+        if step_size == 0:
+            break
+    return best
+
 
 def sis_small_secret(n, alpha, q, secret_bounds, **kwds):
     n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
-    return sis(n, alpha, q, **kwds)
+    return small_secret_guess(sis, n, alpha, q, secret_bounds, **kwds)
 
 
 def bdd_small_secret(n, alpha, q, secret_bounds, **kwds):
     n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
-    return bdd(n, alpha, q, **kwds)
+    return small_secret_guess(bdd, n, alpha, q, secret_bounds, **kwds)
 
 
-def usvp_small_secret(n, alpha, q, secret_bounds, **kwds):
+def embed_small_secret(n, alpha, q, secret_bounds, **kwds):
     n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
-    return usvp(n, alpha, q, **kwds)
+    return small_secret_guess(embed, n, alpha, q, secret_bounds, **kwds)
+
+
 def _embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
                                 success_probability=0.99):
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
@@ -823,6 +856,12 @@ def _embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau
     if get_verbose() >= 2:
         print report_str(r)
     return r
+
+
+def embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
+                               success_probability=0.99):
+    return small_secret_guess(_embed_small_secret_bai_gal, n, alpha, q, secret_bounds,
+                              tau=0.2, tau_prob=0.1, success_probability=0.99)
 
 ########################
 # 6.3 BKW Small Secret #
