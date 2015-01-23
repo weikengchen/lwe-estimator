@@ -1035,14 +1035,15 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
                                   ("bkw", bkw),
                                   ("sis", sis),
                                   ("bdd", bdd),
-                                  ("usvp", usvp),
+                                  ("embed", embed),
                                   ("arora-gb", arora_gb)])
     else:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_small_secret),
                                   ("sis", sis_small_secret),
                                   ("bdd", bdd_small_secret),
-                                  ("usvp", usvp_small_secret),
+                                  ("embed", embed_small_secret),
+                                  ("embed_bg", embed_small_secret_bai_gal),
                                   ("arora-gb", arora_gb_small_secret)])
 
     if skip is None:
@@ -1127,7 +1128,7 @@ def latex_estimate_header(cur):
             line.append("  mem")
             line.append("calls")
 
-        elif alg in ("sis", "usvp"):
+        elif alg in ("sis", "embed", "embed_bg"):
             line.append(" bkz2")
             line.append("sieve")
             line.append("calls")
@@ -1168,10 +1169,15 @@ def latex_estimate_row(cur):
         line.append("%6.1f" % log(cur["bdd"]["#enum"], 2))
         line.append("%6.1f" % log(cur["bdd"]["#calls"], 2))
 
-    if "usvp" in cur:
-        line.append("%6.1f" % log(cur["usvp"]["bkz2"], 2))
-        line.append("%6.1f" % log(cur["usvp"]["sieve"], 2))
-        line.append("%6.1f" % log(cur["usvp"]["#calls"], 2))
+    if "embed" in cur:
+        line.append("%6.1f" % log(cur["embed"]["bkz2"], 2))
+        line.append("%6.1f" % log(cur["embed"]["sieve"], 2))
+        line.append("%6.1f" % log(cur["embed"]["#calls"], 2))
+
+    if "embed_bg" in cur:
+        line.append("%6.1f" % log(cur["embed_bg"]["bkz2"], 2))
+        line.append("%6.1f" % log(cur["embed_bg"]["sieve"], 2))
+        line.append("%6.1f" % log(cur["embed_bg"]["#calls"], 2))
 
     if "arora-gb" in cur:
         line.append("%6.1f" % log(cur["arora-gb"]["#bops"], 2))
