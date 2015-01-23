@@ -21,6 +21,12 @@ from sage.crypto.lwe import Regev, LindnerPeikert
 
 from sage.misc.cachefunc import cached_method
 
+# config
+
+tau_default = 0.2
+tau_prob_default = 0.1
+
+
 # utility functions #
 
 
@@ -622,12 +628,12 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 
     return current
 
-#####################################
-# Section 5.5: Reducing BDD to uSVP #
-#####################################
+###################################################
+# Section 5.5: Reducing BDD to uSVP via embedding #
+###################################################
 
 
-def usvp(n, alpha, q, tau=0.2, tau_prob=0.1, success_probability=0.99):
+def embed(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99):
     """
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
@@ -773,6 +779,50 @@ def bdd_small_secret(n, alpha, q, secret_bounds, **kwds):
 def usvp_small_secret(n, alpha, q, secret_bounds, **kwds):
     n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
     return usvp(n, alpha, q, **kwds)
+def _embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
+                                success_probability=0.99):
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    RR = alpha.parent()
+
+    stddev = stddevf(alpha*q)
+
+    if secret_bounds[0] == 0:
+        c = 2
+    else:
+        c = 1
+
+    num = 4*log(alpha)**2*log(q) \
+          - 4*log(alpha)**2*log(stddev) \
+          + 8*log(alpha)*log(q)*log(tau) \
+          - 8*log(alpha)*log(stddev)*log(tau) \
+          + 4*log(q)*log(tau)**2 \
+          - 4*log(stddev)*log(tau)**2 \
+          + 4*log(alpha)*log(q) \
+          - 4*log(alpha)*log(stddev) \
+          + 4*log(q)*log(tau) \
+          - 4*log(stddev)*log(tau) \
+          + log(q) \
+          - log(stddev)
+    den = 4*n*log(c)**2 \
+          - 16*n*log(c)*log(q) \
+          + 16*n*log(q)**2 \
+          + 16*n*log(c)*log(stddev) \
+          - 32*n*log(q)*log(stddev) \
+          + 16*n*log(stddev)**2
+
+    log_delta_0 = RR(num/den)
+    delta_0 = RR(e**log_delta_0)
+
+    repeat = ZZ(ceil(success_probability/tau_prob))
+
+    m = ceil(sqrt(n*(log(q, 2)-log(stddev, 2))/log_delta_0))
+    # prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
+    r = bkz_runtime_delta(delta_0, m, success_probability/tau_prob)
+    r[u"#calls"] = repeat*m
+    r = report_reorder(r, ["bkz2", "#calls"])
+    if get_verbose() >= 2:
+        print report_str(r)
+    return r
 
 ########################
 # 6.3 BKW Small Secret #
