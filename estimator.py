@@ -72,6 +72,57 @@ def report_reorder(d, ordering):
     return r
 
 
+def report_repeat(d, times):
+    """
+    Return a report with all costs multiplied by `times`.
+
+    :param d: a report object
+    :param times: the number of times it should be run
+    :returns: New report
+
+    EXAMPLE::
+
+        sage: n, alpha, q = unpack_lwe(Regev(128))
+        sage: print report_str(report_repeat(sis(n, alpha, q), 2^10))
+        bkz2:   ≈2^77.0,  #calls:   ≈2^30.5,  δ_0: 1.0093614,  k:        98,  ...
+        sage: print report_str(report_repeat(sis(n, alpha, q), 1))
+        bkz2:   ≈2^67.0,  #calls:   ≈2^20.5,  δ_0: 1.0093614,  k:        98,  ...
+    """
+
+    do_repeat = {
+        u"#rops": True,
+        u"mem": False,
+        u"#bops": True,
+        u"#calls": True,
+        u"δ_0": False,
+        u"bkz2": True,
+        u"k": False,
+        u"lp": True,
+        u"ds": True,
+        u"fplll": True,
+        u"sieve": True,
+        u"ε": False,
+        u"#enum": True,
+        u"#enumops": True,
+        u"D_reg": False,
+        u"t": False,
+        u"Pr[fail]": False,  # we are leaving probabilities alone
+        u"m": False,
+    }
+
+    ret = OrderedDict()
+    for key in d:
+        try:
+            if do_repeat[key]:
+                ret[key] = times * d[key]
+            else:
+                ret[key] = d[key]
+        except KeyError:
+            raise NotImplemented(u"You found a bug, this function does not know about '%s' but should."%key)
+    ret[u'repeat'] = times
+    return ret
+
+
 def stddevf(sigma):
     """
     σ → std deviation
