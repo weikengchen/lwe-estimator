@@ -3,6 +3,7 @@
 Complexity estimates for solving LWE.
 
 .. moduleauthor:: Martin R. Albrecht <martinralbrecht@googlemail.com>
+
 """
 
 from collections import OrderedDict
@@ -26,7 +27,6 @@ from sage.misc.cachefunc import cached_method
 tau_default = 0.2
 tau_prob_default = 0.1
 
-
 # utility functions #
 
 
@@ -36,6 +36,21 @@ def report_str(d, keyword_width=None):
 
     :param d:        report dictionary
     :keyword_width:  keys are printed with this width
+
+    EXAMPLE:
+
+    By default dicts are unordered, hence the order of the output of this function is undefined::
+
+        sage: s = {u"δ":5, "bar":2}
+        sage: print report_str(s)
+        bar:         2,  5:         δ
+
+    Use `OrderedDict` if you require ordered output::
+
+        sage: s = OrderedDict([(u"δ", 5), ("bar",2)]) #
+        sage: print report_str(s)
+        δ:         5,  bar:         2
+
     """
     if d is None:
         return
@@ -67,6 +82,15 @@ def report_reorder(d, ordering):
     :param d:        input dictionary
     :param ordering: keys which should come first (in order)
 
+
+    EXAMPLE::
+
+        sage: d = OrderedDict([("a",1),("b",2),("c",3)]); d
+        OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+
+        sage: report_reorder(d, ["b","c","a"])
+        OrderedDict([('b', 2), ('c', 3), ('a', 1)])
+
     """
     keys = list(d)
     for key in ordering:
@@ -84,7 +108,12 @@ def report_repeat(d, times):
 
     :param d: a report object
     :param times: the number of times it should be run
-    :returns: New report
+    :returns: a new report
+
+    We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
+    For example, δ would not be multiplied but "\#bops" would be. This check is strict such that
+    unknown entries raise an error. This is to enforce a decision  on whether an entry should be
+    multiplied by `times` if the function `report` reports on is called `times` often.
 
     EXAMPLE::
 
@@ -134,6 +163,12 @@ def stddevf(sigma):
     σ → std deviation
 
     :param sigma: Gaussian width parameter σ
+
+    EXAMPLE::
+
+        sage: n = 64.0
+        sage: stddevf(n)
+        25.532...
     """
     return sigma/sqrt(2*pi).n()
 
@@ -143,6 +178,12 @@ def sigmaf(stddev):
     std deviation → σ
 
     :param sigma: standard deviation
+
+    EXAMPLE::
+
+        sage: n = 64.0
+        sage: sigmaf(stddevf(n))
+        64.000...
     """
     return sqrt(2*pi).n()*stddev
 
@@ -150,6 +191,13 @@ def sigmaf(stddev):
 def alphaf(sigma, q, sigma_is_stddev=False):
     """
     σ, q → α
+
+    :param sigma: Gaussian width parameter (or standard deviation if `sigma_is_stddev` is `True`)
+    :param q: modulus
+    :param sigma_is_stddev: if `True` then `sigma` is interpreted as the standard deviation
+    :returns: α = σ/q or σ·sqrt(2π)/q depending on `sigma_is_stddev`
+    :rtype: real number
+
     """
     if sigma_is_stddev is False:
         return RR(sigma/q)
@@ -164,7 +212,12 @@ def secret_variancef(a, b):
 
 def unpack_lwe(lwe):
     """
-    Return m, α, q given an LWE instance.
+    Return n, α, q given an LWE instance object.
+
+    :param lwe: LWE object
+    :returns: n, α, q
+    :rtype: tuple
+
     """
     n = lwe.n
     q = lwe.K.order()
@@ -213,6 +266,18 @@ def switch_modulus(n, alpha, q, s_variance):
     :param q:        modulus
     :param s_var:    the variance of the secret
 
+
+    EXAMPLE::
+
+       sage: switch_modulus(128, 0.01, 65537, uniform_variance_from_bounds(0,1))
+       (128, 0.0141421356237310, 410.000000000000)
+
+       sage: switch_modulus(128, 0.001, 65537, uniform_variance_from_bounds(0,1))
+       (128, 0.00141421356237310, 4094.00000000000)
+
+       sage: switch_modulus(128, 0.001, 65537, uniform_variance_from_bounds(-5,5))
+       (128, 0.00141421356237310, 25889.0000000000)
+
     """
     p = RR(ceil(sqrt(2*pi*s_variance*n/ZZ(12)) / alpha))
     beta = RR(sqrt(2)*alpha)
@@ -226,9 +291,21 @@ def switch_modulus(n, alpha, q, s_variance):
 
 def k_chen(delta):
     """
-    Estimate required blocksize `k` for a given root-hermite factor δ.
+    Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
 
     :param delta: root-hermite factor
+
+    EXAMPLE::
+
+        sage: 50 == k_chen(1.0121)
+        True
+        sage: 100 = k_chen(1.0093)
+        True
+        sage: k_chen(1.0024) # Chen reports 800
+        808
+
+    .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité conrète du chiffremenet
+                    complètement homomorphe. PhD thesis. Université Paris Diderot. 2013
     """
     k = ZZ(40)
     RR = delta.parent()
@@ -272,9 +349,9 @@ def bkz_runtime_k_sieve(k, n):
 
 def bkz_runtime_k_bkz2(k, n):
     """
-    Runtime estimation given `k` and assuming [CN11]_ estimates are correct.
+    Runtime estimation given `k` and assuming [AC:CheNgu11]_ estimates are correct.
 
-    The constants in this function were derived as follows based on Table 3 in [CN11]_::
+    The constants in this function were derived as follows based on Table 3 in [AC:CheNgu11]_::
 
         sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 250]
         sage: nodes = [40.8, 45.3, 50.3, 56.3, 63.3, 69.4, 79.9, 89.1, 99.1, 103.3, 111.1, 175.2]
@@ -286,7 +363,8 @@ def bkz_runtime_k_bkz2(k, n):
         sage: f.subs(find_fit(T, f, solution_dict=True))
         k |--> 0.002897773577138274*k^2 - 0.1226624805533656*k + 31.4749723637768
 
-    .. [CN11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better Lattice Security Estimates. AsiaCrypt 2011.
+    .. [AC:CheNgu11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better Lattice Security Estimates. AsiaCrypt 2011.
+
     """
     repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
     return RR(0.002897773577138052*k**2 - 0.12266248055336093*k + 23.831116173986075 + repeat)
