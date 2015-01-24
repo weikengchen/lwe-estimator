@@ -1313,7 +1313,7 @@ def latex_costs(LWE, N, skip=None, small=False, secret_bounds=None):
 
     header = latex_cost_header(cur)
     if small:
-        name = "%s with $\s[(i)] \gets \{%d,%d\}$"%(LWE.__name__, secret_bounds[0], secret_bounds[1])
+        name = "%s with $\s[(i)] \sample \{%d,%d\}$"%(LWE.__name__, secret_bounds[0], secret_bounds[1])
     else:
         name = LWE.__name__
     footer = latex_cost_footer(name)
