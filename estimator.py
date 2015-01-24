@@ -1194,6 +1194,9 @@ def plot_costs(LWE, N, skip=None, filename=None, small=False, secret_bounds=None
     for n in N:
         lwe = LWE(n)
         r = estimate_lwe(*unpack_lwe(lwe), skip=skip, small=small, secret_bounds=secret_bounds)
+        if get_verbose() >= 1:
+            print
+
         for key in r:
             value = r[key].values()[0]
             plots[key] = plots.get(key, tuple()) + ((n, log(value, 2)),)
