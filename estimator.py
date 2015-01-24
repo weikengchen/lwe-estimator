@@ -30,7 +30,7 @@ tau_prob_default = 0.1
 # utility functions #
 
 
-def report_str(d, keyword_width=None):
+def cost_str(d, keyword_width=None):
     """
     Return string of key,value pairs as a string "key0: value0, key1: value1"
 
@@ -42,13 +42,13 @@ def report_str(d, keyword_width=None):
     By default dicts are unordered, hence the order of the output of this function is undefined::
 
         sage: s = {u"δ":5, "bar":2}
-        sage: print report_str(s)
+        sage: print cost_str(s)
         bar:         2,  5:         δ
 
     Use `OrderedDict` if you require ordered output::
 
         sage: s = OrderedDict([(u"δ", 5), ("bar",2)]) #
-        sage: print report_str(s)
+        sage: print cost_str(s)
         δ:         5,  bar:         2
 
     """
@@ -74,7 +74,7 @@ def report_str(d, keyword_width=None):
     return u",  ".join(s)
 
 
-def report_reorder(d, ordering):
+def cost_reorder(d, ordering):
     """
     Return a new ordered dict from the key:value pairs in `d` but reordered such that the keys in
     ordering come first.
@@ -88,7 +88,7 @@ def report_reorder(d, ordering):
         sage: d = OrderedDict([("a",1),("b",2),("c",3)]); d
         OrderedDict([('a', 1), ('b', 2), ('c', 3)])
 
-        sage: report_reorder(d, ["b","c","a"])
+        sage: cost_reorder(d, ["b","c","a"])
         OrderedDict([('b', 2), ('c', 3), ('a', 1)])
 
     """
@@ -102,7 +102,7 @@ def report_reorder(d, ordering):
     return r
 
 
-def report_repeat(d, times):
+def cost_repeat(d, times):
     """
     Return a report with all costs multiplied by `times`.
 
@@ -111,31 +111,31 @@ def report_repeat(d, times):
     :returns: a new report
 
     We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
-    For example, δ would not be multiplied but "\#bops" would be. This check is strict such that
+    For example, δ would not be multiplied but "\#bop" would be. This check is strict such that
     unknown entries raise an error. This is to enforce a decision  on whether an entry should be
     multiplied by `times` if the function `report` reports on is called `times` often.
 
     EXAMPLE::
 
         sage: n, alpha, q = unpack_lwe(Regev(128))
-        sage: print report_str(report_repeat(sis(n, alpha, q), 2^10))
+        sage: print cost_str(cost_repeat(sis(n, alpha, q), 2^10))
         bkz2:   ≈2^77.0,  #calls:   ≈2^30.5,  δ_0: 1.0093614,  k:        98,  ...
-        sage: print report_str(report_repeat(sis(n, alpha, q), 1))
+        sage: print cost_str(cost_repeat(sis(n, alpha, q), 1))
         bkz2:   ≈2^67.0,  #calls:   ≈2^20.5,  δ_0: 1.0093614,  k:        98,  ...
 
     """
 
     do_repeat = {
-        u"#bops": True,
-        u"#rops": True,
-        u"#calls": True,
+        u"bop": True,
+        u"rop": True,
+        u"oracle": True,
         u"bkz2": True,
         u"lp": True,
         u"ds": True,
         u"fplll": True,
         u"sieve": True,
-        u"#enum": True,
-        u"#enumops": True,
+        u"enum": True,
+        u"enumop": True,
 
         u"mem": False,
         u"δ_0": False,
@@ -143,7 +143,7 @@ def report_repeat(d, times):
         u"ε": False,
         u"D_reg": False,
         u"t": False,
-        u"Pr[fail]": False,  # we are leaving probabilities alone
+        u"Pr[⊥]": False,  # we are leaving probabilities alone
         u"m": False,
     }
 
@@ -156,7 +156,7 @@ def report_repeat(d, times):
                 ret[key] = d[key]
         except KeyError:
             raise NotImplemented(u"You found a bug, this function does not know about '%s' but should."%key)
-    ret[u'repeat'] = times
+    ret[u"repeat"] = times
     return ret
 
 
@@ -427,19 +427,31 @@ def lattice_redution_opt_m(n, q, delta):
 
 
 def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
+    """
+    Return meet-in-the-middle estimates.
+
+    :param n: dimension
+    :param alpha: noise parameter
+    :param q: modulus
+    :param success_probability: desired success probability
+    :param secret_bounds: tuple with lower and upper bound on the secret
+    :returns: report
+    :rtype: OrderedDict
+
+    """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     ret = OrderedDict()
     RR = alpha.parent()
     if secret_bounds is None:
-        ret["#rops"] = RR((alpha*q)**(n/2) * 2*n)
+        ret["rop"] = RR((alpha*q)**(n/2) * 2*n)
         ret["mem"] = RR((alpha*q)**(n/2) * 2*n)
     else:
         a, b = secret_bounds
-        ret["#rops"] = RR((b-a+1)**(n/2) * 2*n)
+        ret["rop"] = RR((b-a+1)**(n/2) * 2*n)
         ret["mem"] = RR((b-a+1)**(n/2))
-    ret["#bops"] = RR(log(q, 2) * ret["#rops"])
-    ret["#calls"] = 2*n
-    return report_reorder(ret, ["#bops", "#calls", "mem"])
+    ret["bop"] = RR(log(q, 2) * ret["rop"])
+    ret["oracle"] = 2*n
+    return cost_reorder(ret, ["bop", "oracle", "mem"])
 
 ####################
 # Section 5.2: BKW #
@@ -455,7 +467,7 @@ def bkw_required_m(sigma, q, success_probability, other_sigma=None):
     return RR(success_probability)/RR(adv)
 
 
-def bkw(n, alpha, q, success_probability=0.99, optimisation_target="#bops", prec=None):
+def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
     """
 
     :param n:                    dimension > 0
@@ -491,19 +503,19 @@ def bkw(n, alpha, q, success_probability=0.99, optimisation_target="#bops", prec
         nmem = ceil(RR(q**b)/2) * a * (n + 1 - b * (a-1)/2)
 
         current = OrderedDict([(u"t", t),
-                               (u"#bops", nbops),
-                               (u"#calls", ncalls),
+                               (u"bop", nbops),
+                               (u"oracle", ncalls),
                                (u"m", m),
                                (u"mem", nmem),
-                               (u"#rops", nrops)])
+                               (u"rop", nrops)])
 
-        if optimisation_target != u"#calls":
-            current = report_reorder(current, (optimisation_target, u"#calls", u"t"))
+        if optimisation_target != u"oracle":
+            current = cost_reorder(current, (optimisation_target, u"oracle", u"t"))
         else:
-            current = report_reorder(current, (optimisation_target, u"t"))
+            current = cost_reorder(current, (optimisation_target, u"t"))
 
         if get_verbose() >= 2:
-            print report_str(current)
+            print cost_str(current)
 
         if not best:
             best = current
@@ -535,7 +547,7 @@ def sis(n, alpha, q, log_eps=None,
                           optimisation_target=optimisation_target)
 
             if get_verbose() >= 2:
-                print report_str(current)
+                print cost_str(current)
 
             if best is None:
                 best = current
@@ -552,11 +564,11 @@ def sis(n, alpha, q, log_eps=None,
         m = lattice_redution_opt_m(n, q, delta_0)
         ret = bkz_runtime_delta(delta_0, m, -log_eps)
         ret[u"ε"] = ZZ(2)**log_eps
-        ret[u"#calls"] = m * success_probability/RR(2)**log_eps
-        if optimisation_target != u"#calls":
-            ret = report_reorder(ret, [optimisation_target, u"#calls"])
+        ret[u"oracle"] = m * success_probability/RR(2)**log_eps
+        if optimisation_target != u"oracle":
+            ret = cost_reorder(ret, [optimisation_target, u"oracle"])
         else:
-            ret = report_reorder(ret, [optimisation_target])
+            ret = cost_reorder(ret, [optimisation_target])
         return ret
 
 
@@ -623,8 +635,8 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
         bisect.insort_left(bd, [v, i])
 
     r = OrderedDict([(u"δ_0", delta_0),
-                     ("#enum", RR(log(prod(d), 2))),
-                     ("#enumops", RR(log(prod(d), 2)) - RR(enums_per_clock))])
+                     ("enum", RR(log(prod(d), 2))),
+                     ("enumop", RR(log(prod(d), 2)) - RR(enums_per_clock))])
     return r
 
 
@@ -651,7 +663,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
                           enums_per_clock, optimisation_target)
             if best is None:
                 best = current
-            if current["#bops"] <= best["#bops"]:
+            if current["bop"] <= best["bop"]:
                 best = current
                 stuck = 0
             else:
@@ -669,19 +681,19 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     repeat = ZZ(ceil(success_probability/RR(2)**log_eps))
 
     def combine(enum, bkz):
-        enum["#enum"]    = repeat *ZZ(2)**enum["#enum"]
-        enum["#enumops"] = repeat * ZZ(2)**enum["#enumops"]
+        enum["enum"]    = repeat *ZZ(2)**enum["enum"]
+        enum["enumop"] = repeat * ZZ(2)**enum["enumop"]
 
         current = OrderedDict()
-        current["#bops"]  = enum["#enumops"] + bkz[optimisation_target]
+        current["bop"]  = enum["enumop"] + bkz[optimisation_target]
 
         for key in bkz:
             current[key] = bkz[key]
         for key in enum:
             current[key] = enum[key]
         current[u"ε"] = ZZ(2)**log_eps
-        current[u"#calls"]  = repeat * m
-        current = report_reorder(current, ["#bops", "#calls"])
+        current[u"oracle"]  = repeat * m
+        current = cost_reorder(current, ["bop", "oracle"])
         return current
 
     depth = 6
@@ -695,16 +707,16 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
         current = combine(enum, bkz)
 
         if get_verbose() >= 2:
-            print report_str(current)
+            print cost_str(current)
 
         # if lattice reduction is cheaper than enumration, make it more expensive
-        if current[optimisation_target] < current["#enumops"]:
+        if current[optimisation_target] < current["enumop"]:
             prev_direction = direction
             direction = -1
             if direction != prev_direction:
                 step = 1 + RR(step-1)/2
             delta_0m1 /= step
-        elif current[optimisation_target] > current["#enumops"]:
+        elif current[optimisation_target] > current["enumop"]:
             prev_direction = direction
             direction = 1
             delta_0m1 *= step
@@ -723,7 +735,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 ###################################################
 
 
-def embed(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99):
+def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99):
     """
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
@@ -737,10 +749,10 @@ def embed(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_proba
     m = lattice_redution_opt_m(n, q, delta_0)
     # prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
     r = bkz_runtime_delta(delta_0, m, log(success_probability/tau_prob, 2))
-    r[u"#calls"] = repeat*m  # TODO: this shouldn't be hardcoded
-    r = report_reorder(r, ["bkz2", "#calls"])
+    r[u"oracle"] = repeat*m  # TODO: this shouldn't be hardcoded
+    r = cost_reorder(r, ["bkz2", "oracle"])
     if get_verbose() >= 2:
-        print report_str(r)
+        print cost_str(r)
     return r
 
 
@@ -767,15 +779,15 @@ def gb_complexity(m, n, d, omega=2, call_magma=True, d2=None):
     else:
         s = (1-z**d)**m * (1-z**d2)**n / (1-z)**n
 
-    retval = OrderedDict([("D_reg", None), ("#rops", None)])
+    retval = OrderedDict([("D", None), ("rop", None)])
 
     for dreg in xrange(2*n):
         if coeff(s, dreg) < 0:
             break
     else:
         return retval
-    retval["D_reg"] = dreg
-    retval["#rops"] = RR(binomial(n + dreg, dreg)**omega)
+    retval["D"] = dreg
+    retval["rop"] = RR(binomial(n + dreg, dreg)**omega)
     retval["mem"] = RR(binomial(n + dreg, dreg)**2)
     return retval
 
@@ -802,14 +814,14 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     C = t/stddev
     pred = gb_complexity(m, n-guess, d, omega, call_magma, d2=d2)
     pred["t"] = t
-    pred["#calls"] = m
-    pred["Pr[fail]"] = RR(m*(1-ps_single(C)))
-    pred["#bops"] = log(q, 2) + pred["#rops"]
-    pred = report_reorder(pred, ["t", "#bops", "#calls", "D_reg"])
+    pred["oracle"] = m
+    pred[u"Pr[⊥]"] = RR(m*(1-ps_single(C)))
+    pred["bop"] = log(q, 2) + pred["rop"]
+    pred = cost_reorder(pred, ["t", "bop", "oracle", "D"])
 
     if get_verbose() >= 2:
         print "PREDICTION:"
-        print report_str(pred)
+        print cost_str(pred)
         print
         print "ESTIMATION:"
 
@@ -827,24 +839,24 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
 
         current = gb_complexity(m, n-guess, d, omega, call_magma, d2=d2)
 
-        if current["D_reg"] is None:
+        if current["D"] is None:
             continue
 
         current["t"] = t
-        current["Pr[fail]"] = RR(1-success_probability)
-        current["#rops"] *= RR((3*stddev)**guess)
-        current["#bops"] = log(q, 2) * current["#rops"]
-        current["#calls"] = m
+        current[u"Pr[⊥]"] = RR(1-success_probability)
+        current["rop"] *= RR((3*stddev)**guess)
+        current["bop"] = log(q, 2) * current["rop"]
+        current["oracle"] = m
 
-        current = report_reorder(current, ["#bops", "#calls", "t", "D_reg"])
+        current = cost_reorder(current, ["bop", "oracle", "t", "D"])
 
         if get_verbose() >= 2:
-            print report_str(current)
+            print cost_str(current)
 
         if best is None:
             best = current
         else:
-            if best["#rops"] > current["#rops"]:
+            if best["rop"] > current["rop"]:
                 best = current
             else:
                 break
@@ -868,7 +880,7 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
             current = f(n-i, alpha, q, secret_bounds=secret_bounds, **kwds)
         except TypeError:
             current = f(n-i, alpha, q, **kwds)
-        current = report_repeat(current, size**i)
+        current = cost_repeat(current, size**i)
 
         key = list(current)[0]
         if best is None:
@@ -897,9 +909,9 @@ def bdd_small_secret(n, alpha, q, secret_bounds, **kwds):
     return small_secret_guess(bdd, n, alpha, q, secret_bounds, **kwds)
 
 
-def embed_small_secret(n, alpha, q, secret_bounds, **kwds):
+def kannan_small_secret(n, alpha, q, secret_bounds, **kwds):
     n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
-    return small_secret_guess(embed, n, alpha, q, secret_bounds, **kwds)
+    return small_secret_guess(kannan, n, alpha, q, secret_bounds, **kwds)
 
 
 def _embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
@@ -940,11 +952,11 @@ def _embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau
 
     m = ceil(sqrt(n*(log(q, 2)-log(stddev, 2))/log_delta_0))
     # prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
-    r = bkz_runtime_delta(delta_0, m, success_probability/tau_prob)
-    r[u"#calls"] = repeat*m
-    r = report_reorder(r, ["bkz2", "#calls"])
+    r = bkz_runtime_delta(delta_0, m, log(repeat, 2))
+    r[u"oracle"] = repeat*m
+    r = cost_reorder(r, ["bkz2", "oracle"])
     if get_verbose() >= 2:
-        print report_str(r)
+        print cost_str(r)
     return r
 
 
@@ -1036,13 +1048,13 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
         ret[u"κ"] = kappa
         m = bkw_required_m(sigma_final, q, success_probability, sigma2f(kappa))
         ret["m"] = m
-        ret["#ropsm"] = (m + o)  * (a/2 * (n + 2))
-        ret["#ropst"] = ops_tf(kappa)
-        ret["#rops"] = ret["#ropst"] + ret["#ropsm"]
-        ret["#bops"] = log(q, 2) * ret["#rops"]
+        ret["ropsm"] = (m + o)  * (a/2 * (n + 2))
+        ret["ropst"] = ops_tf(kappa)
+        ret["rop"] = ret["ropst"] + ret["ropsm"]
+        ret["bop"] = log(q, 2) * ret["rop"]
         T = Tf(kappa)
         ret["mem"] = T * a * (n + 1 - b * (a-1)/2)
-        ret["#calls"] = T * a + ret["m"] + o
+        ret["oracle"] = T * a + ret["m"] + o
         return ret
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability, prec=4*n)
@@ -1051,15 +1063,15 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
 
     if o is None:
         best = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=0)
-        o = best["#calls"]/2
+        o = best["oracle"]/2
         while True:
             current = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=o)
-            if best is None or current["#bops"] < best["#bops"]:
+            if best is None or current["bop"] < best["bop"]:
                 best = current
-            if current["#bops"] > best["#bops"]:
+            if current["bop"] > best["bop"]:
                 break
             if get_verbose() >= 2:
-                print report_str(current)
+                print cost_str(current)
 
             o = o/2
         return best
@@ -1069,12 +1081,12 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
         best = None
         while True:
             current = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=o)
-            if best is None or current["#bops"] < best["#bops"]:
+            if best is None or current["bop"] < best["bop"]:
                 best = current
-            if current["#bops"] > best["#bops"]:
+            if current["bop"] > best["bop"]:
                 break
             if get_verbose() >= 2:
-                print report_str(current)
+                print cost_str(current)
             t += 0.01
         return best
 
@@ -1093,15 +1105,15 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
     best = None
     while kappa > 0:
         current = bkwssf(kappa)
-        if best is None or current["#bops"] < best["#bops"]:
+        if best is None or current["bop"] < best["bop"]:
             best = current
-        if current["#bops"] > best["#bops"]:
+        if current["bop"] > best["bop"]:
             break
         kappa -= 1
 
     best["o"] = o
     best["t"] = t
-    best = report_reorder(best, ["#bops", "#calls", "t", "m", "mem"])
+    best = cost_reorder(best, ["bop", "oracle", "t", "m", "mem"])
     return best
 
 
@@ -1125,15 +1137,15 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
                                   ("bkw", bkw),
                                   ("sis", sis),
                                   ("bdd", bdd),
-                                  ("embed", embed),
+                                  ("kannan", kannan),
                                   ("arora-gb", arora_gb)])
     else:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_small_secret),
                                   ("sis", sis_small_secret),
                                   ("bdd", bdd_small_secret),
-                                  ("embed", embed_small_secret),
-                                  ("embed_bg", embed_small_secret_bai_gal),
+                                  ("kannan", kannan_small_secret),
+                                  ("galbai", embed_small_secret_bai_gal),
                                   ("arora-gb", arora_gb_small_secret)])
 
     if skip is None:
@@ -1144,7 +1156,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
         pass
 
     alg_width = max(len(key) for key in set(algorithms).difference(skip))
-    report_kwds = {"keyword_width": 5}
+    cost_kwds = {"keyword_width": 5}
 
     results = OrderedDict()
     for alg in algorithms:
@@ -1157,12 +1169,12 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
                 results[alg] = tmp
                 if get_verbose() >= 1:
                     print ("%%%ds" % alg_width) % alg,
-                    print report_str(results[alg], **report_kwds)
+                    print cost_str(results[alg], **cost_kwds)
 
     return results
 
 
-def plot_estimates(LWE, N, skip=None, filename=None, small=False, secret_bounds=None):
+def plot_costs(LWE, N, skip=None, filename=None, small=False, secret_bounds=None):
     plots = {}
     for n in N:
         lwe = LWE(n)
@@ -1196,110 +1208,108 @@ def plot_estimates(LWE, N, skip=None, filename=None, small=False, secret_bounds=
         filename="%s%s-%d-%d.pdf"%(LWE.__name__, small_str, N[0], N[-1])
     plt.savefig(filename, dpi=128)
 
+################
+# LaTeX tables #
+################
 
-def latex_estimate_header(cur):
-    count = len(cur)
+dfs = "%4.0f"
+
+latex_config = {
+    "mitm":     OrderedDict([("bop", dfs), ("mem", dfs), ("oracle", dfs)]),
+    "bkw":      OrderedDict([("bop", dfs), ("mem", dfs), ("oracle", dfs)]),
+    "arora-gb": OrderedDict([("bop", dfs), ("mem", dfs), ("oracle", dfs)]),
+    "sis":      OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
+    "kannan":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
+    "galbai":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
+    "bdd":      OrderedDict([("bop", dfs), ("enum", dfs), ("oracle", dfs), ("repeat", dfs)]),
+}
+
+
+def latex_cost_header(cur):
     header = []
     header.append(r"\begin{scriptsize}")
-    header.append(r"\begin{tabular}{|r|" + ("|r|r|r|" * count) + "|}")
-    header.append(r"\hline")
+
+    pretty_algorithm_names = {
+        "mitm": "MitM",
+        "bkw":  "BKW",
+        "arora-gb": "Arora-GB",
+        "sis":  "SIS",
+        "kannan": "Kannan",
+        "galbai": "GalBai",
+        "bdd": "BDD"
+    }
+
+    pretty_column_names = {
+        "oracle": "$\\Ldis$",
+        "repeat": "g",
+    }
+
+    line = [r"\begin{tabular}{r"]
+    for alg in cur:
+        line.append("@{\hskip 8pt}")
+        line.append("r" * len([key for key in latex_config[alg].keys() if key in cur[alg]]))
+    line.append("}")
+
+    header.append("".join(line))
+    header.append(r"\toprule")
 
     line = ["    "]
     for alg in cur:
-        line.append(r"\multicolumn{3}{|c||}{%s}"%alg.upper())
+        count = len([key for key in latex_config[alg].keys() if key in cur[alg]])
+        line.append(r"\multicolumn{%d}{c}{%s}"%(count, pretty_algorithm_names[alg]))
     line = " & ".join(line) + "\\\\"
     header.append(line)
-    header.append(r"\hline")
+    header.append(r"\midrule")
 
     line = [" $n$"]
+
     for alg in cur:
-        if alg in ("mitm", "bkw", "arora-gb"):
-            line.append("  ops")
-            line.append("  mem")
-            line.append("calls")
-
-        elif alg in ("sis", "embed", "embed_bg"):
-            line.append(" bkz2")
-            line.append("sieve")
-            line.append("calls")
-
-        elif alg == "bdd":
-            line.append("  ops")
-            line.append(" enum")
-            line.append("calls")
-
-        else:
-            raise ValueError
+        line.extend([pretty_column_names.get(key, key) for key in latex_config[alg].keys() if key in cur[alg]])
 
     line = " & ".join(line) + "\\\\"
     header.append(line)
-    header.append(r"\hline")
+    header.append(r"\midrule")
     return header
 
 
-def latex_estimate_row(cur):
+def latex_cost_row(cur):
     line = []
-    if "mitm" in cur:
-        line.append("%6.1f" % log(cur["mitm"]["#bops"], 2))
-        line.append("%6.1f" % log(cur["mitm"]["mem"], 2))
-        line.append("%6.1f" % log(cur["mitm"]["#calls"], 2))
-
-    if "bkw" in cur:
-        line.append("%6.1f" % log(cur["bkw"]["#bops"], 2))
-        line.append("%6.1f" % log(cur["bkw"]["mem"], 2))
-        line.append("%6.1f" % log(cur["bkw"]["#calls"], 2))
-
-    if "sis" in cur:
-        line.append("%6.1f" % log(cur["sis"]["bkz2"], 2))
-        line.append("%6.1f" % log(cur["sis"]["sieve"], 2))
-        line.append("%6.1f" % log(cur["sis"]["#calls"], 2))
-
-    if "bdd" in cur:
-        line.append("%6.1f" % log(cur["bdd"]["#bops"], 2))
-        line.append("%6.1f" % log(cur["bdd"]["#enum"], 2))
-        line.append("%6.1f" % log(cur["bdd"]["#calls"], 2))
-
-    if "embed" in cur:
-        line.append("%6.1f" % log(cur["embed"]["bkz2"], 2))
-        line.append("%6.1f" % log(cur["embed"]["sieve"], 2))
-        line.append("%6.1f" % log(cur["embed"]["#calls"], 2))
-
-    if "embed_bg" in cur:
-        line.append("%6.1f" % log(cur["embed_bg"]["bkz2"], 2))
-        line.append("%6.1f" % log(cur["embed_bg"]["sieve"], 2))
-        line.append("%6.1f" % log(cur["embed_bg"]["#calls"], 2))
-
-    if "arora-gb" in cur:
-        line.append("%6.1f" % log(cur["arora-gb"]["#bops"], 2))
-        line.append("%6.1f" % log(cur["arora-gb"]["mem"], 2))
-        line.append("%6.1f" % log(cur["arora-gb"]["#calls"], 2))
+    for alg in cur:
+        cost = cur[alg]
+        for col, format in latex_config[alg].iteritems():
+            if (col == "repeat" and col in cost) or col != "repeat":
+                line.append(format % log(cost[col], 2))
     return line
 
 
-def latex_estimate_footer(name):
+def latex_cost_footer(name):
     footer = []
-    footer.append(r"\hline")
+    footer.append(r"\bottomrule")
     footer.append(r"\end{tabular}")
     footer.append(r"\end{scriptsize}")
     footer.append(r"\caption{%s}" % name)
     return footer
 
 
-def latex_estimates(LWE, N, skip=None, small=False, secret_bounds=None):
+def latex_costs(LWE, N, skip=None, small=False, secret_bounds=None):
 
     ret = []
     for i, n in enumerate(N):
         line = ["%4d"%n]
         lwe = LWE(n)
         cur = estimate_lwe(*unpack_lwe(lwe), skip=skip, small=small, secret_bounds=secret_bounds)
-        line.extend(latex_estimate_row(cur))
+        line.extend(latex_cost_row(cur))
         line = " & ".join(line) + "\\\\"
         ret.append(line)
         if get_verbose() >= 1:
             print
 
-    header = latex_estimate_header(cur)
-    footer = latex_estimate_footer(LWE.__name__)
+    header = latex_cost_header(cur)
+    if small:
+        name = "%s with $\s[(i)] \gets \{%d,%d\}$"%(LWE.__name__, secret_bounds[0], secret_bounds[1])
+    else:
+        name = LWE.__name__
+    footer = latex_cost_footer(name)
 
     ret = header + ret + footer
 
@@ -1323,14 +1333,14 @@ def latex_fhe_estimates(N, l, skip=None, small=False, secret_bounds=None):
         line = ["%6d"%n]
         params = fhe_params(l, n)
         cur = estimate_lwe(*params, skip=skip, small=small, secret_bounds=secret_bounds)
-        line.extend(latex_estimate_row(cur))
+        line.extend(latex_cost_row(cur))
         line = " & ".join(line) + "\\\\"
         ret.append(line)
         if get_verbose() >= 1:
             print
 
-    header = latex_estimate_header(cur)
-    footer = latex_estimate_footer("FHE with L=%d"%l)
+    header = latex_cost_header(cur)
+    footer = latex_cost_footer("FHE with L=%d"%l)
 
     ret = header + ret + footer
     return "\n".join(ret)
