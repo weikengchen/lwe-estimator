@@ -921,8 +921,8 @@ def kannan_small_secret(n, alpha, q, secret_bounds, **kwds):
     return small_secret_guess(kannan, n, alpha, q, secret_bounds, **kwds)
 
 
-def _embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                                success_probability=0.99):
+def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
+                          success_probability=0.99):
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
 
@@ -967,9 +967,9 @@ def _embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau
     return r
 
 
-def embed_small_secret_bai_gal(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                               success_probability=0.99):
-    return small_secret_guess(_embed_small_secret_bai_gal, n, alpha, q, secret_bounds,
+def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
+                         success_probability=0.99):
+    return small_secret_guess(_bai_gal_small_secret, n, alpha, q, secret_bounds,
                               tau=0.2, tau_prob=0.1, success_probability=0.99)
 
 ########################
@@ -1152,7 +1152,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
                                   ("sis", sis_small_secret),
                                   ("bdd", bdd_small_secret),
                                   ("kannan", kannan_small_secret),
-                                  ("galbai", embed_small_secret_bai_gal),
+                                  ("baigal", bai_gal_small_secret),
                                   ("arora-gb", arora_gb_small_secret)])
 
     if skip is None:
@@ -1227,7 +1227,7 @@ latex_config = {
     "arora-gb": OrderedDict([("bop", dfs), ("mem", dfs), ("oracle", dfs)]),
     "sis":      OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
     "kannan":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
-    "galbai":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
+    "baigal":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
     "bdd":      OrderedDict([("bop", dfs), ("enum", dfs), ("oracle", dfs), ("repeat", dfs)]),
 }
 
@@ -1242,7 +1242,7 @@ def latex_cost_header(cur):
         "arora-gb": "Arora-GB",
         "sis":  "SIS",
         "kannan": "Kannan",
-        "galbai": "GalBai",
+        "baigal": "BaiGal",
         "bdd": "BDD"
     }
 
