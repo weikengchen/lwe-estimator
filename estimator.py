@@ -1168,6 +1168,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
         skip = [s.strip().lower() for s in skip.split(",")]
     except AttributeError:
         pass
+    skip = [s.strip().lower() for s in skip]
 
     alg_width = max(len(key) for key in set(algorithms).difference(skip))
     cost_kwds = {"keyword_width": 5}
