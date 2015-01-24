@@ -122,23 +122,25 @@ def report_repeat(d, times):
         bkz2:   ≈2^77.0,  #calls:   ≈2^30.5,  δ_0: 1.0093614,  k:        98,  ...
         sage: print report_str(report_repeat(sis(n, alpha, q), 1))
         bkz2:   ≈2^67.0,  #calls:   ≈2^20.5,  δ_0: 1.0093614,  k:        98,  ...
+
     """
 
     do_repeat = {
-        u"#rops": True,
-        u"mem": False,
         u"#bops": True,
+        u"#rops": True,
         u"#calls": True,
-        u"δ_0": False,
         u"bkz2": True,
-        u"k": False,
         u"lp": True,
         u"ds": True,
         u"fplll": True,
         u"sieve": True,
-        u"ε": False,
         u"#enum": True,
         u"#enumops": True,
+
+        u"mem": False,
+        u"δ_0": False,
+        u"k": False,
+        u"ε": False,
         u"D_reg": False,
         u"t": False,
         u"Pr[fail]": False,  # we are leaving probabilities alone
