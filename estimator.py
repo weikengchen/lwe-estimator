@@ -1213,7 +1213,7 @@ def plot_costs(LWE, N, skip=None, filename=None, small=False, secret_bounds=None
 
     plt.legend(loc=2)
     plt.xlabel("n")
-    plt.ylabel("$\log_2$(#bops)")
+    plt.ylabel("$\log_2$(bop)")
     if small:
         plt.title(u"%s (%d-%d), $s ← %s^n$"%(LWE.__name__, N[0], N[-1], secret_bounds))
     else:
