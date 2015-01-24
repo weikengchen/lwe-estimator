@@ -207,7 +207,16 @@ def alphaf(sigma, q, sigma_is_stddev=False):
         return RR(sigmaf(sigma)/q)
 
 
-def secret_variancef(a, b):
+def uniform_variance_from_bounds(a, b):
+    """
+    Variance for uniform distribution from bounds.
+
+    :param a:
+    :param b:
+    :returns:
+    :rtype:
+
+    """
     n = b - a + 1
     return (n**2 - 1)/ZZ(12)
 
@@ -390,6 +399,7 @@ def bkz_runtime_k_fplll(k, n):
 
 def bkz_runtime_delta(delta, n, log_repeat=0):
     """
+    Runtime estimates for BKZ (2.0) given δ and n
     """
     # t_lp = bkz_runtime_delta_LP(delta, n) + log_repeat
     # t_ds = bkz_runtime_delta_DS(delta, n) + log_repeat
@@ -878,17 +888,17 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
 
 
 def sis_small_secret(n, alpha, q, secret_bounds, **kwds):
-    n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
+    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
     return small_secret_guess(sis, n, alpha, q, secret_bounds, **kwds)
 
 
 def bdd_small_secret(n, alpha, q, secret_bounds, **kwds):
-    n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
+    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
     return small_secret_guess(bdd, n, alpha, q, secret_bounds, **kwds)
 
 
 def embed_small_secret(n, alpha, q, secret_bounds, **kwds):
-    n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
+    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
     return small_secret_guess(embed, n, alpha, q, secret_bounds, **kwds)
 
 
@@ -1068,7 +1078,7 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
             t += 0.01
         return best
 
-    secret_variance = secret_variancef(*secret_bounds)
+    secret_variance = uniform_variance_from_bounds(*secret_bounds)
     secret_variance = RR(secret_variance)
 
     a = RR(t*log(n, 2))  # the target number of additions: a = t*log_2(n)
@@ -1101,7 +1111,7 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
 
 def arora_gb_small_secret(n, alpha, q, secret_bounds, **kwds):
     a, b = secret_bounds
-    n, alpha, q = switch_modulus(n, alpha, q, secret_variancef(*secret_bounds))
+    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
     return arora_gb(n, alpha, q, d2=b-a+1, **kwds)
 
 ###########
