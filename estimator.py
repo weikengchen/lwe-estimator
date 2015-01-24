@@ -315,8 +315,8 @@ def k_chen(delta):
         sage: k_chen(1.0024) # Chen reports 800
         808
 
-    .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité conrète du chiffremenet
-                    complètement homomorphe. PhD thesis. Université Paris Diderot. 2013
+    .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité concrète du chiffrement
+                    complètement homomorphe. PhD thesis, Paris 7, 2013.
     """
     k = ZZ(40)
     RR = delta.parent()
@@ -374,7 +374,10 @@ def bkz_runtime_k_bkz2(k, n):
         sage: f.subs(find_fit(T, f, solution_dict=True))
         k |--> 0.002897773577138274*k^2 - 0.1226624805533656*k + 31.4749723637768
 
-    .. [AC:CheNgu11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better Lattice Security Estimates. AsiaCrypt 2011.
+    .. [AC:CheNgu11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates. In
+                     Dong Hoon Lee and Xiaoyun Wang, editors, ASIACRYPT 2011, volume 7073 of LNCS,
+                     pages 1–20. Springer, December 2011.
+
 
     """
     repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
@@ -582,7 +585,11 @@ def gsa_basis(n, q, delta, m):
     """
     Creates the basis lengths for the scaled dual
 
-    ..  note:: based on the GSA in [LP10]
+    ..  note:: based on the GSA in [RSA:LinPei11]_
+
+    .. [RSA:LinPei11] Richard Lindner and Chris Peikert. Better key sizes (and attacks) for LWE-based encryption.
+                      In Aggelos Kiayias, editor, CT-RSA 2011, volume 6558 of LNCS, pages 319–339. Springer,
+                      February 2011.
     """
     RR = delta.parent()
     qnm = RR(q**(n/m))
