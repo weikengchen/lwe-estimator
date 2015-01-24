@@ -1253,7 +1253,7 @@ def latex_cost_header(cur):
         "arora-gb": "Arora-GB",
         "sis":  "SIS",
         "kannan": "Kannan",
-        "baigal": "BaiGal",
+        "baigal": "Bai-Gal",
         "bdd": "BDD"
     }
 
