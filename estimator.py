@@ -662,20 +662,27 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
 
-    best = None
     if log_eps is None:
-        stuck = 0
-        for log_eps in srange(1, n, 2):
+        best = None
+        step_size = 32
+        log_eps = 1
+        while True:
             current = bdd(n, alpha, q, -log_eps, success_probability,
                           enums_per_clock, optimisation_target)
+
+            key = list(current)[0]
             if best is None:
                 best = current
-            if current["bop"] <= best["bop"]:
-                best = current
-                stuck = 0
+                log_eps += step_size
             else:
-                stuck += 1
-            if stuck >= 4:
+                if best[key] > current[key]:
+                    best = current
+                    log_eps += step_size
+                else:
+                    step_size = -1*step_size/2
+                    log_eps += step_size
+
+            if step_size == 0:
                 break
         return best
 
