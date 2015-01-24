@@ -1344,13 +1344,13 @@ def fhe_params(L, n):
     return n, alpha, q
 
 
-def latex_fhe_estimates(N, l, skip=None, small=False, secret_bounds=None):
+def latex_fhe_costs(N, l, secret_bounds, skip=None):
 
     ret = []
     for n in N:
         line = ["%6d"%n]
         params = fhe_params(l, n)
-        cur = estimate_lwe(*params, skip=skip, small=small, secret_bounds=secret_bounds)
+        cur = estimate_lwe(*params, skip=skip, small=True, secret_bounds=secret_bounds)
         line.extend(latex_cost_row(cur))
         line = " & ".join(line) + "\\\\"
         ret.append(line)
@@ -1358,7 +1358,9 @@ def latex_fhe_estimates(N, l, skip=None, small=False, secret_bounds=None):
             print
 
     header = latex_cost_header(cur)
-    footer = latex_cost_footer("FHE with L=%d"%l)
+
+    name = "FHE with $L=%d$ with $\s[(i)] \sample \{%d,%d\}$"%(l, secret_bounds[0], secret_bounds[1])
+    footer = latex_cost_footer(name)
 
     ret = header + ret + footer
     return "\n".join(ret)
