@@ -724,7 +724,7 @@ def embed(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_proba
 
     m = lattice_redution_opt_m(n, q, delta_0)
     # prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
-    r = bkz_runtime_delta(delta_0, m, success_probability/tau_prob)
+    r = bkz_runtime_delta(delta_0, m, log(success_probability/tau_prob, 2))
     r[u"#calls"] = repeat*m  # TODO: this shouldn't be hardcoded
     r = report_reorder(r, ["bkz2", "#calls"])
     if get_verbose() >= 2:
