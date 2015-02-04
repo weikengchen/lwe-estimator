@@ -106,9 +106,9 @@ def cost_repeat(d, times):
     """
     Return a report with all costs multiplied by `times`.
 
-    :param d: a report object
+    :param d: a cost estimate
     :param times: the number of times it should be run
-    :returns: a new report
+    :returns: a new cost estimate
 
     We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
     For example, δ would not be multiplied but "\#bop" would be. This check is strict such that
@@ -438,7 +438,7 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
     :param q: modulus
     :param success_probability: desired success probability
     :param secret_bounds: tuple with lower and upper bound on the secret
-    :returns: report
+    :returns: a cost estimate
     :rtype: OrderedDict
 
     """
@@ -479,6 +479,8 @@ def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=N
     :param success_probability:  probability of success < 1.0
     :param optimisation_target:  field to use to decide if parameters are better
     :param prec:                 precision used for floating point computations
+    :returns: a cost estimate
+    :rtype: OrderedDict
 
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
@@ -611,7 +613,8 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
     :param B:
     :param step:                 changes the increments for the values of d[i]
     :param enums_per_clock:      the log of the number of enumerations computed per clock cycle
-    :returns:
+    :returns: a cost estimate
+    :rtype: OrderedDict
     """
 
     RR = alpha.parent()
@@ -658,6 +661,8 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     :param success_probability:  probability of success < 1.0
     :param enums_per_clock:      the log of the number of enumerations computed per clock cycle
     :param optimisation_target:  lattice reduction estimate to use
+    :returns: a cost estimate
+    :rtype: OrderedDict
     """
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
@@ -751,6 +756,15 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 
 def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99):
     """
+    Estimate optimal parameters for using Kannan-embedding to solve CVP.
+
+    :param n:                    dimension > 0
+    :param alpha:                size of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  probability of success < 1.0
+
+    :returns: a cost estimate
+    :rtype: OrderedDict
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
