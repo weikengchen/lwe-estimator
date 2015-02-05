@@ -896,10 +896,6 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     return best
 
 
-######################################
-# 6.2 Lattice Reduction Small Secret #
-######################################
-
 def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
     size = secret_bounds[1]-secret_bounds[0] + 1
     best = None
@@ -1021,6 +1017,9 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
 
 def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
                          success_probability=0.99):
+    """
+    Bai's and Galbraith's uSVP attack + small secret guessing.
+    """
     return small_secret_guess(_bai_gal_small_secret, n, alpha, q, secret_bounds,
                               tau=0.2, tau_prob=0.1, success_probability=0.99)
 
@@ -1030,6 +1029,19 @@ def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=t
 
 
 def bkw_small_secret_variances(q, a, b, kappa, o, RR=None):
+    """
+    Helper function for small secret BKW variant.
+
+    :param q:
+    :param a:
+    :param b:
+    :param kappa:
+    :param o:
+    :param RR:
+    :returns:
+    :rtype:
+
+    """
     if RR is None:
         RR = RealField()
     q = RR(q)
