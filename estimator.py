@@ -1421,3 +1421,19 @@ def latex_fhe_costs(N, l, secret_bounds, skip=None):
 
     ret = header + ret + footer
     return "\n".join(ret)
+
+
+def make_all_tables():
+    N = (64, 128, 256, 512, 1024)
+    print latex_costs(Regev, N, skip=["arora-gb"])
+    print
+    print latex_costs(Regev, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
+    print
+    print latex_costs(LindnerPeikert, N)
+    print
+    print latex_costs(LindnerPeikert, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
+
+    print latex_fhe_costs([2**i for i in range(6, 12)], l=2,  skip="Arora-GB", secret_bounds=(0, 1))
+    print
+    print latex_fhe_costs([2**i for i in range(6, 15)], l=10, skip="Arora-GB", secret_bounds=(0, 1))
+    print
