@@ -461,7 +461,7 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
 ####################
 
 
-@cached_method
+@cached_function
 def bkw_required_m(sigma, q, success_probability, other_sigma=None):
     RR = sigma.parent()
     if other_sigma is not None:
@@ -689,6 +689,8 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 
             if step_size == 0:
                 break
+        # we clear the cache of gsa_basis because otherwise it grows too big
+        gsa_basis.clear_cache()
         return best
 
     RR = alpha.parent()
