@@ -14,7 +14,7 @@ from sage.functions.other import ceil, sqrt, floor, binomial
 from sage.interfaces.magma import magma
 from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
-from sage.misc.misc import get_verbose, srange, prod
+from sage.misc.misc import set_verbose, get_verbose, srange, prod
 from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing
 from sage.symbolic.all import pi, e
 
@@ -1437,3 +1437,15 @@ def make_all_tables():
     print
     print latex_fhe_costs([2**i for i in range(6, 15)], l=10, skip="Arora-GB", secret_bounds=(0, 1))
     print
+
+
+def make_all_plots():
+    v = get_verbose()
+    set_verbose(1)
+    N = range(64, 400, 16)
+    plot_costs(Regev, N, skip=["arora-gb", "mitm"])
+    plot_costs(LindnerPeikert, N, skip=["arora-gb", "mitm"])
+
+    plot_costs(Regev, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
+    plot_costs(LindnerPeikert, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
+    set_verbose(v)
