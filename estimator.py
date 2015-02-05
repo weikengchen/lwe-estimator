@@ -771,11 +771,14 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     beta = 1.01
     log_delta_0 = log(tau*beta*alpha*sqrt(2*e), 2)**2/(4*n*log(q, 2))
     delta_0 = RR(2**log_delta_0)
+    m = lattice_redution_opt_m(n, q, delta_0)
+
+    l2 = q**(1-n/m) * sqrt(m/(2*pi*e))
+    if l2 > q:
+        raise NotImplementedError("Case where λ_2 = q not implemented.")
 
     repeat = ZZ(ceil(success_probability/tau_prob))
 
-    m = lattice_redution_opt_m(n, q, delta_0)
-    # prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
     r = bkz_runtime_delta(delta_0, m, log(success_probability/tau_prob, 2))
     r[u"oracle"] = repeat*m  # TODO: this shouldn't be hardcoded
     r = cost_reorder(r, ["bkz2", "oracle"])
@@ -927,60 +930,86 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
     return best
 
 
+#############################################
+# 6.2 Modulus Switching for Lattice Reduction
+#############################################
+
 def sis_small_secret(n, alpha, q, secret_bounds, **kwds):
+    """
+    Modulus switch and estimate SIS.
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param secret_bounds:
+    """
     n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
     return small_secret_guess(sis, n, alpha, q, secret_bounds, **kwds)
 
 
 def bdd_small_secret(n, alpha, q, secret_bounds, **kwds):
+    """
+    Modulus switch and estimate BDD.
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param secret_bounds:
+    """
     n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
     return small_secret_guess(bdd, n, alpha, q, secret_bounds, **kwds)
 
 
 def kannan_small_secret(n, alpha, q, secret_bounds, **kwds):
+    """
+    Modulus switch and estimate Kannan-embedding for solving CVP.
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param secret_bounds:
+    """
     n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
     return small_secret_guess(kannan, n, alpha, q, secret_bounds, **kwds)
 
 
+#######################################
+# 6.3 Bai's and Galbraith's uSVP Attack
+#######################################
+
+
 def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
                           success_probability=0.99):
+    """
+    :param n:                    dimension > 0
+    :param alpha:                size of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param tau:                  0 < τ ≤ 1.0
+    :param success_probability:  probability of success < 1.0
+    """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
 
     stddev = stddevf(alpha*q)
-
-    if secret_bounds[0] == 0:
-        c = 2
-    else:
-        c = 1
-
-    num = 4*log(alpha)**2*log(q) \
-          - 4*log(alpha)**2*log(stddev) \
-          + 8*log(alpha)*log(q)*log(tau) \
-          - 8*log(alpha)*log(stddev)*log(tau) \
-          + 4*log(q)*log(tau)**2 \
-          - 4*log(stddev)*log(tau)**2 \
-          + 4*log(alpha)*log(q) \
-          - 4*log(alpha)*log(stddev) \
-          + 4*log(q)*log(tau) \
-          - 4*log(stddev)*log(tau) \
-          + log(q) \
-          - log(stddev)
-    den = 4*n*log(c)**2 \
-          - 16*n*log(c)*log(q) \
-          + 16*n*log(q)**2 \
-          + 16*n*log(c)*log(stddev) \
-          - 32*n*log(q)*log(stddev) \
-          + 16*n*log(stddev)**2
+    a, b = secret_bounds
+    c = RR(2)/(b-a)
+    num = (log(q/stddev) - log(tau*sqrt(2*pi*e)))**2 * log(q/stddev)
+    den = n*(2*log(q/stddev)-log(c))**2
 
     log_delta_0 = RR(num/den)
+
     delta_0 = RR(e**log_delta_0)
 
     repeat = ZZ(ceil(success_probability/tau_prob))
 
-    m = ceil(sqrt(n*(log(q, 2)-log(stddev, 2))/log_delta_0))
-    # prob = RR(1-(beta*exp(1-beta**2)/ZZ(2))**m)  # TODO: make use of it
-    r = bkz_runtime_delta(delta_0, m, log(repeat, 2))
+    m_prime = ceil(sqrt(n*(log(q)-log(stddev))/log_delta_0))
+    m = m_prime - n
+
+    l2 = RR((q**m * (c*stddev)**n)**(1/m_prime) * sqrt(m_prime/(2*pi*e)))
+    if l2 > q:
+        raise NotImplementedError("Case λ_2 = q not implemented.")
+
+    r = bkz_runtime_delta(delta_0, m_prime, log(repeat, 2))
     r[u"oracle"] = repeat*m
     r = cost_reorder(r, ["bkz2", "oracle"])
     if get_verbose() >= 2:
