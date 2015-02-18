@@ -590,13 +590,13 @@ def sis(n, alpha, q, log_eps=None,
                     return best
         return best
     else:
-        # TODO: do not hardcode m
+        repeat = amplify(success_probability, RR(2)**log_eps)
         log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
         delta_0 = RR(2**log_delta_0)
         m = lattice_redution_opt_m(n, q, delta_0)
-        ret = bkz_runtime_delta(delta_0, m, -log_eps)
+        ret = bkz_runtime_delta(delta_0, m, log(repeat, RR(2)))
         ret[u"ε"] = ZZ(2)**log_eps
-        ret[u"oracle"] = m * success_probability/RR(2)**log_eps
+        ret[u"oracle"] = m * repeat
         if optimisation_target != u"oracle":
             ret = cost_reorder(ret, [optimisation_target, u"oracle"])
         else:
@@ -726,7 +726,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     step = RR(1.05)
     direction = -1
 
-    repeat = ZZ(ceil(success_probability/RR(2)**log_eps))
+    repeat = amplify(success_probability, RR(2)**-log_eps)
 
     def combine(enum, bkz):
         enum["enum"]    = repeat *ZZ(2)**enum["enum"]
@@ -806,9 +806,9 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     if l2 > q:
         raise NotImplementedError("Case where λ_2 = q not implemented.")
 
-    repeat = ZZ(ceil(success_probability/tau_prob))
+    repeat = amplify(success_probability, tau_prob)
 
-    r = bkz_runtime_delta(delta_0, m, log(success_probability/tau_prob, 2))
+    r = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
     r[u"oracle"] = repeat*m  # TODO: this shouldn't be hardcoded
     r = cost_reorder(r, ["bkz2", "oracle"])
     if get_verbose() >= 2:
@@ -1025,7 +1025,7 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
 
     delta_0 = RR(e**log_delta_0)
 
-    repeat = ZZ(ceil(success_probability/tau_prob))
+    repeat = amplify(success_probability, tau_prob)
 
     m_prime = ceil(sqrt(n*(log(q)-log(stddev))/log_delta_0))
     m = m_prime - n
