@@ -445,6 +445,14 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
 
 
 def lattice_redution_opt_m(n, q, delta):
+    """
+    Return the (heuristically) optimal lattice dimension `m`
+
+    :param n:     dimension
+    :param q:     modulus
+    :param delta: root Hermite factor `δ_0`
+
+    """
     return ZZ(round(sqrt(n*log(q, 2)/log(delta, 2))))
 
 
@@ -493,7 +501,7 @@ def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=N
     """
 
     :param n:                    dimension > 0
-    :param alpha:                size of the noise α < 1.0
+    :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param success_probability:  probability of success < 1.0
     :param optimisation_target:  field to use to decide if parameters are better
@@ -624,7 +632,7 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
     Estimates the runtime for performing enumeration.
 
     :param n:                    dimension > 0
-    :param alpha:                size of the noise α < 1.0
+    :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param eps:
     :param delta_0:
@@ -675,7 +683,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     Estimates the optimal parameters for decoding attack
 
     :param n:                    dimension > 0
-    :param alpha:                size of the noise α < 1.0
+    :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param success_probability:  probability of success < 1.0
     :param enums_per_clock:      the log of the number of enumerations computed per clock cycle
@@ -780,7 +788,7 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     Estimate optimal parameters for using Kannan-embedding to solve CVP.
 
     :param n:                    dimension > 0
-    :param alpha:                size of the noise α < 1.0
+    :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param success_probability:  probability of success < 1.0
 
@@ -999,7 +1007,7 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
                           success_probability=0.99):
     """
     :param n:                    dimension > 0
-    :param alpha:                size of the noise α < 1.0
+    :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param tau:                  0 < τ ≤ 1.0
     :param success_probability:  probability of success < 1.0
@@ -1421,7 +1429,6 @@ def fhe_params(L, n):
 
 
 def latex_fhe_costs(N, l, secret_bounds, skip=None):
-
     ret = []
     for n in N:
         line = ["%6d"%n]
