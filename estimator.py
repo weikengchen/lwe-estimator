@@ -205,6 +205,27 @@ def alphaf(sigma, q, sigma_is_stddev=False):
         return RR(sigmaf(sigma)/q)
 
 
+def amplify(target_success_probability, success_probability):
+    """
+    Return the number of trials needed to amplify current `success_probability` to
+    `target_success_probability`
+
+    :param target_success_probability: 0 < real value < 1
+    :param success_probability:  0 < real value < 1
+
+    :returns: number of required trials to amplify
+    """
+    prec = max(53, 2*(ceil(1/success_probability).nbits()))
+    RR = RealField(prec)
+
+    success_probability = RR(success_probability)
+    target_success_probability = RR(target_success_probability)
+
+    # target_success_probability = 1 - (1-success_probability)^trials
+    repeat = ceil(log(1-target_success_probability)/log(1 -success_probability))
+    return repeat
+
+
 def uniform_variance_from_bounds(a, b):
     """
     Variance for uniform distribution from bounds.
