@@ -205,13 +205,15 @@ def alphaf(sigma, q, sigma_is_stddev=False):
         return RR(sigmaf(sigma)/q)
 
 
-def amplify(target_success_probability, success_probability):
+def amplify(target_success_probability, success_probability, majority=False):
     """
     Return the number of trials needed to amplify current `success_probability` to
     `target_success_probability`
 
     :param target_success_probability: 0 < real value < 1
-    :param success_probability:  0 < real value < 1
+    :param success_probability:        0 < real value < 1
+    :param majority: if `True` amplify a deicsional problem, not a computational one
+       if `False` then we assume that we can check solutions, so one success suffices
 
     :returns: number of required trials to amplify
     """
@@ -221,8 +223,12 @@ def amplify(target_success_probability, success_probability):
     success_probability = RR(success_probability)
     target_success_probability = RR(target_success_probability)
 
-    # target_success_probability = 1 - (1-success_probability)^trials
-    repeat = ceil(log(1-target_success_probability)/log(1 -success_probability))
+    if majority:
+        repeat = target_success_probability/success_probability**2
+    else:
+        # target_success_probability = 1 - (1-success_probability)^trials
+        repeat = ceil(log(1-target_success_probability)/log(1 -success_probability))
+
     return repeat
 
 
@@ -590,7 +596,8 @@ def sis(n, alpha, q, log_eps=None,
                     return best
         return best
     else:
-        repeat = amplify(success_probability, RR(2)**log_eps)
+        # we are solving Decision-LWE
+        repeat = amplify(success_probability, RR(2)**log_eps, majority=True)
         log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
         delta_0 = RR(2**log_delta_0)
         m = lattice_redution_opt_m(n, q, delta_0)
