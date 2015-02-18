@@ -20,8 +20,6 @@ from sage.symbolic.all import pi, e
 
 from sage.crypto.lwe import Regev, LindnerPeikert
 
-from sage.misc.cachefunc import cached_method
-
 # config
 
 tau_default = 0.2
