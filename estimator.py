@@ -104,13 +104,13 @@ def cost_repeat(d, times):
     """
     Return a report with all costs multiplied by `times`.
 
-    :param d: a cost estimate
+    :param d:     a cost estimate
     :param times: the number of times it should be run
-    :returns: a new cost estimate
+    :returns:     a new cost estimate
 
     We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
     For example, δ would not be multiplied but "\#bop" would be. This check is strict such that
-    unknown entries raise an error. This is to enforce a decision  on whether an entry should be
+    unknown entries raise an error. This is to enforce a decision on whether an entry should be
     multiplied by `times` if the function `report` reports on is called `times` often.
 
     EXAMPLE::
