@@ -832,7 +832,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     step = RR(1.05)
     direction = -1
 
-    repeat = amplify(success_probability, RR(2)**-log_eps)
+    repeat = amplify(success_probability, RR(2)**log_eps)
 
     def combine(enum, bkz):
         enum["enum"]    = repeat *ZZ(2)**enum["enum"]
