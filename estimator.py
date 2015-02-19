@@ -503,8 +503,30 @@ def bkw_required_m(sigma, q, success_probability, other_sigma=None):
     return RR(success_probability)/RR(adv)
 
 
-def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
+def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, search=False):
     """
+    Estimate the cost of running BKW to solve LWE
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  probability of success < 1.0
+    :param optimisation_target:  field to use to decide if parameters are better
+    :param prec:                 precision used for floating point computations
+    :param search:               if `True` solve Search-LWE, otherwise solve Decision-LWE
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    """
+    if search:
+        return bkw_search(n, alpha, q, success_probability, optimisation_target, prec)
+    else:
+        return bkw_decision(n, alpha, q, success_probability, optimisation_target, prec)
+
+
+def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
+    """
+    Estimate the cost of running BKW to solve Decision-LWE following [DCC:ACFFP15]_.
 
     :param n:                    dimension > 0
     :param alpha:                fraction of the noise α < 1.0
@@ -515,6 +537,9 @@ def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=N
     :returns: a cost estimate
     :rtype: OrderedDict
 
+    .. [DCC:ACFFP15] Albrecht, M. R., Cid, C., Jean-Charles Faugère, Fitzpatrick, R., &
+                     Perret, L. (2015). On the complexity of the BKW algorithm on LWE.
+                     Designs, Codes & Cryptography, Volume 74, Issue 2, pp 325-354
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     sigma = alpha*q
@@ -544,6 +569,80 @@ def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=N
                                (u"bop", nbops),
                                (u"oracle", ncalls),
                                (u"m", m),
+                               (u"mem", nmem),
+                               (u"rop", nrops)])
+
+        if optimisation_target != u"oracle":
+            current = cost_reorder(current, (optimisation_target, u"oracle", u"t"))
+        else:
+            current = cost_reorder(current, (optimisation_target, u"t"))
+
+        if get_verbose() >= 2:
+            print cost_str(current)
+
+        if not best:
+            best = current
+        else:
+            if best[optimisation_target] > current[optimisation_target]:
+                best = current
+            else:
+                break
+        t += 0.05
+    return best
+
+
+def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
+    """
+    Estimate the cost of running BKW to solve Search-LWE following [EPRINT:DucTraVau15]_.
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  probability of success < 1.0
+    :param optimisation_target:  field to use to decide if parameters are better
+    :param prec:                 precision used for floating point computations
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    .. [EPRINT:DucTraVau15] Duc, A., Florian Tramèr, & Vaudenay, S. (2015). Better algorithms for
+                            LWE and LWR.
+    """
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    sigma = stddevf(alpha*q)
+    eps = success_probability
+
+    RR = alpha.parent()
+
+    # "To simplify our result, we considered operations over C to have the same
+    # complexity as operations over Z_q . We also took C_FFT = 1 which is the
+    # best one can hope to obtain for a FFT."
+    cfft = 1
+    c_cost = 1
+    c_mem = 1
+
+    best = None
+    t = RR(2*(log(q, 2) - log(sigma, 2))/log(n, 2))
+    while True:
+        a = RR(t*log(n, 2))  # target number of adds: a = t*log_2(n)
+        b = RR(n/a)  # window width
+        epp = (1- eps)/a
+
+        m = lambda j, eps: 8 * b * log(q/eps) * (1 -  (2 * pi**2 * sigma**2)/(q**2))**(-2**(a-j))
+
+        c1 = (q**b-1)/2 * ((a-1)*(a-2)/2 * (n+1) - b/6 * (a*(a-1) * (a-2)))
+        c2 = sum([m(j, epp) * (a-1-j)/2 * (n+2) for j in range(a)])
+        c3 = (2*sum([m(j, epp) for j in range(a)]) + cfft * n * q**b * log(q, 2)) * c_cost
+        c4 = (a-1)*(a-2) * b * (q**b - 1)/2
+
+        nrops = RR(c1 + c2 + c3 + c4)
+        nbops = RR(log(q, 2) * nrops)
+        ncalls = (a-1) * (q**b - 1)/2 + m(0, eps)
+        nmem = ((q**b - 1)/2 * (a-1) * (n + 1 - b*(a-2)/2)) * m(0, eps) + c_mem * q**b
+
+        current = OrderedDict([(u"t", t),
+                               (u"bop", nbops),
+                               (u"oracle", ncalls),
+                               (u"m", m(0, eps)),
                                (u"mem", nmem),
                                (u"rop", nrops)])
 
