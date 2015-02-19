@@ -394,10 +394,10 @@ def bkz_runtime_k_bkz2(k, n):
         sage: times = [c + log(200,2).n() for c in nodes]
         sage: T = zip(dim, nodes)
         sage: var("a,b,c,k")
-        sage: f = a*k^2 + b*k + c
+        sage: f = a*k*log(k, 2.0) + b*k + c
         sage: f = f.function(k)
         sage: f.subs(find_fit(T, f, solution_dict=True))
-        k |--> 0.002897773577138274*k^2 - 0.1226624805533656*k + 31.4749723637768
+        k |--> 0.972686252073302*k*log(k) - 5.0816052782836865*k + 101.46694168899123
 
     .. [AC:CheNgu11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates. In
                      Dong Hoon Lee and Xiaoyun Wang, editors, ASIACRYPT 2011, volume 7073 of LNCS,
@@ -406,7 +406,7 @@ def bkz_runtime_k_bkz2(k, n):
 
     """
     repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
-    return RR(0.002897773577138052*k**2 - 0.12266248055336093*k + 23.831116173986075 + repeat)
+    return RR(0.972686252073302*k*log(k) - 5.0816052782836865*k + 101.46694168899123 + repeat)
 
 
 def bkz_runtime_delta_bkz2(delta, n):
