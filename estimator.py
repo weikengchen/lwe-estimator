@@ -1124,7 +1124,7 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
     stddev = stddevf(alpha*q)
     a, b = secret_bounds
     c = RR(2)/(b-a)
-    num = (log(q/stddev) - log(tau*sqrt(2*pi*e)))**2 * log(q/stddev)
+    num = (log(q/stddev) - log(tau*sqrt(4*pi*e)))**2 * log(q/stddev)
     den = n*(2*log(q/stddev)-log(c))**2
 
     log_delta_0 = RR(num/den)
