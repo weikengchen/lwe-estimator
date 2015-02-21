@@ -380,7 +380,7 @@ def bkz_runtime_k_sieve(k, n):
     """
     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
     """
-    return RR(0.3774*k + 20  + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+    return RR(0.45*n + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
