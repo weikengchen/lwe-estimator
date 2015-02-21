@@ -22,7 +22,7 @@ from sage.crypto.lwe import Regev, LindnerPeikert
 
 # config
 
-tau_default = 0.2
+tau_default = 0.3
 tau_prob_default = 0.1
 
 # utility functions #
