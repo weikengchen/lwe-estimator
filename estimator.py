@@ -378,9 +378,17 @@ def bkz_runtime_delta_LP(delta, n):
 
 def bkz_runtime_k_sieve(k, n):
     """
+
     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
+
+    For small `k` we use estimates based on experiments. For `k ≥ 90` we use the asymptotics.
+
     """
-    return RR(0.45*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+    if k < 90:
+        return RR(0.45*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+    else:
+        # estimate as 2^(0.337n - 15) seconds on 2.66GHz
+        return RR(0.3774*k + 16.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
