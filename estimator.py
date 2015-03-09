@@ -387,8 +387,8 @@ def bkz_runtime_k_sieve(k, n):
     if k < 90:
         return RR(0.45*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
     else:
-        # estimate as 2^(0.337n - 15) seconds on 2.66GHz
-        return RR(0.3774*k + 16.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+        # we simply pick the same additive constant 12.31 as above
+        return RR(0.3774*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
