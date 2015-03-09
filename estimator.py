@@ -519,7 +519,7 @@ def bkw_required_m(sigma, q, success_probability, other_sigma=None):
     if other_sigma is not None:
         sigma = RR(sqrt(sigma**2 + other_sigma**2))
     adv = RR(exp(-RR(pi)*(RR(sigma/q)**2)))
-    return RR(success_probability)/RR(adv)
+    return RR(success_probability)/RR(adv**2)
 
 
 def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, search=False):
