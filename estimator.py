@@ -486,15 +486,26 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     ret = OrderedDict()
     RR = alpha.parent()
+
+    t = ceil(2*sqrt(log(n)))
     if secret_bounds is None:
+        # assert((2*t*alpha)**m * (alpha*q)**(n/2) <= 2*n)
+        m = ceil(log(2*n/((alpha*q)**(n/2)))/log(2*t*alpha))
+        if m*(2*alpha) > 1- 1/(2*n):
+            raise ValueError("Choice of m does not satisfy constraints")
         ret["rop"] = RR((alpha*q)**(n/2) * 2*n)
         ret["mem"] = RR((alpha*q)**(n/2) * 2*n)
     else:
         a, b = secret_bounds
+        # assert((2*t*alpha)**m * (b-a+1)**(n/2) <= 2*n)
+        m = ceil(log(2*n/((b-a+1)**(n/2)))/log(2*t*alpha))
+        if (m*(2*alpha) > 1- 1/(2*n)):
+            raise ValueError("Choice of m does not satisfy constraints")
         ret["rop"] = RR((b-a+1)**(n/2) * 2*n)
         ret["mem"] = RR((b-a+1)**(n/2))
+
+    ret["oracle"] = n + m
     ret["bop"] = RR(log(q, 2) * ret["rop"])
-    ret["oracle"] = 2*n
     return cost_reorder(ret, ["bop", "oracle", "mem"])
 
 ####################
