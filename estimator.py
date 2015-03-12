@@ -933,6 +933,7 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
 
     r = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
     r[u"oracle"] = repeat*m  # TODO: this shouldn't be hardcoded
+    r[u"m"] = m
     r = cost_reorder(r, ["bkz2", "oracle"])
     if get_verbose() >= 2:
         print cost_str(r)
