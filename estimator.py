@@ -393,12 +393,12 @@ def bkz_runtime_k_sieve(k, n):
 
 def bkz_runtime_k_bkz2(k, n):
     """
-    Runtime estimation given `k` and assuming [AC:CheNgu11]_ estimates are correct.
+    Runtime estimation given `k` and assuming [CheNgu12]_ estimates are correct.
 
-    The constants in this function were derived as follows based on Table 3 in [AC:CheNgu11]_::
+    The constants in this function were derived as follows based on Table 4 in [CheNgu12]_::
 
-        sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 250]
-        sage: nodes = [40.8, 45.3, 50.3, 56.3, 63.3, 69.4, 79.9, 89.1, 99.1, 103.3, 111.1, 175.2]
+        sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250]
+        sage: nodes = [39.0, 44.0, 49.0, 54.0, 60.0, 66.0, 72.0, 78.0, 84.0, 96.0, 99.0, 105.0, 111.0, 120.0, 127.0, 134.0]
         sage: times = [c + log(200,2).n() for c in nodes]
         sage: T = zip(dim, nodes)
         sage: var("a,b,c,k")
@@ -407,15 +407,13 @@ def bkz_runtime_k_bkz2(k, n):
         sage: f.subs(find_fit(T, f, solution_dict=True))
         k |--> 0.972686252073302*k*log(k) - 5.0816052782836865*k + 101.46694168899123
 
-    .. [AC:CheNgu11] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates. In
-                     Dong Hoon Lee and Xiaoyun Wang, editors, ASIACRYPT 2011, volume 7073 of LNCS,
-                     pages 1–20. Springer, December 2011.
+    .. [CheNgu12] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates (Full Version).
+                  2012. http://www.di.ens.fr/~ychen/research/Full_BKZ.pdf
 
 
     """
     repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
-    return RR(0.972686252073302*k*log(k) - 5.0816052782836865*k + 101.46694168899123 + repeat)
-
+    return RR(0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765 + repeat)
 
 def bkz_runtime_delta_bkz2(delta, n):
     """
