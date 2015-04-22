@@ -405,7 +405,7 @@ def bkz_runtime_k_bkz2(k, n):
         sage: f = a*k*log(k, 2.0) + b*k + c
         sage: f = f.function(k)
         sage: f.subs(find_fit(T, f, solution_dict=True))
-        k |--> 0.972686252073302*k*log(k) - 5.0816052782836865*k + 101.46694168899123
+        k |--> 0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765
 
     .. [CheNgu12] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates (Full Version).
                   2012. http://www.di.ens.fr/~ychen/research/Full_BKZ.pdf
