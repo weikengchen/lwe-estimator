@@ -1358,14 +1358,14 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw),
                                   ("sis", sis),
-                                  ("bdd", bdd),
+                                  ("dec", bdd),
                                   ("kannan", kannan),
                                   ("arora-gb", arora_gb)])
     else:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_small_secret),
                                   ("sis", sis_small_secret),
-                                  ("bdd", bdd_small_secret),
+                                  ("dec", bdd_small_secret),
                                   ("kannan", kannan_small_secret),
                                   ("baigal", bai_gal_small_secret),
                                   ("arora-gb", arora_gb_small_secret)])
@@ -1434,6 +1434,44 @@ def plot_costs(LWE, N, skip=None, filename=None, small=False, secret_bounds=None
         filename="%s%s-%d-%d.pdf"%(LWE.__name__, small_str, N[0], N[-1])
     plt.savefig(filename, dpi=128)
 
+
+def plot_fhe_costs(L, N, skip=None, filename=None, small=False, secret_bounds=None):
+    plots = {}
+    for n in N:
+        params = fhe_params(L, n)
+        r = estimate_lwe(*params, skip=skip, small=small, secret_bounds=secret_bounds)
+        if get_verbose() >= 1:
+            print
+
+        for key in r:
+            value = r[key].values()[0]
+            plots[key] = plots.get(key, tuple()) + ((n, log(value, 2)),)
+
+    colors = ("#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD")
+
+    import matplotlib.pyplot as plt
+    plt.clf()
+    plt.figure(1)
+
+    for i, plot in enumerate(plots):
+        x, y = [x_ for x_, y_ in plots[plot]], [y_ for x_, y_ in plots[plot]]
+        plt.plot(x, y, label=plot, color=colors[i], linewidth=1.5)
+
+    plt.legend(loc=2)
+    plt.xlabel("n")
+    plt.ylabel("$\log_2$(bop)")
+    if small:
+        plt.title(u"FHE (%d-%d), $L=%d$, $s ← %s^n$"%(N[0], N[-1], L, secret_bounds))
+    else:
+        plt.title(u"FHE (%d-%d), $L=%d$"%(N[0], N[-1], L))
+    if filename is None:
+        if small:
+            small_str = "-(%d,%d)"%(secret_bounds[0], secret_bounds[1])
+        else:
+            small_str = ""
+        filename="FHE-%d%s-%d-%d.pdf"%(L, small_str, N[0], N[-1])
+    plt.savefig(filename, dpi=128)
+
 ################
 # LaTeX tables #
 ################
@@ -1447,7 +1485,7 @@ latex_config = {
     "sis":      OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
     "kannan":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
     "baigal":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
-    "bdd":      OrderedDict([("bop", dfs), ("enum", dfs), ("oracle", dfs), ("repeat", dfs)]),
+    "dec":      OrderedDict([("bop", dfs), ("enum", dfs), ("oracle", dfs), ("repeat", dfs)]),
 }
 
 
@@ -1462,7 +1500,7 @@ def latex_cost_header(cur):
         "sis":  "SIS",
         "kannan": "Kannan",
         "baigal": "Bai-Gal",
-        "bdd": "BDD"
+        "dec": "Dec"
     }
 
     pretty_column_names = {
