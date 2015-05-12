@@ -388,7 +388,7 @@ def bkz_runtime_k_sieve(k, n):
         return RR(0.45*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
     else:
         # we simply pick the same additive constant 12.31 as above
-        return RR(0.3774*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+        return RR(0.3366*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
