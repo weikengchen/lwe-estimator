@@ -1009,6 +1009,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
         print
         print "ESTIMATION:"
 
+    t = ceil(t/2)
     best = None
     for t in srange(t, n):
         d = 2*t + 1
