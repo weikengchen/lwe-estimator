@@ -27,7 +27,6 @@ tau_prob_default = 0.1
 
 # utility functions #
 
-
 def cost_str(d, keyword_width=None):
     """
     Return string of key,value pairs as a string "key0: value0, key1: value1"
@@ -1009,8 +1008,9 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
         print
         print "ESTIMATION:"
 
-    t = ceil(t/2)
+    t = ceil(t/3)
     best = None
+    stuck = 0
     for t in srange(t, n):
         d = 2*t + 1
         C = RR(t/stddev)
@@ -1043,8 +1043,11 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
         else:
             if best["rop"] > current["rop"]:
                 best = current
+                stuck = 0
             else:
-                break
+                stuck += 1
+                if stuck >= 5:
+                    break
     return best
 
 
