@@ -962,14 +962,14 @@ def gb_complexity(m, n, d, omega=2, call_magma=True, d2=None):
     else:
         s = (1-z**d)**m * (1-z**d2)**n / (1-z)**n
 
-    retval = OrderedDict([("D", None), ("rop", None)])
+    retval = OrderedDict([("Dreg", None), ("rop", None)])
 
     for dreg in xrange(2*n):
         if coeff(s, dreg) < 0:
             break
     else:
         return retval
-    retval["D"] = dreg
+    retval["Dreg"] = dreg
     retval["rop"] = RR(binomial(n + dreg, dreg)**omega)
     retval["mem"] = RR(binomial(n + dreg, dreg)**2)
     return retval
@@ -1000,7 +1000,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     pred["oracle"] = m
     pred[u"Pr[⊥]"] = RR(m*(1-ps_single(C)))
     pred["bop"] = log(q, 2) + pred["rop"]
-    pred = cost_reorder(pred, ["t", "bop", "oracle", "D"])
+    pred = cost_reorder(pred, ["t", "bop", "oracle", "Dreg"])
 
     if get_verbose() >= 2:
         print "PREDICTION:"
@@ -1024,7 +1024,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
 
         current = gb_complexity(m, n-guess, d, omega, call_magma, d2=d2)
 
-        if current["D"] is None:
+        if current["Dreg"] is None:
             continue
 
         current["t"] = t
@@ -1033,7 +1033,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
         current["bop"] = log(q, 2) * current["rop"]
         current["oracle"] = m
 
-        current = cost_reorder(current, ["bop", "oracle", "t", "D"])
+        current = cost_reorder(current, ["bop", "oracle", "t", "Dreg"])
 
         if get_verbose() >= 2:
             print cost_str(current)
