@@ -1641,3 +1641,26 @@ def make_all_plots():
     plot_costs(Regev, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
     plot_costs(LindnerPeikert, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
     set_verbose(v)
+
+from sage.crypto.lwe import LWE
+
+
+class SimpleLWE(LWE):
+    """
+    LWE parameters with `σ=\sqrt{n/2π}` and `q = n^2`.
+    """
+    def __init__(self, n):
+        """
+        LWE parameters with `σ=\sqrt{n/2π}` and `q = n^2`.
+
+        :param n: security parameter n (= dimension)
+
+        """
+
+        from sage.stats.distributions.discrete_gaussian_integer import DiscreteGaussianDistributionIntegerSampler
+        from sage.rings.arith import next_prime
+
+        q = ZZ(next_prime(n**2))
+        s = sqrt(n)
+        D = DiscreteGaussianDistributionIntegerSampler(s/sqrt(2*pi.n()), q)
+        LWE.__init__(self, n=n, q=q, D=D, secret_dist=(0, 1))
