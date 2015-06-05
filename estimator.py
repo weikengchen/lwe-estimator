@@ -467,6 +467,26 @@ def lattice_redution_opt_m(n, q, delta):
     return ZZ(round(sqrt(n*log(q, 2)/log(delta, 2))))
 
 
+def sieve_or_enum(func):
+    """
+    Take minimum of sieving or enumeration for lattice-based attacks.
+
+    :param func: a lattice-reduction based estimator
+    """
+    def wrapper(*args, **kwds):
+        from copy import copy
+        kwds = copy(kwds)
+        if "optimisation_target" in kwds:
+            del kwds["optimisation_target"]
+
+        a = func(*args, optimisation_target="bkz2", **kwds)
+        b = func(*args, optimisation_target="sieve", **kwds)
+        if a["bkz2"] <= b["sieve"]:
+            return a
+        else:
+            return b
+    return wrapper
+
 def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
     """
     Return meet-in-the-middle estimates.
@@ -1388,10 +1408,13 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
     results = OrderedDict()
     for alg in algorithms:
         if alg not in skip:
+            algf = algorithms[alg]
+            if alg in ("bdd", "sis"):
+                algf = sieve_or_enum(algf)
             if small:
-                tmp = algorithms[alg](n, alpha, q, secret_bounds=secret_bounds)
+                tmp = algf(n, alpha, q, secret_bounds=secret_bounds)
             else:
-                tmp = algorithms[alg](n, alpha, q)
+                tmp = algf(n, alpha, q)
             if tmp:
                 results[alg] = tmp
                 if get_verbose() >= 1:
