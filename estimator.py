@@ -851,7 +851,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     repeat = amplify(success_probability, RR(2)**log_eps)
 
     def combine(enum, bkz):
-        enum["enum"]    = repeat *ZZ(2)**enum["enum"]
+        enum["enum"]   = repeat * ZZ(2)**enum["enum"]
         enum["enumop"] = repeat * ZZ(2)**enum["enumop"]
 
         current = OrderedDict()
