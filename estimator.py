@@ -673,7 +673,7 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
         nrops = RR(c1 + c2 + c3 + c4)
         nbops = RR(log(q, 2) * nrops)
         ncalls = (a-1) * (q**b - 1)/2 + m(0, eps)
-        nmem = ((q**b - 1)/2 * (a-1) * (n + 1 - b*(a-2)/2)) * m(0, eps) + c_mem * q**b
+        nmem = ((q**b - 1)/2 * (a-1) * (n + 1 - b*(a-2)/2)) + m(0, eps) + c_mem * q**b
 
         current = OrderedDict([(u"t", t),
                                (u"bop", nbops),
