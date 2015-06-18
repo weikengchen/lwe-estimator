@@ -27,6 +27,7 @@ tau_prob_default = 0.1
 
 # utility functions #
 
+
 def cost_str(d, keyword_width=None):
     """
     Return string of key,value pairs as a string "key0: value0, key1: value1"
@@ -414,6 +415,7 @@ def bkz_runtime_k_bkz2(k, n):
     repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
     return RR(0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765 + repeat)
 
+
 def bkz_runtime_delta_bkz2(delta, n):
     """
     Runtime estimation extrapolated from BKZ 2.0 timings.
@@ -486,6 +488,7 @@ def sieve_or_enum(func):
         else:
             return b
     return wrapper
+
 
 def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
     """
