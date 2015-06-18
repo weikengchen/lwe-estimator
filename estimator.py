@@ -609,7 +609,10 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
                                (u"oracle", ncalls),
                                (u"m", m),
                                (u"mem", nmem),
-                               (u"rop", nrops)])
+                               (u"rop", nrops),
+                               (u"a", a),
+                               (u"b", b),
+                               ])
 
         if optimisation_target != u"oracle":
             current = cost_reorder(current, (optimisation_target, u"oracle", u"t"))
@@ -683,7 +686,10 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
                                (u"oracle", ncalls),
                                (u"m", m(0, eps)),
                                (u"mem", nmem),
-                               (u"rop", nrops)])
+                               (u"rop", nrops),
+                               (u"a", a),
+                               (u"b", b),
+                               ])
 
         if optimisation_target != u"oracle":
             current = cost_reorder(current, (optimisation_target, u"oracle", u"t"))
