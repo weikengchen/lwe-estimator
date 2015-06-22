@@ -857,13 +857,16 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
             if best is None:
                 best = current
                 log_eps += step_size
+                continue
+
+            if best[key] > current[key]:
+                best = current
+                log_eps += step_size
             else:
-                if best[key] > current[key]:
-                    best = current
-                    log_eps += step_size
-                else:
-                    step_size = -1*step_size/2
-                    log_eps += step_size
+                # we go back to the previous step (+1)
+                log_eps -= step_size - 1
+                # and half the step size
+                step_size = step_size/2
 
             if step_size == 0:
                 break
