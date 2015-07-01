@@ -457,7 +457,7 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     return r
 
 
-def lattice_redution_opt_m(n, q, delta):
+def lattice_reduction_opt_m(n, q, delta):
     """
     Return the (heuristically) optimal lattice dimension `m`
 
@@ -744,7 +744,7 @@ def sis(n, alpha, q, log_eps=None,
         repeat = amplify(success_probability, RR(2)**log_eps, majority=True)
         log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
         delta_0 = RR(2**log_delta_0)
-        m = lattice_redution_opt_m(n, q, delta_0)
+        m = lattice_reduction_opt_m(n, q, delta_0)
         ret = bkz_runtime_delta(delta_0, m, log(repeat, RR(2)))
         ret[u"ε"] = ZZ(2)**log_eps
         ret[u"oracle"] = m * repeat
@@ -802,7 +802,7 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
 
     if B is None:
         if m is None:
-            m = lattice_redution_opt_m(n, q, delta_0)
+            m = lattice_reduction_opt_m(n, q, delta_0)
         B = gsa_basis(n, q, delta_0, m)
 
     d = [RR(1)]*m
@@ -903,7 +903,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     depth = 6
     while True:
         delta_0 = 1 + delta_0m1
-        m = lattice_redution_opt_m(n, q, delta_0)
+        m = lattice_reduction_opt_m(n, q, delta_0)
         bkz = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
 
         enum = enum_cost(n, alpha, q, RR(2)**log_eps, delta_0, m,
@@ -956,7 +956,7 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     beta = 1.01
     log_delta_0 = log(tau*beta*alpha*sqrt(2*e), 2)**2/(4*n*log(q, 2))
     delta_0 = RR(2**log_delta_0)
-    m = lattice_redution_opt_m(n, q, delta_0)
+    m = lattice_reduction_opt_m(n, q, delta_0)
 
     l2 = q**(1-n/m) * sqrt(m/(2*pi*e))
     if l2 > q:
