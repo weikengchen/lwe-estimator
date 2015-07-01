@@ -748,6 +748,8 @@ def sis(n, alpha, q, log_eps=None,
         ret = bkz_runtime_delta(delta_0, m, log(repeat, RR(2)))
         ret[u"ε"] = ZZ(2)**log_eps
         ret[u"oracle"] = m * repeat
+        ret[u"|v|"] = RR(delta_0**m * q**(n/m))
+        ret[u"repeat"] = repeat
         if optimisation_target != u"oracle":
             ret = cost_reorder(ret, [optimisation_target, u"oracle"])
         else:
