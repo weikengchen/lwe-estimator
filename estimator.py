@@ -155,7 +155,7 @@ def cost_repeat(d, times):
             else:
                 ret[key] = d[key]
         except KeyError:
-            raise NotImplemented(u"You found a bug, this function does not know about '%s' but should."%key)
+            raise NotImplementedError(u"You found a bug, this function does not know about '%s' but should."%key)
     ret[u"repeat"] = times
     return ret
 
