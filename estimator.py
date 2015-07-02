@@ -14,7 +14,7 @@ from sage.functions.other import ceil, sqrt, floor, binomial
 from sage.interfaces.magma import magma
 from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
-from sage.misc.misc import set_verbose, get_verbose, srange, prod
+from sage.misc.all import set_verbose, get_verbose, srange, prod
 from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing
 from sage.symbolic.all import pi, e
 
