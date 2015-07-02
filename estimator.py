@@ -143,6 +143,8 @@ def cost_repeat(d, times):
         u"t": False,
         u"Pr[⊥]": False,  # we are leaving probabilities alone
         u"m": False,
+        u"|v|": False,
+        u"amplify": False,
     }
 
     ret = OrderedDict()
@@ -153,7 +155,7 @@ def cost_repeat(d, times):
             else:
                 ret[key] = d[key]
         except KeyError:
-            raise NotImplemented(u"You found a bug, this function does not know about '%s' but should."%key)
+            raise NotImplementedError(u"You found a bug, this function does not know about '%s' but should."%key)
     ret[u"repeat"] = times
     return ret
 
@@ -749,7 +751,7 @@ def sis(n, alpha, q, log_eps=None,
         ret[u"ε"] = ZZ(2)**log_eps
         ret[u"oracle"] = m * repeat
         ret[u"|v|"] = RR(delta_0**m * q**(n/m))
-        ret[u"repeat"] = repeat
+        ret[u"amplify"] = repeat
         if optimisation_target != u"oracle":
             ret = cost_reorder(ret, [optimisation_target, u"oracle"])
         else:
