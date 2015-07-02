@@ -19,6 +19,9 @@ You can [try the estimator online](http://aleph.sagemath.org/?z=eJxNjcEKwjAQBe-F
 
 If you use this estimator in your work, please cite
 
-  Martin R. Albrecht and Rachel Player and Sam Scott. *On the concrete hardness of Learning with Errors*, Cryptology ePrint Archive, Report 2015/046, 2015. https://eprint.iacr.org/2015/046
+Martin R. Albrecht and Rachel Player and Sam Scott.
+*On the concrete hardness of Learning with Errors*.
+Cryptology ePrint Archive, Report 2015/046, 2015.
+https://eprint.iacr.org/2015/046
 
 A high-level overview of that work is given, for instance, in this [talk](https://martinralbrecht.files.wordpress.com/2015/05/20150507-lwe-survey-london.pdf).
