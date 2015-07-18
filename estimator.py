@@ -981,6 +981,29 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
 
 
 def gb_complexity(m, n, d, omega=2, call_magma=True, d2=None):
+    """Estimate the complexity of computing a Gröbner basis.
+
+    Estimation is done for `m` polynomials of degree `d` in `n`
+    variables under the assumption that the system is semi-regular.
+
+    If `d2` is not ``None`` then `n` polynomials of degree are added to
+    the system. This is to encode restrictions on the solution. For
+    example, if the solution is either `0` or `1`, then `(x_i)⋅(x_i+1)`
+    would evaluate to zero on it for any `x_i`.
+
+    :param m: number of polynomials (integer > 0)
+    :param n: number of variables (integer > 0)
+    :param d: degree of all input polynomials
+    :param omega: linear algebra exponent, i.e. matrix-multiplication costs `O(n^ω)` operations.
+    :param call_magma: use Magma to perform computation (highly recommended)
+    :param d2: secondary degree (integer > 0 or ``None``)
+
+    :returns: A dictionary containing the expected degree of regularity "Dreg"
+    (assuming the system is semi-regular), the number of base ring operations "rop",
+    and the memory requirements in base ring elements "mem".
+
+    :rtype: OrderedDict
+    """
     if m > n**d:
         m = n**d
 
