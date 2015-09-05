@@ -654,7 +654,7 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
 
 def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
     """
-    Estimate the cost of running BKW to solve Search-LWE following [EPRINT:DucTraVau15]_.
+    Estimate the cost of running BKW to solve Search-LWE following [EC:DucTraVau15]_.
 
     :param n:                    dimension > 0
     :param alpha:                fraction of the noise α < 1.0
@@ -665,8 +665,8 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     :returns: a cost estimate
     :rtype: OrderedDict
 
-    .. [EPRINT:DucTraVau15] Duc, A., Florian Tramèr, & Vaudenay, S. (2015). Better algorithms for
-                            LWE and LWR.
+    .. [EC:DucTraVau15] Duc, A., Florian Tramèr, & Vaudenay, S. (2015). Better algorithms for
+                        LWE and LWR.
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     sigma = stddevf(alpha*q)
@@ -890,10 +890,12 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     return cost
 
 
-def coded_bkw(n, alpha, q, success_probability=0.99):
-    overall_best = None
-    bmax = 2*ceil(log(q, 2))
-    for b in range(2, bmax+1)[::-1]:
+def coded_bkw(n, alpha, q, success_probability=0.99,
+              cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2")):
+    best = None
+    bstart = ceil(log(q, 2))
+
+    def _run(b):
         best = None
         for t2 in range(2, n//b)[::-1]:
             cost = _coded_bkw(n, alpha, q, b=b, t2=t2,
@@ -901,15 +903,27 @@ def coded_bkw(n, alpha, q, success_probability=0.99):
             if best is None or cost["rop"] < best["rop"]:
                 best = cost
             else:
-                break
+                return best
 
-        if overall_best is None or best["rop"] < overall_best["rop"]:
-            overall_best = cost_filter(best, ["bop", "oracle", "m", "mem", "rop", "b", "t1", "t2"])
-            print cost_str(overall_best)
-        elif best["rop"] > 2*overall_best["rop"]:
+    for b in range(bstart, 3*bstart):
+        current = _run(b)
+        if best is None or current["rop"] <= best["rop"]:
+            best = cost_filter(current, cost_include)
+            if get_verbose() > 1:
+                print cost_str(best)
+        else:
             break
 
-    return overall_best
+    for b in range(2, bstart)[::-1]:
+        current = _run(b)
+        if best is None or current["rop"] <= best["rop"]:
+            best = cost_filter(current, cost_include)
+            if get_verbose() > 1:
+                print cost_str(best)
+        else:
+            break
+
+    return best
 
 
 #######################################################
