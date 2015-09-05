@@ -1450,15 +1450,18 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
             algf = algorithms[alg]
             if alg in ("bdd", "sis"):
                 algf = sieve_or_enum(algf)
-            if small:
-                tmp = algf(n, alpha, q, secret_bounds=secret_bounds)
-            else:
-                tmp = algf(n, alpha, q)
-            if tmp:
-                results[alg] = tmp
-                if get_verbose() >= 1:
-                    print ("%%%ds" % alg_width) % alg,
-                    print cost_str(results[alg], **cost_kwds)
+            try:
+                if small:
+                    tmp = algf(n, alpha, q, secret_bounds=secret_bounds)
+                else:
+                    tmp = algf(n, alpha, q)
+                if tmp:
+                    results[alg] = tmp
+                    if get_verbose() >= 1:
+                        print ("%%%ds" % alg_width) % alg,
+                        print cost_str(results[alg], **cost_kwds)
+            except Exception as inst:
+                print "Algorithm '%s' failed with message '%s'"%(alg, inst)
 
     return results
 
