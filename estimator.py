@@ -1398,6 +1398,8 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
 
     best["o"] = o
     best["t"] = t
+    best["a"] = a
+    best["b"] = b
     best = cost_reorder(best, ["bop", "oracle", "t", "m", "mem"])
     return best
 
