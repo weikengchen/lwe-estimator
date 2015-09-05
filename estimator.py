@@ -18,7 +18,7 @@ from sage.misc.all import set_verbose, get_verbose, srange, prod
 from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing
 from sage.symbolic.all import pi, e
 
-from sage.crypto.lwe import Regev, LindnerPeikert
+from sage.crypto.lwe import LWE, Regev, LindnerPeikert
 
 # config
 
@@ -1706,8 +1706,6 @@ def make_all_plots():
     plot_costs(Regev, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
     plot_costs(LindnerPeikert, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
     set_verbose(v)
-
-from sage.crypto.lwe import LWE
 
 
 class SimpleLWE(LWE):
