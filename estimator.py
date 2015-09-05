@@ -10,7 +10,7 @@ from collections import OrderedDict
 
 from sage.modules.all import vector
 from sage.functions.log import exp, log
-from sage.functions.other import ceil, sqrt, floor, binomial
+from sage.functions.other import ceil, sqrt, floor, binomial, erf
 from sage.interfaces.magma import magma
 from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
@@ -711,6 +711,161 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
         t += 0.05
     return best
 
+
+def coded_bkw(n, alpha, q, t1, t2, b, l, ntest, success_probability=0.99):
+    """FIXME! briefly describe function
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param t1:
+    :param t2:
+    :param b:
+    :param l:
+    :param ntest:
+    :param success_probability:
+    :returns:
+    :rtype:
+
+
+    | b*t1 | ncod = ∑N_i | ntop | ntest |
+    """
+
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    sigma = stddevf(alpha*q)  # C:GuoJohSta15 use stddev
+    print u"n: %4d, α: %10.4f, q: %8d, ℓ: %3d"%(n, alpha, q, l)
+
+    gamma = 1.2  # TODO make this dependent on success_probability
+    d = 3*sigma
+    cfft = 1
+
+    sigma_set = sqrt(q**(2*(1-l/ZZ(ntest)))/12)
+
+    N = lambda i: floor(ZZ(b)/(1-log(12*sigma_set**2/ZZ(2)**i, q)/2))
+    ncod = sum([N(i) for i in range(1, t2+1)])
+    ntot = ncod + ntest
+
+    ntop = max(n - ntot - t1*b,0)
+    print u"n: %4d, t1⋅b: %4d, ncod: %4d, ntop: %4d, ntest: %4d"%(n, t1*b, ncod, ntop, ntest)
+
+    sigma_final = sqrt(2**(t1+t2) * sigma**2 + gamma**2 * sigma**2 * sigma_set**2 * ntot)
+    print u"σ_set: %10.2f"%(sigma_set),
+    print u"σ_final: %10.2f"%(sigma_final)
+    M = bkw_required_m(sigmaf(sigma_final), q, success_probability)
+    print " log(M): %10.2f"%log(M,2)
+
+    m = (t1+t2)*(q**b-1)/2 + M
+
+    n_ = n - t1*b
+    C0 = (m-n_) * (n+1) * ceil(n_/(b-1))
+    C1 = sum([(n+1-i*b)*(m - i*(q**b - 1)/2) for i in range(1, t1+1)])
+
+    print "log(C0): %10.2f (small secret)"%log(C0,2).n()
+    print "log(C1): %10.2f (classical BKW)"%log(C1,2).n()
+
+    C2_ = sum([4*(M + i*(q**b - 1)/2)*N(i) for i in range(i, t2+1)])
+    C2 = C2_
+    for i in range(i, t2+1):
+        C2 += (ntop + ntest + sum([N(j) for j in range(1, i+1)]))*(M + (i-1)*(q**b - 1)/2)
+
+    print "log(C2): %10.2f (coded BKW: %s)"%(log(C2,2).n(), [N(i) for i in range(1, t2+1)])
+
+    C3 = M*ntop*(2*d + 1)**ntop
+    print "log(C3): %10.2f (partial guessing)"%log(C3, 2).n()
+
+    C4_ = 4*M*ntest
+    C4 = C4_ + (2*d+1)**ntop * (cfft * q**(l+1) * (l+1) * log(q, 2) + q**(l+1))
+
+    print "log(C4): %10.2f (hypothesis testing)"%log(C4, 2).n()
+
+    P = lambda d: erf(d/sqrt(2*sigma))
+    C = (C0 + C1 + C2 + C3+ C4)/(P(d)**ntop)
+    return C
+
+
+#######################################################
+# Section 5.X: Kirchner-Fouque's BKW
+#######################################################
+
+def bias(alpha, q, is_stddev=False):
+    RR = alpha.parent()
+    if not is_stddev:
+        alpha = alpha/RR(sqrt(2*pi))
+    return RR(exp(-2 * pi**2 * alpha**2))
+
+
+def distinguish(alpha, q, success_probability=0.99, is_stddev=False):
+    n, alpha, q, success_probability = preprocess_params(1, alpha, q, success_probability)
+    k = -log(1 - success_probability, 2)
+    b = bias(alpha, q, is_stddev=is_stddev)
+    m = k/b**2
+    rops = RR(m)
+    bops = rops * log(q, 2)
+    ret = OrderedDict([("rop", rops), ("bop", bops), ("m", m), ("bias", b)])
+    return ret
+
+
+def find_secret(n, alpha, q, success_probability=0.99):
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    RR = alpha.parent()
+
+    b = bias(alpha, q)
+    k = -log(1 - success_probability, 2)
+    m = ceil(8*n*log(q, 2) + k)/b**2
+
+    assert(log(2 * q**n * exp(-m*b**2/2), 2) < -k)
+
+    bops = RR(m + n*log(q, 2) * q**n)  # EPRINT:KirFou15 assumes log(q,2)^2, i.e. quadratic operation costs, we don't
+    ret = OrderedDict([("bop", bops), ("m", m)])
+
+    return ret
+
+
+def bkw_kirfou(n, alpha, q, secret_bounds=(-1, 1), success_probability=0.99, t=1.0):
+    """FIXME! briefly describe function
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param B:
+    :param d:
+    :param D:
+    :returns:
+    :rtype:
+
+    """
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    alpha = RR(alpha/sqrt(2*pi))  # C:KirFou15 work with stddev not σ
+
+    d = [0]
+    while d[-1] != n:
+        d_next = min(d[-1] + (n/t/log(n, 2)), n)
+        d.append(ceil(d_next))
+
+    k = len(d)-1
+    D = [ZZ(1) for _ in range(k)]
+
+    B = ZZ(max(map(abs, secret_bounds)))
+
+    T = []
+    samples = []
+    for i in range(k):
+        samples.append((q/D[i])**(d[i+1]-d[i]))
+        T.append(samples[-1] * (n-d[i]))
+        alpha2 = 2*alpha**2
+        if D[i] > 1:
+            alpha2 += 4*pi**2 * sum((B*D[i]/q)**2 for j in range(d[i], d[i+1]))
+        alpha = RR(sqrt(alpha2))
+        print "i: %3d, d_i: %5.1f, α_i: %.4f, bias_i: %.20f, T_i: %.1f"%(i, d[i+1], alpha, bias(alpha, q, is_stddev=True), log(T[-1], 2).n())
+    ret = distinguish(alpha, q, success_probability=success_probability, is_stddev=True)
+    ret["mem"] = sum(T)
+    ret["oracle"] = sum(samples) + ret["m"]
+    ret["t"] = t
+    ret["rop"] = ret["rop"] + (sum(T)+ret["m"])*n
+    ret["bop"] = ret["rop"]*log(q, 2)
+    ret = cost_reorder(ret, ["bop", "oracle", "t", "m", "mem"])
+
+    return ret
 
 #######################################################
 # Section 5.3: Using Lattice Reduction To Distinguish #
