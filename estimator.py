@@ -273,8 +273,8 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
     """
     if n < 1:
         raise ValueError("LWE dimension must be greater than 0.")
-    if alpha >= 1.0 or alpha <= 0.0:
-        raise ValueError("Fraction of noise must be between 0 and 1.")
+    if alpha <= 0.0:
+        raise ValueError("Fraction of noise must be > 0.")
     if q < 1:
         raise ValueError("LWE modulus must be greater than 0.")
     if prec is None:
