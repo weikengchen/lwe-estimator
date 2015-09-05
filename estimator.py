@@ -514,7 +514,7 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
         # assert((2*t*alpha)**m * (alpha*q)**(n/2) <= 2*n)
         m = ceil(log(2*n/((alpha*q)**(n/2)))/log(2*t*alpha))
         if m*(2*alpha) > 1- 1/(2*n):
-            raise ValueError("Choice of m does not satisfy constraints")
+            raise ValueError("Cannot find m to satisfy constraints (noise too big).")
         ret["rop"] = RR((alpha*q)**(n/2) * 2*n)
         ret["mem"] = RR((alpha*q)**(n/2) * 2*n)
     else:
@@ -522,7 +522,7 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
         # assert((2*t*alpha)**m * (b-a+1)**(n/2) <= 2*n)
         m = ceil(log(2*n/((b-a+1)**(n/2)))/log(2*t*alpha))
         if (m*(2*alpha) > 1- 1/(2*n)):
-            raise ValueError("Choice of m does not satisfy constraints")
+            raise ValueError("Cannot find m to satisfy constraints (noise too big).")
         ret["rop"] = RR((b-a+1)**(n/2) * 2*n)
         ret["mem"] = RR((b-a+1)**(n/2))
 
