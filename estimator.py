@@ -728,7 +728,7 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     return best
 
 
-def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
+def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     """
     Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
 
@@ -742,6 +742,10 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     :returns: a cost estimate
     :rtype: OrderedDict
 
+    .. note::
+
+        You probably want to call bkw_coded instead.
+
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     sigma = stddevf(alpha*q)  # [C:GuoJohSta15] use σ = standard deviation
@@ -750,16 +754,16 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     cost = OrderedDict()
 
     # Our cost is mainly determined by q**b, on the other hand there are
-    # expressions in q**(l+1), hence, we set l = b - 1. This allows to achieve
-    # the performance reported in [C:GuoJohSta15].
+    # expressions in q**(l+1) below, hence, we set l = b - 1. This allows to
+    # achieve the performance reported in [C:GuoJohSta15].
 
     b = ZZ(b)
     cost["b"] = b
     l = b - 1
     cost["l"] = l
 
-    gamma = RR(1.2) # TODO make this dependent on success_probability
-    d = 3*sigma     # TODO make this dependent on success_probability
+    gamma = RR(1.2)  # TODO make this dependent on success_probability
+    d = 3*sigma      # TODO make this dependent on success_probability
 
     cost["d"] = d
     cost[u"γ"] = gamma
@@ -771,7 +775,7 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
         :param i: index
         :param sigma_set: target noise level
         """
-        return floor(b/(1-log(12*sigma_set**2/2**i, q)/2))
+        return floor(b/(1-log(12*sigma_set**2/ZZ(2)**i, q)/2))
 
     def find_ntest(n, l, t1, t2, b):
         """
@@ -798,12 +802,14 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
         try:
             ntest = round(find_root(0 == ntop, 0, n))
         except RuntimeError:
-            raise ValueError("Cannot find parameters for n=%d, l=%d, t1=%d, t2=%d, b=%d"%(n,l,t1,t2,b))
+            # annoyingly we get a RuntimeError when find_root can't find a
+            # solution, we translate to something more meaningful
+            raise ValueError("Cannot find parameters for n=%d, l=%d, t1=%d, t2=%d, b=%d"%(n, l, t1, t2, b))
         return ntest
 
     # we compute t1 from N_i by observing that any N_i ≤ b gives no advantage
-    # over vanilla BKW. On the other hand, the estimates for coded BKW always
-    # assume quantisation noise, which is too pessimistic.
+    # over vanilla BKW, but the estimates for coded BKW always assume
+    # quantisation noise, which is too pessimistic for N_i ≤ b.
     t1 = 0
     if ntest is None:
         ntest_ = find_ntest(n, l, t1, t2, b)
@@ -835,9 +841,9 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
 
     ntot = ncod + ntest
     ntop = max(n - ncod - ntest - t1*b, 0)
-    cost["ncod"] = ncod # coding step
-    cost["ntop"] = ntop # guessing step, typically zero
-    cost["ntest"] = ntest #hypothesis testing
+    cost["ncod"] = ncod    # coding step
+    cost["ntop"] = ntop    # guessing step, typically zero
+    cost["ntest"] = ntest  # hypothesis testing
 
     # Theorem 1: quantization noise + addition noise
     sigma_final = RR(sqrt(2**(t1+t2) * sigma**2 + gamma**2 * sigma**2 * sigma_set**2 * ntot))
@@ -874,14 +880,12 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     cost["C3(guess)"] = RR(C3)
 
     # Equation (11)
-
     C4_ = 4*M*ntest
     C4 = C4_ + (2*d+1)**ntop * (cfft * q**(l+1) * (l+1) * log(q, 2) + q**(l+1))
     assert(C4 >= 0)
     cost["C4(test)"] = RR(C4)
 
-    P = lambda d: erf(d/sqrt(2*sigma))
-    C = (C0 + C1 + C2 + C3+ C4)/(P(d)**ntop) # TODO don't ignore success probability
+    C = (C0 + C1 + C2 + C3+ C4)/(erf(d/sqrt(2*sigma))**ntop)  # TODO don't ignore success probability
     cost["rop"] = RR(C)
     cost["bop"] = RR(C*log(q, 2))
     cost["mem"] = (t1+t2)*q**b
@@ -890,15 +894,28 @@ def _coded_bkw(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     return cost
 
 
-def coded_bkw(n, alpha, q, success_probability=0.99,
+def bkw_coded(n, alpha, q, success_probability=0.99,
               cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2")):
+    """
+
+    Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
+    by optimising parameters.
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  probability of success < 1.0, IGNORED
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    """
     best = None
     bstart = ceil(log(q, 2))
 
     def _run(b):
         best = None
         for t2 in range(2, n//b)[::-1]:
-            cost = _coded_bkw(n, alpha, q, b=b, t2=t2,
+            cost = _bkw_coded(n, alpha, q, b=b, t2=t2,
                               success_probability=success_probability)
             if best is None or cost["rop"] < best["rop"]:
                 best = cost
