@@ -105,6 +105,7 @@ def cost_reorder(d, ordering):
         r[key] = d[key]
     return r
 
+
 def cost_filter(d, keys):
     """
     Return new ordered dict from the key:value pairs in `d` restricted to the keys in `keys`.
@@ -116,6 +117,7 @@ def cost_filter(d, keys):
     for key in keys:
         r[key] = d[key]
     return r
+
 
 def cost_repeat(d, times):
     """
@@ -222,6 +224,22 @@ def alphaf(sigma, q, sigma_is_stddev=False):
         return RR(sigma/q)
     else:
         return RR(sigmaf(sigma)/q)
+
+
+def biasf(stddev, q, is_stddev=True):
+    """
+    Bias as defined in Definition 1 of [C:KirFou15]
+
+    :param stddev:    standard deviation
+    :param q:         modulus q
+    :param is_stddev: [C:KirFou15] uses standard deviations
+
+    """
+    RR = stddev.parent()
+    if not is_stddev:
+        stddev = stddev/RR(sqrt(2*pi))
+    alpha = stddev/q
+    return RR(exp(-2 * pi**2 * alpha**2))
 
 
 def amplify(target_success_probability, success_probability, majority=False):
@@ -513,11 +531,11 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
     """
     Return meet-in-the-middle estimates.
 
-    :param n: dimension
-    :param alpha: noise parameter
-    :param q: modulus
+    :param n:                   dimension
+    :param alpha:               noise parameter
+    :param q:                   modulus
     :param success_probability: desired success probability
-    :param secret_bounds: tuple with lower and upper bound on the secret
+    :param secret_bounds:       tuple with lower and upper bound on the secret
     :returns: a cost estimate
     :rtype: OrderedDict
 
@@ -726,6 +744,11 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
                 break
         t += 0.05
     return best
+
+
+#######################################################
+# Coded-BKW
+#######################################################
 
 
 def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
@@ -941,6 +964,100 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
             break
 
     return best
+
+
+#######################################################
+# Kirchner-Fouque's BKW
+#######################################################
+
+def distinguish(bias, q, success_probability=0.99):
+    """
+    Estimate cost of distinguishing from bias.
+
+    :param bias:                 mias as defined in [C:KirFou15]
+    :param q:                    modulus > 0
+    :param success_probability:  target success probability
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    """
+    k = -8*log(1 - success_probability, 2)
+    bias = RR(bias)
+    m = k/bias**2
+    rops = RR(m)
+    bops = rops * log(q, 2)
+    ret = OrderedDict([("rop", rops), ("bop", bops), ("m", m), ("bias", bias)])
+    return ret
+
+
+def bkw_kirfou(n, alpha, q, secret_bounds=(-1, 1), success_probability=0.99, x=1.0, k=None):
+    """
+    Estimate complexity of BKW via Lemma 7 of [C:KirFou15].
+
+    :param n:                   dimension > 0
+    :param alpha:               fraction of the noise α < 1.0
+    :param q:                   modulus > 0
+    :param success_probability: probability of success < 1.0, IGNORED
+    :param secret_bounds:       tuple with lower and upper bound on the secret
+    :param x:                   aim for complexity `2^{xn + o(1)}`
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    :param n:
+    :param alpha:
+    :param q:
+
+    """
+    cost = OrderedDict()
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    stddev = stddevf(alpha*q)
+    bias = biasf(stddev, q, is_stddev=True)
+    alpha = RR(sqrt(-log(bias)))
+    x = RR(x)
+
+    if k is None:
+        k = ZZ(floor(log(n*x/(6*alpha**2), 2)))
+    cost["k"] = k
+
+    B = [ZZ(max(map(abs, secret_bounds))) for _ in range(k)]
+
+    D = []
+    for i in range(k):
+        D.append(floor(q*sqrt(x/6)/pi/B[i]/2**((k-i+1)/2)))
+        if B[i]*D[i] > 0.23*q:
+            raise ValueError("|sj|Di < 0.23q not satisfied")
+
+    d = [0]
+    for i in range(k):
+        d_next = min(d[-1] + floor(n*x/log(1 + q/D[i], 2)), n)
+        d.append(d_next)
+    if d[-1] < n:
+        raise ValueError("d_k (%d) << n"%d[-1])
+    if get_verbose() >= 2:
+        print "d", d
+
+    alpha_2 = 0
+    for i in range(k):
+        for j in range(d[i], d[i+1]):
+            alpha_2 += 4*pi**2 * 2**(k-i-1) * (B[i]*D[i]/q)**2
+    alpha_2 += 2**k * alpha**2
+    cost[u"α'^2"] = alpha_2
+
+    # Estimate in Lemma 7, but we do a sanity check by estimating the m by
+    # Theorem 2
+
+    # m = 2**k * n * 2**(n*x)
+    dist = distinguish(exp(-alpha_2), q, success_probability=success_probability)
+    m = 2**k * dist["m"]
+
+    cost["oracle"] = m
+    cost["m"] = dist["m"]
+
+    cost["mem"] = sum((n-d[i])*(q/D[i])**(d[i+1]-d[i]) for i in range(k))
+    cost["rop"] = m*n
+    cost["bop"] = m*n*log(q, 2)
+    cost = cost_reorder(cost, ["bop", "oracle", "m", "mem", "rop", "k"])
+    return cost
 
 
 #######################################################
