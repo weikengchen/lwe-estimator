@@ -1652,7 +1652,7 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, **kwds):
 def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
     if not small:
         algorithms = OrderedDict([("mitm", mitm),
-                                  ("bkw", bkw),
+                                  ("bkw", bkw_coded),
                                   ("sis", sis),
                                   ("dec", bdd),
                                   ("kannan", kannan),
@@ -1797,7 +1797,7 @@ def latex_cost_header(cur):
 
     pretty_algorithm_names = {
         "mitm": "MitM",
-        "bkw":  "BKW",
+        "bkw":  "Coded-BKW",
         "arora-gb": "Arora-GB",
         "sis":  "SIS",
         "kannan": "Kannan",
