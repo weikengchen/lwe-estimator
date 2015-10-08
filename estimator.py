@@ -869,6 +869,8 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
             else:
                 # we go back to the previous step (+1)
                 log_eps -= step_size - 1
+                if log_eps <= 0:
+                    log_eps = 1
                 # and half the step size
                 step_size = step_size/2
 
