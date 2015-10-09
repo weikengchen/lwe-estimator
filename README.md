@@ -51,6 +51,11 @@ At present, this estimator is maintained by Martin Albrecht. Contributors are:
 - Rachel Player
 - Sam Scott
 
+## Bugs ##
+
+If you run into a bug, please open an [issue on bitbucket](https://bitbucket.org/malb/lwe-estimator/issues?status=new&status=open). Also, please check there first if the issue has already been reported.
+
+
 ## Citing ##
 
 If you use this estimator in your work, please cite
