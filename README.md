@@ -55,17 +55,17 @@ At present, this estimator is maintained by Martin Albrecht. Contributors are:
 
 If you use this estimator in your work, please cite
 
-  Martin R. Albrecht, Rachel Player and Sam Scott.  
-  *On the concrete hardness of Learning with Errors*.  
-  Journal of Mathematical Cryptology.  
-  Volume 9, Issue 3, Pages 169–203,  
-  ISSN (Online) 1862-2984, ISSN (Print) 1862-2976  
-  DOI: 10.1515/jmc-2015-0016, October 2015
+> Martin R. Albrecht, Rachel Player and Sam Scott.  
+> *On the concrete hardness of Learning with Errors*.  
+> Journal of Mathematical Cryptology.  
+> Volume 9, Issue 3, Pages 169–203,  
+> ISSN (Online) 1862-2984, ISSN (Print) 1862-2976  
+> DOI: 10.1515/jmc-2015-0016, October 2015
 
 A pre-print is available as
 
-  Cryptology ePrint Archive, Report 2015/046, 2015.
-  https://eprint.iacr.org/2015/046
+> Cryptology ePrint Archive, Report 2015/046, 2015.
+> https://eprint.iacr.org/2015/046
 
 A high-level overview of that work is given, for instance, in this [talk](https://martinralbrecht.files.wordpress.com/2015/05/20150507-lwe-survey-london.pdf).
 
