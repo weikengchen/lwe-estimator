@@ -637,7 +637,7 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
 
 def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
     """
-    Estimate the cost of running BKW to solve Search-LWE following [EPRINT:DucTraVau15]_.
+    Estimate the cost of running BKW to solve Search-LWE following [C:DucTraVau15]_.
 
     :param n:                    dimension > 0
     :param alpha:                fraction of the noise α < 1.0
