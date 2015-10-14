@@ -22,8 +22,7 @@ You can [try the estimator online](http://aleph.sagemath.org/?z=eJxNjcEKwjAQBe-F
 At present the following algorithms are covered by this estimator.
 
 - exhaustive search + a meet-in-the-middle variant
-- plain BKW as described in [DCC:ACFFP15]
-- BKW + FFT [C:DucTraVau15]
+- Coded-BKW [C:GuoJohSta15]
 - lattice-reduction based distinguishing
 - lattice-reduction based decoding [RSA:LinPei11]
 - solving BDD via Kannan embedding as described in [ICISC:AlbFitGop13]
