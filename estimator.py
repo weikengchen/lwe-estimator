@@ -9,26 +9,29 @@ Complexity estimates for solving LWE.
 from collections import OrderedDict
 
 from sage.modules.all import vector
+from sage.calculus.var import var
 from sage.functions.log import exp, log
-from sage.functions.other import ceil, sqrt, floor, binomial
+from sage.functions.other import ceil, sqrt, floor, binomial, erf
 from sage.interfaces.magma import magma
 from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
 from sage.misc.all import set_verbose, get_verbose, srange, prod
-from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing
+from sage.numerical.optimize import find_root
+from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing, infinity
 from sage.symbolic.all import pi, e
 
-from sage.crypto.lwe import Regev, LindnerPeikert
+from sage.crypto.lwe import LWE, Regev, LindnerPeikert
 
 # config
 
 tau_default = 0.3
 tau_prob_default = 0.1
+cfft = 1  # cost of FFT
 
 # utility functions #
 
 
-def cost_str(d, keyword_width=None):
+def cost_str(d, keyword_width=None, newline=None):
     """
     Return string of key,value pairs as a string "key0: value0, key1: value1"
 
@@ -69,7 +72,10 @@ def cost_str(d, keyword_width=None):
         else:
             t = u"≈2^%.1f" % log(v, 2).n()
             s.append(u"%s: %9s" % (k, t))
-    return u",  ".join(s)
+    if not newline:
+        return u",  ".join(s)
+    else:
+        return u"\n".join(s)
 
 
 def cost_reorder(d, ordering):
@@ -99,6 +105,17 @@ def cost_reorder(d, ordering):
         r[key] = d[key]
     return r
 
+def cost_filter(d, keys):
+    """
+    Return new ordered dict from the key:value pairs in `d` restricted to the keys in `keys`.
+
+    :param d:    input dictionary
+    :param keys: keys which should be copied (ordered)
+    """
+    r = OrderedDict()
+    for key in keys:
+        r[key] = d[key]
+    return r
 
 def cost_repeat(d, times):
     """
@@ -273,8 +290,8 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
     """
     if n < 1:
         raise ValueError("LWE dimension must be greater than 0.")
-    if alpha >= 1.0 or alpha <= 0.0:
-        raise ValueError("Fraction of noise must be between 0 and 1.")
+    if alpha <= 0.0:
+        raise ValueError("Fraction of noise must be > 0.")
     if q < 1:
         raise ValueError("LWE modulus must be greater than 0.")
     if prec is None:
@@ -648,8 +665,8 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     :returns: a cost estimate
     :rtype: OrderedDict
 
-    .. [EPRINT:DucTraVau15] Duc, A., Florian Tramèr, & Vaudenay, S. (2015). Better algorithms for
-                            LWE and LWR.
+    .. [EC:DucTraVau15] Duc, A., Florian Tramèr, & Vaudenay, S. (2015). Better algorithms for
+                        LWE and LWR.
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     sigma = stddevf(alpha*q)
@@ -660,7 +677,6 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     # "To simplify our result, we considered operations over C to have the same
     # complexity as operations over Z_q . We also took C_FFT = 1 which is the
     # best one can hope to obtain for a FFT."
-    cfft = 1
     c_cost = 1
     c_mem = 1
 
@@ -709,6 +725,221 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
             else:
                 break
         t += 0.05
+    return best
+
+
+def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
+    """
+    Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param t2:                   number of coded BKW steps (≥ 0)
+    :param b:                    table size (≥ 1)
+    :param success_probability:  probability of success < 1.0, IGNORED
+    :param ntest:                optional parameter ntest
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    .. note::
+
+        You probably want to call bkw_coded instead.
+
+    """
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    sigma = stddevf(alpha*q)  # [C:GuoJohSta15] use σ = standard deviation
+    RR = alpha.parent()
+
+    cost = OrderedDict()
+
+    # Our cost is mainly determined by q**b, on the other hand there are
+    # expressions in q**(l+1) below, hence, we set l = b - 1. This allows to
+    # achieve the performance reported in [C:GuoJohSta15].
+
+    b = ZZ(b)
+    cost["b"] = b
+    l = b - 1
+    cost["l"] = l
+
+    gamma = RR(1.2)  # TODO make this dependent on success_probability
+    d = 3*sigma      # TODO make this dependent on success_probability
+
+    cost["d"] = d
+    cost[u"γ"] = gamma
+
+    def N(i, sigma_set):
+        """
+        Return $N_i$ for the $i$-th $[N_i, b]$ linear code.
+
+        :param i: index
+        :param sigma_set: target noise level
+        """
+        return floor(b/(1-log(12*sigma_set**2/ZZ(2)**i, q)/2))
+
+    def find_ntest(n, l, t1, t2, b):
+        """
+        If the parameter `ntest` is not provided, we use this function to estimate it.
+
+        :param n:  dimension > 0
+        :param l:  table size for hypothesis testing
+        :param t1: number of normal BKW steps
+        :param t2: number of coded BKW steps
+        :param b:  table size for BKW steps
+
+        """
+
+        # there is no hypothesis testing because we have enough normal BKW
+        # tables to cover all of of n
+        if t1*b >= n:
+            return 0
+
+        # solve for nest by aiming for ntop == 0
+        ntest = var("nest")
+        sigma_set = sqrt(q**(2*(1-l/ntest))/12)
+        ncod = sum([N(i, sigma_set) for i in range(1, t2+1)])
+        ntop = n - ncod - ntest - t1*b
+        try:
+            ntest = round(find_root(0 == ntop, 0, n))
+        except RuntimeError:
+            # annoyingly we get a RuntimeError when find_root can't find a
+            # solution, we translate to something more meaningful
+            raise ValueError("Cannot find parameters for n=%d, l=%d, t1=%d, t2=%d, b=%d"%(n, l, t1, t2, b))
+        return ntest
+
+    # we compute t1 from N_i by observing that any N_i ≤ b gives no advantage
+    # over vanilla BKW, but the estimates for coded BKW always assume
+    # quantisation noise, which is too pessimistic for N_i ≤ b.
+    t1 = 0
+    if ntest is None:
+        ntest_ = find_ntest(n, l, t1, t2, b)
+    else:
+        ntest_ = ntest
+    sigma_set = sqrt(q**(2*(1-l/ntest_))/12)
+    Ni = [N(i, sigma_set) for i in range(1, t2+1)]
+    t1 = len([e for e in Ni if e <= b])
+
+    # there is no point in having more tables than needed to cover n
+    if b*t1 > n:
+        t1 = n//b
+    t2 -= t1
+
+    cost["t1"] = t1
+    cost["t2"] = t2
+
+    # compute ntest with the t1 just computed
+    if ntest is None:
+        ntest = find_ntest(n, l, t1, t2, b)
+
+    # if there's no ntest then there's no `σ_{set}` and hence no ncod
+    if ntest:
+        sigma_set = sqrt(q**(2*(1-l/ntest))/12)
+        cost[u"σ_set"] = RR(sigma_set)
+        ncod = sum([N(i, sigma_set) for i in range(1, t2+1)])
+    else:
+        ncod = 0
+
+    ntot = ncod + ntest
+    ntop = max(n - ncod - ntest - t1*b, 0)
+    cost["ncod"] = ncod    # coding step
+    cost["ntop"] = ntop    # guessing step, typically zero
+    cost["ntest"] = ntest  # hypothesis testing
+
+    # Theorem 1: quantization noise + addition noise
+    sigma_final = RR(sqrt(2**(t1+t2) * sigma**2 + gamma**2 * sigma**2 * sigma_set**2 * ntot))
+    cost[u"σ_final"] = RR(sigma_final)
+
+    # we re-use our own estimator
+    M = bkw_required_m(sigmaf(sigma_final), q, success_probability)
+    cost["m"] = M
+    m = (t1+t2)*(q**b-1)/2 + M
+    cost["oracle"] = RR(m)
+
+    # Equation (7)
+    n_ = n - t1*b
+    C0 = (m-n_) * (n+1) * ceil(n_/(b-1))
+    assert(C0 >= 0)
+    cost["C0(gauss)"] = RR(C0)
+
+    # Equation (8)
+    C1 = sum([(n+1-i*b)*(m - i*(q**b - 1)/2) for i in range(1, t1+1)])
+    assert(C1 >= 0)
+    cost["C1(bkw)"] = RR(C1)
+
+    # Equation (9)
+    C2_ = sum([4*(M + i*(q**b - 1)/2)*N(i, sigma_set) for i in range(i, t2+1)])
+    C2 = RR(C2_)
+    for i in range(i, t2+1):
+        C2 += RR(ntop + ntest + sum([N(j, sigma_set) for j in range(1, i+1)]))*(M + (i-1)*(q**b - 1)/2)
+    assert(C2 >= 0)
+    cost["C2(coded)"] = RR(C2)
+
+    # Equation (10)
+    C3 = M*ntop*(2*d + 1)**ntop
+    assert(C3 >= 0)
+    cost["C3(guess)"] = RR(C3)
+
+    # Equation (11)
+    C4_ = 4*M*ntest
+    C4 = C4_ + (2*d+1)**ntop * (cfft * q**(l+1) * (l+1) * log(q, 2) + q**(l+1))
+    assert(C4 >= 0)
+    cost["C4(test)"] = RR(C4)
+
+    C = (C0 + C1 + C2 + C3+ C4)/(erf(d/sqrt(2*sigma))**ntop)  # TODO don't ignore success probability
+    cost["rop"] = RR(C)
+    cost["bop"] = RR(C*log(q, 2))
+    cost["mem"] = (t1+t2)*q**b
+
+    cost = cost_reorder(cost, ["bop", "oracle", "m", "mem", "rop", "b", "t1", "t2"])
+    return cost
+
+
+def bkw_coded(n, alpha, q, success_probability=0.99,
+              cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2")):
+    """
+
+    Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
+    by optimising parameters.
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  probability of success < 1.0, IGNORED
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    """
+    best = None
+    bstart = ceil(log(q, 2))
+
+    def _run(b):
+        best = None
+        for t2 in range(2, n//b)[::-1]:
+            cost = _bkw_coded(n, alpha, q, b=b, t2=t2,
+                              success_probability=success_probability)
+            if best is None or cost["rop"] < best["rop"]:
+                best = cost
+            else:
+                return best
+
+    for b in range(bstart, 3*bstart):
+        current = _run(b)
+        if best is None or current["rop"] <= best["rop"]:
+            best = cost_filter(current, cost_include)
+            if get_verbose() > 1:
+                print cost_str(best)
+        else:
+            break
+
+    for b in range(2, bstart)[::-1]:
+        current = _run(b)
+        if best is None or current["rop"] <= best["rop"]:
+            best = cost_filter(current, cost_include)
+            if get_verbose() > 1:
+                print cost_str(best)
+        else:
+            break
+
     return best
 
 
@@ -1400,6 +1631,8 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
 
     best["o"] = o
     best["t"] = t
+    best["a"] = a
+    best["b"] = b
     best = cost_reorder(best, ["bop", "oracle", "t", "m", "mem"])
     return best
 
@@ -1421,7 +1654,7 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, **kwds):
 def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
     if not small:
         algorithms = OrderedDict([("mitm", mitm),
-                                  ("bkw", bkw),
+                                  ("bkw", bkw_coded),
                                   ("sis", sis),
                                   ("dec", bdd),
                                   ("kannan", kannan),
@@ -1566,7 +1799,7 @@ def latex_cost_header(cur):
 
     pretty_algorithm_names = {
         "mitm": "MitM",
-        "bkw":  "BKW",
+        "bkw":  "Coded-BKW",
         "arora-gb": "Arora-GB",
         "sis":  "SIS",
         "kannan": "Kannan",
@@ -1708,8 +1941,6 @@ def make_all_plots():
     plot_costs(Regev, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
     plot_costs(LindnerPeikert, N, small=True, secret_bounds=(0, 1), skip=["arora-gb"])
     set_verbose(v)
-
-from sage.crypto.lwe import LWE
 
 
 class SimpleLWE(LWE):
