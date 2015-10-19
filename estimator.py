@@ -924,8 +924,10 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
     bstart = ceil(log(q, 2))
 
     def _run(b):
+        # the noise is 2**(t1+t2) * something so there is no need to go beyond, say, q**2
+        t2max = min(n//b, ceil(2*log(q, 2)))
         best = None
-        for t2 in range(2, n//b)[::-1]:
+        for t2 in range(2, t2max)[::-1]:
             cost = _bkw_coded(n, alpha, q, b=b, t2=t2,
                               success_probability=success_probability)
             if best is None or cost["rop"] <= best["rop"]:
