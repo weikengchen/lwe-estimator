@@ -809,7 +809,7 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
             # annoyingly we get a RuntimeError when find_root can't find a
             # solution, we translate to something more meaningful
             raise ValueError("Cannot find parameters for n=%d, l=%d, t1=%d, t2=%d, b=%d"%(n, l, t1, t2, b))
-        return ntest
+        return ZZ(ntest)
 
     # we compute t1 from N_i by observing that any N_i ≤ b gives no advantage
     # over vanilla BKW, but the estimates for coded BKW always assume
