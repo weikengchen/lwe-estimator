@@ -17,7 +17,7 @@ from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
 from sage.misc.all import set_verbose, get_verbose, srange, prod
 from sage.numerical.optimize import find_root
-from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing, infinity
+from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing
 from sage.symbolic.all import pi, e
 
 from sage.crypto.lwe import LWE, Regev, LindnerPeikert
