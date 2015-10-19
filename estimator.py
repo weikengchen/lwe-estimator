@@ -928,7 +928,7 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
         for t2 in range(2, n//b)[::-1]:
             cost = _bkw_coded(n, alpha, q, b=b, t2=t2,
                               success_probability=success_probability)
-            if best is None or cost["rop"] < best["rop"]:
+            if best is None or cost["rop"] <= best["rop"]:
                 best = cost
             else:
                 return best
