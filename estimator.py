@@ -42,15 +42,15 @@ def cost_str(d, keyword_width=None, newline=None):
 
     By default dicts are unordered, hence the order of the output of this function is undefined::
 
-        sage: s = {u"δ":5, "bar":2}
+        sage: s = {"delta":5, "bar":2}
         sage: print cost_str(s)
-        bar:         2,  5:         δ
+        bar:         2,  delta:         5
 
     Use `OrderedDict` if you require ordered output::
 
-        sage: s = OrderedDict([(u"δ", 5), ("bar",2)]) #
+        sage: s = OrderedDict([(u"delta", 5), ("bar",2)])
         sage: print cost_str(s)
-        δ:         5,  bar:         2
+        delta:         5,  bar:         2
 
     """
     if d is None:
@@ -134,9 +134,9 @@ def cost_repeat(d, times):
 
         sage: n, alpha, q = unpack_lwe(Regev(128))
         sage: print cost_str(cost_repeat(sis(n, alpha, q), 2^10))
-        bkz2:   ≈2^77.0,  #calls:   ≈2^30.5,  δ_0: 1.0093614,  k:        98,  ...
+        bkz2:   ≈2^85.4,  oracle:   ≈2^36.5,  δ_0: 1.0089681, ...
         sage: print cost_str(cost_repeat(sis(n, alpha, q), 1))
-        bkz2:   ≈2^67.0,  #calls:   ≈2^20.5,  δ_0: 1.0093614,  k:        98,  ...
+        bkz2:   ≈2^75.4,  oracle:   ≈2^26.5,  δ_0: 1.0089681, ...
 
     """
 
@@ -354,7 +354,7 @@ def k_chen(delta):
 
         sage: 50 == k_chen(1.0121)
         True
-        sage: 100 = k_chen(1.0093)
+        sage: 100 == k_chen(1.0093)
         True
         sage: k_chen(1.0024) # Chen reports 800
         808
@@ -421,6 +421,7 @@ def bkz_runtime_k_bkz2(k, n):
         sage: times = [c + log(200,2).n() for c in nodes]
         sage: T = zip(dim, nodes)
         sage: var("a,b,c,k")
+        (a, b, c, k)
         sage: f = a*k*log(k, 2.0) + b*k + c
         sage: f = f.function(k)
         sage: f.subs(find_fit(T, f, solution_dict=True))
@@ -908,6 +909,13 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
     :returns: a cost estimate
     :rtype: OrderedDict
 
+    EXAMPLE::
+
+
+        sage: n, alpha, q = unpack_lwe(Regev(64))
+        sage: print cost_str(bkw_coded(n, alpha, q))
+        bop:   ≈2^53.1,  oracle:   ≈2^39.2,  m:   ≈2^30.2,  mem:   ≈2^40.2,  rop:   ≈2^49.5,  ...
+
     """
     best = None
     bstart = ceil(log(q, 2))
@@ -921,6 +929,7 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
                 best = cost
             else:
                 return best
+        return best
 
     for b in range(bstart, 3*bstart):
         current = _run(b)
@@ -1652,6 +1661,30 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, **kwds):
 
 
 def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
+    """
+    Estimate the complexity of solving LWE with the given parameters.
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param skip:
+    :param small:
+    :param secret_bounds:
+    :returns:
+    :rtype:
+
+    EXAMPLE::
+
+        sage: n, alpha, q = unpack_lwe(Regev(64))
+        sage: set_verbose(1)
+        sage: d = estimate_lwe(n,alpha,q, skip="arora-gb")
+          mitm   bop:  ≈2^133.2,  oracle:        52,    mem:  ≈2^129.6,    rop:  ≈2^129.6
+           bkw   bop:   ≈2^53.1,  oracle:   ≈2^39.2,      m:   ≈2^30.2,    mem:   ≈2^40.2, ...
+           sis  bkz2:   ≈2^34.5,  oracle:   ≈2^11.7,    δ_0: 1.0130466,      k:        40, ...
+           dec   bop:   ≈2^33.9,  oracle:      1288,    δ_0: 1.0157998,   bkz2:   ≈2^32.8, ...
+        kannan  bkz2:   ≈2^35.3,  oracle:   ≈2^12.9,    δ_0: 1.0171085,      k:        40, ...
+
+    """
     if not small:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_coded),
