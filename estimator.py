@@ -105,6 +105,7 @@ def cost_reorder(d, ordering):
         r[key] = d[key]
     return r
 
+
 def cost_filter(d, keys):
     """
     Return new ordered dict from the key:value pairs in `d` restricted to the keys in `keys`.
@@ -116,6 +117,7 @@ def cost_filter(d, keys):
     for key in keys:
         r[key] = d[key]
     return r
+
 
 def cost_repeat(d, times):
     """
