@@ -204,7 +204,8 @@ def sigmaf(stddev):
         sage: sigmaf(stddevf(n))
         64.000...
     """
-    return sqrt(2*pi).n()*stddev
+    RR = stddev.parent()
+    return RR(sqrt(2*pi))*stddev
 
 
 def alphaf(sigma, q, sigma_is_stddev=False):
