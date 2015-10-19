@@ -891,7 +891,7 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
 
     C = (C0 + C1 + C2 + C3+ C4)/(erf(d/sqrt(2*sigma))**ntop)  # TODO don't ignore success probability
     cost["rop"] = RR(C)
-    cost["bop"] = RR(C*log(q, 2))
+    cost["bop"] = RR(C)*log(RR(q), RR(2))
     cost["mem"] = (t1+t2)*q**b
 
     cost = cost_reorder(cost, ["bop", "oracle", "m", "mem", "rop", "b", "t1", "t2"])
