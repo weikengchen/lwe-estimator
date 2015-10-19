@@ -1209,7 +1209,7 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
 
     l2 = q**(1-n/m) * sqrt(m/(2*pi*e))
     if l2 > q:
-        raise NotImplementedError("Case where λ_2 = q not implemented.")
+        raise NotImplementedError(u"Case where λ_2 = q not implemented.")
 
     repeat = amplify(success_probability, tau_prob)
 
@@ -1733,8 +1733,8 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
                     if get_verbose() >= 1:
                         print ("%%%ds" % alg_width) % alg,
                         print cost_str(results[alg], **cost_kwds)
-            except Exception as inst:
-                print "Algorithm '%s' failed with message '%s'"%(alg, inst)
+            except Exception as e:
+                print u"Algorithm '%s' failed with message '%s'"%(alg, e)
 
     return results
 
