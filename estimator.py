@@ -1752,7 +1752,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
                                   ("arora-gb", arora_gb)])
     else:
         algorithms = OrderedDict([("mitm", mitm),
-                                  ("bkw", bkw_small_secret),
+                                  ("bkw", bkw_coded),
                                   ("sis", sis_small_secret),
                                   ("dec", bdd_small_secret),
                                   ("kannan", kannan_small_secret),
