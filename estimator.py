@@ -323,7 +323,7 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
 ################################
 
 
-def switch_modulus(n, alpha, q, s_variance):
+def switch_modulus(n, alpha, q, s_variance, h=None):
     """
     Return modulus switched parameters.
 
@@ -331,7 +331,9 @@ def switch_modulus(n, alpha, q, s_variance):
     :param alpha:    noise size
     :param q:        modulus
     :param s_var:    the variance of the secret
+    :param h:        number of non-zero components.
 
+    If ``h`` is given, then ``s_var`` refers to the variance of non-zero components.
 
     EXAMPLE::
 
@@ -345,7 +347,11 @@ def switch_modulus(n, alpha, q, s_variance):
        (128, 0.00141421356237310, 25889.0000000000)
 
     """
-    p = RR(ceil(sqrt(2*pi*s_variance*n/ZZ(12)) / alpha))
+    if h is not None:
+        length = h
+    else:
+        length = n
+    p = RR(ceil(sqrt(2*pi*s_variance*length/ZZ(12)) / alpha))
     beta = RR(sqrt(2)*alpha)
     return n, beta, p
 
