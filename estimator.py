@@ -1717,7 +1717,7 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
 ###########
 
 
-def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
+def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None):
     """
     Estimate the complexity of solving LWE with the given parameters.
 
@@ -1777,7 +1777,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
                 algf = sieve_or_enum(algf)
             try:
                 if small:
-                    tmp = algf(n, alpha, q, secret_bounds=secret_bounds)
+                    tmp = algf(n, alpha, q, secret_bounds=secret_bounds, h=h)
                 else:
                     tmp = algf(n, alpha, q)
                 if tmp:
