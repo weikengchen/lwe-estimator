@@ -1774,7 +1774,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
     for alg in algorithms:
         if alg not in skip:
             algf = algorithms[alg]
-            if alg in ("bdd", "sis"):
+            if alg in ("dec", "sis", "kannan"):
                 algf = sieve_or_enum(algf)
             try:
                 if small:
