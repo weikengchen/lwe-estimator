@@ -1673,9 +1673,21 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
 # 6.4 Arora-GB Small Secret #
 #############################
 
-def arora_gb_small_secret(n, alpha, q, secret_bounds, **kwds):
+def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+    """FIXME! briefly describe function
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param secret_bounds:
+    :param h:
+    :returns:
+    :rtype:
+
+    """
     a, b = secret_bounds
-    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
     return arora_gb(n, alpha, q, d2=b-a+1, **kwds)
 
 ###########
