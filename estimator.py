@@ -1407,29 +1407,33 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
 # 6.2 Modulus Switching for Lattice Reduction
 #############################################
 
-def sis_small_secret(n, alpha, q, secret_bounds, **kwds):
-    """
-    Modulus switch and estimate SIS.
+def sis_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+    """Solve LWE by reduction to SIS for small secret instances.
 
-    :param n:
-    :param alpha:
-    :param q:
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
     :param secret_bounds:
+    :param h:                    number of non-zero components in the secret
+
     """
-    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
     return small_secret_guess(sis, n, alpha, q, secret_bounds, **kwds)
 
 
-def bdd_small_secret(n, alpha, q, secret_bounds, **kwds):
-    """
-    Modulus switch and estimate BDD.
+def bdd_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+    """Solve LWE by solving BDD for small secret instances.
 
-    :param n:
-    :param alpha:
-    :param q:
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
     :param secret_bounds:
+    :param h:                    number of non-zero components in the secret
+
     """
-    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
     return small_secret_guess(bdd, n, alpha, q, secret_bounds, **kwds)
 
 
