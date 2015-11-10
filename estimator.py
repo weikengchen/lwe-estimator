@@ -746,7 +746,7 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     return best
 
 
-def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
+def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None, secret_bounds=None, h=None):
     """
     Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
 
@@ -781,7 +781,10 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     cost["l"] = l
 
     gamma = RR(1.2)  # TODO make this dependent on success_probability
-    d = 3*sigma      # TODO make this dependent on success_probability
+    if secret_bounds:
+        d = secret_bounds[1] - secret_bounds[0] + 1
+    else:
+        d = 3*sigma      # TODO make this dependent on success_probability
 
     cost["d"] = d
     cost[u"γ"] = gamma
@@ -864,7 +867,12 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     cost["ntest"] = ntest  # hypothesis testing
 
     # Theorem 1: quantization noise + addition noise
-    sigma_final = RR(sqrt(2**(t1+t2) * sigma**2 + gamma**2 * sigma**2 * sigma_set**2 * ntot))
+    if secret_bounds:
+        s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+        coding_variance = s_var * sigma_set**2 * ntot
+    else:
+        coding_variance = gamma**2 * sigma**2 * sigma_set**2 * ntot
+    sigma_final = RR(sqrt(2**(t1+t2) * sigma**2 + coding_variance))
     cost[u"σ_final"] = RR(sigma_final)
 
     # we re-use our own estimator
@@ -912,7 +920,7 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     return cost
 
 
-def bkw_coded(n, alpha, q, success_probability=0.99,
+def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
               cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2")):
     """
 
@@ -943,6 +951,7 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
         best = None
         for t2 in range(2, t2max)[::-1]:
             cost = _bkw_coded(n, alpha, q, b=b, t2=t2,
+                              secret_bounds=secret_bounds, h=h,
                               success_probability=success_probability)
             if best is None or cost["rop"] <= best["rop"]:
                 best = cost
