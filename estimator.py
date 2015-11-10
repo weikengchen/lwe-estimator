@@ -527,7 +527,7 @@ def sieve_or_enum(func):
     return wrapper
 
 
-def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
+def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
     """
     Return meet-in-the-middle estimates.
 
