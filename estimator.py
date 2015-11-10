@@ -1456,22 +1456,33 @@ def kannan_small_secret(n, alpha, q, secret_bounds, **kwds):
 
 
 def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                          success_probability=0.99):
+                          success_probability=0.99, h=None):
     """
     :param n:                    dimension > 0
     :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param tau:                  0 < τ ≤ 1.0
     :param success_probability:  probability of success < 1.0
+    :param h:                    number of non-zero components in the secret
+
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
 
     stddev = stddevf(alpha*q)
     a, b = secret_bounds
-    c = RR(2)/(b-a)
+
+    if h is None:
+        xi = RR(2)/(b-a)
+    else:
+        assert -a == b  # TODO: don't be so lazy
+        # we compute the stddev of |s| and xi to scale each component to σ on average
+        variance = sum([ZZ(h)/n * i**2 for i in range(a, b+1) if i])
+        s_stddev = variance.sqrt()
+        xi = ZZ(1)/s_stddev
+
     num = (log(q/stddev) - log(tau*sqrt(4*pi*e)))**2 * log(q/stddev)
-    den = n*(2*log(q/stddev)-log(c))**2
+    den = n*(2*log(q/stddev)-log(xi))**2
 
     log_delta_0 = RR(num/den)
 
@@ -1482,7 +1493,7 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
     m_prime = ceil(sqrt(n*(log(q)-log(stddev))/log_delta_0))
     m = m_prime - n
 
-    l2 = RR((q**m * (c*stddev)**n)**(1/m_prime) * sqrt(m_prime/(2*pi*e)))
+    l2 = RR((q**m * (xi*stddev)**n)**(1/m_prime) * sqrt(m_prime/(2*pi*e)))
     if l2 > q:
         raise NotImplementedError("Case λ_2 = q not implemented.")
 
@@ -1495,12 +1506,12 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
 
 
 def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                         success_probability=0.99):
+                         success_probability=0.99, h=None):
     """
     Bai's and Galbraith's uSVP attack + small secret guessing.
     """
     return small_secret_guess(_bai_gal_small_secret, n, alpha, q, secret_bounds,
-                              tau=0.2, tau_prob=0.1, success_probability=0.99)
+                              tau=0.2, tau_prob=0.1, success_probability=0.99, h=h)
 
 ########################
 # 6.3 BKW Small Secret #
