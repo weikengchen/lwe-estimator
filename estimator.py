@@ -1211,7 +1211,8 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 ###################################################
 
 
-def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99):
+def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99,
+           optimisation_target="bkz2"):
     """
     Estimate optimal parameters for using Kannan-embedding to solve CVP.
 
@@ -1239,7 +1240,7 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     r = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
     r[u"oracle"] = repeat*m
     r[u"m"] = m
-    r = cost_reorder(r, ["bkz2", "oracle"])
+    r = cost_reorder(r, [optimisation_target, "oracle"])
     if get_verbose() >= 2:
         print cost_str(r)
     return r
