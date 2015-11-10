@@ -254,18 +254,26 @@ def amplify(target_success_probability, success_probability, majority=False):
     return repeat
 
 
-def uniform_variance_from_bounds(a, b):
+def uniform_variance_from_bounds(a, b, h=None):
     """
     Variance for uniform distribution from bounds.
 
     :param a:
     :param b:
+    :param h:        number of non-zero components.
     :returns:
     :rtype:
 
     """
-    n = b - a + 1
-    return (n**2 - 1)/ZZ(12)
+    assert a < 0 and b > 0 and abs(a) == abs(b)
+    if h is None:
+        n = b - a + 1
+        return (n**2 - 1)/ZZ(12)
+    else:
+        # sage: var("i,a,b")
+        # sage: p = 1/(b-a)
+        # sage: sum(i^2*p, i, a, b)
+        return (2*a**3 - 2*b**3 - 3*a**2 - 3*b**2 + a - b)/(6*ZZ(a - b))
 
 
 def unpack_lwe(lwe):
