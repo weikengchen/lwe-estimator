@@ -1620,9 +1620,9 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
         ret[u"κ"] = kappa
         m = bkw_required_m(sigma_final, q, success_probability, sigma2f(kappa))
         ret["m"] = m
-        ret["ropsm"] = (m + o)  * (a/2 * (n + 2))
-        ret["ropst"] = ops_tf(kappa)
-        ret["rop"] = ret["ropst"] + ret["ropsm"]
+        ropsm = (m + o)  * (a/2 * (n + 2))
+        ropst = ops_tf(kappa)
+        ret["rop"] = ropst + ropsm
         ret["bop"] = log(q, 2) * ret["rop"]
         T = Tf(kappa)
         ret["mem"] = T * a * (n + 1 - b * (a-1)/2)
