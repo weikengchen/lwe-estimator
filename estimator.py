@@ -1438,7 +1438,7 @@ def sis_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     """
     s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
-    return small_secret_guess(sis, n, alpha, q, secret_bounds, **kwds)
+    return small_secret_guess(sis, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
 def bdd_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
@@ -1453,7 +1453,7 @@ def bdd_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     """
     s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
-    return small_secret_guess(bdd, n, alpha, q, secret_bounds, **kwds)
+    return small_secret_guess(bdd, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
 def kannan_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
@@ -1468,7 +1468,7 @@ def kannan_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     """
     s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
-    return small_secret_guess(kannan, n, alpha, q, secret_bounds, **kwds)
+    return small_secret_guess(kannan, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
 #######################################
