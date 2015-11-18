@@ -352,6 +352,10 @@ def switch_modulus(n, alpha, q, s_variance, h=None):
     else:
         length = n
     p = RR(ceil(sqrt(2*pi*s_variance*length/ZZ(12)) / alpha))
+
+    if p < 32: # some random point
+        # we can't pretend everything is uniform any more, p is too small
+        p = RR(ceil(sqrt(2*pi*s_variance*length*2/ZZ(12)) / alpha))
     beta = RR(sqrt(2)*alpha)
     return n, beta, p
 
