@@ -1441,6 +1441,82 @@ def sis_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     return small_secret_guess(sis, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
+def sis_small_secret_applebaum(n, alpha, q, secret_bounds, h=None, log_eps=None,
+                               success_probability=0.99, optimisation_target=u"bkz2"):
+    """
+    SIS after swapping part of the error vector with the secret as suggested in
+    [EPRINT:GenHalSma12]_
+
+    ..  [EPRINT:GenHalSma12] Gentry, C., Halevi, S., & Smart, N.  P.  (2012).  Homomorphic
+    evaluation of the AES circuit.
+
+    :param n: dimension
+    :param alpha: noise parameter
+    :param q: modulus q
+    :param secret_bounds: lower and upper bound on the secret
+    :param h: number of non-zero components of the secret
+    :param log_eps: log of the number of repetitions
+    :param success_probability: target success probability
+    :param optimisation_target: what value out to be minimized
+    """
+
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    f = lambda eps: RR(sqrt(log(1/eps)/pi))
+    RR = alpha.parent()
+
+    best = None
+    if log_eps is None:
+        for log_eps in range(1, n):
+            current = sis_small_secret_applebaum(n, alpha, q,
+                                                 secret_bounds=secret_bounds, h=h,
+                                                 log_eps=-log_eps,
+                                                 optimisation_target=optimisation_target)
+
+            if get_verbose() >= 2:
+                print cost_str(current)
+
+            if best is None:
+                best = current
+            else:
+                if best[optimisation_target] > current[optimisation_target]:
+                    best = current
+                else:
+                    return best
+        return best
+    else:
+        # we are solving Decision-LWE
+        repeat = amplify(success_probability, RR(2)**log_eps, majority=True)
+
+        # we compute an estimate for m
+        log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
+        delta_0 = RR(2**log_delta_0)
+        m = lattice_reduction_opt_m(n, q, delta_0)
+
+        # we update alpha to reflect that we're replacing part of the error by the secret
+        s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+        e_var = stddevf(alpha*q)**2
+
+        stddev_ = ((n*s_var + (m-n)*e_var)/m).sqrt()
+        alpha_ = alphaf(stddev_, q, sigma_is_stddev=True)
+        alpha = alpha_
+
+        # we compute the new delta and m based on the new alpha
+        log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
+        delta_0 = RR(2**log_delta_0)
+        m = lattice_reduction_opt_m(n, q, delta_0)
+
+        ret = bkz_runtime_delta(delta_0, m, log(repeat, RR(2)))
+        ret[u"ε"] = ZZ(2)**log_eps
+        ret[u"oracle"] = m * repeat
+        ret[u"|v|"] = RR(delta_0**m * q**(n/m))
+        ret[u"amplify"] = repeat
+        if optimisation_target != u"oracle":
+            ret = cost_reorder(ret, [optimisation_target, u"oracle"])
+        else:
+            ret = cost_reorder(ret, [optimisation_target])
+        return ret
+
+
 def bdd_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     """Solve LWE by solving BDD for small secret instances.
 
