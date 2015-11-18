@@ -1385,7 +1385,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     return best
 
 
-def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
+def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
     size = secret_bounds[1]-secret_bounds[0] + 1
     best = None
     step_size = 16
@@ -1398,7 +1398,12 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
             current = f(n-i, alpha, q, secret_bounds=secret_bounds, **kwds)
         except TypeError:
             current = f(n-i, alpha, q, **kwds)
-        current = cost_repeat(current, size**i)
+        if h is None or i<h:
+            repeat = size**i
+        else:
+            # TODO: this is too pessimistic
+            repeat = (size)**h * binomial(i, h)
+        current = cost_repeat(current, repeat)
 
         key = list(current)[0]
         if best is None:
