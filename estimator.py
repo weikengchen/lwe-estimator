@@ -24,9 +24,10 @@ from sage.crypto.lwe import LWE, Regev, LindnerPeikert
 
 # config
 
-tau_default = 0.3
-tau_prob_default = 0.1
-cfft = 1  # cost of FFT
+tau_default = 0.3  # τ used in uSVP
+tau_prob_default = 0.1  # probability of success for given τ
+cfft = 1  # cosions mod q
+enable_LP_estimates = False  # enable LP luestimates
 
 # utility functions #
 
@@ -477,7 +478,9 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     """
     Runtime estimates for BKZ (2.0) given δ and n
     """
-    # t_lp = bkz_runtime_delta_LP(delta, n) + log_repeat
+    if enable_LP_estimates:
+        t_lp = bkz_runtime_delta_LP(delta, n) + log_repeat
+
     # t_ds = bkz_runtime_delta_DS(delta, n) + log_repeat
 
     RR = delta.parent()
@@ -487,13 +490,14 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     t_bkz2  = RR(bkz_runtime_k_bkz2(k, n)  + log_repeat)
     t_fplll = RR(bkz_runtime_k_fplll(k, n) + log_repeat)
 
-    r = OrderedDict([(u"δ_0", delta),
-                     (u"bkz2", RR(2)**t_bkz2),
-                     (u"k", k),
-                     # (u"lp", RR(2)**t_lp),
-                     # (u"ds", RR(2)**t_ds),
-                     (u"fplll", RR(2)**t_fplll),
-                     (u"sieve", RR(2)**t_sieve)])
+    r = OrderedDict()
+    r[u"δ_0"] = delta
+    r[u"bkz2"] = RR(2)**t_bkz2
+    r[u"k"] = k
+    if enable_LP_estimates:
+        r[u"lp"] = RR(2)**t_lp
+    r[u"fplll"] = RR(2)**t_fplll
+    r[u"sieve"] = RR(2)**t_sieve
 
     return r
 
