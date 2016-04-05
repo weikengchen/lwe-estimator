@@ -6,6 +6,7 @@ Complexity estimates for solving LWE.
 
 """
 
+from functools import partial
 from collections import OrderedDict
 
 from sage.modules.all import vector
@@ -30,8 +31,8 @@ cfft = 1  # convolutions mod q
 enable_LP_estimates =  True  # enable LP estimates
 enable_fplll_estimates = False  # enable fplll estimates
 
-# utility functions #
-
+
+# Utility Functions #
 
 def cost_str(d, keyword_width=None, newline=None):
     """
@@ -167,7 +168,7 @@ def cost_repeat(d, times):
         u"dim": False,
         u"|v|": False,
         u"amplify": False,
-        u"repeat": False, # we deal with it below
+        u"repeat": False,  # we deal with it below
     }
 
     ret = OrderedDict()
@@ -246,6 +247,9 @@ def amplify(target_success_probability, success_probability, majority=False):
     prec = max(53, 2*(ceil(1/success_probability).nbits()))
     RR = RealField(prec)
 
+    if target_success_probability < success_probability:
+        return RR(1)
+
     success_probability = RR(success_probability)
     target_success_probability = RR(target_success_probability)
 
@@ -256,6 +260,72 @@ def amplify(target_success_probability, success_probability, majority=False):
         repeat = ceil(log(1-target_success_probability)/log(1 -success_probability))
 
     return repeat
+
+
+def rinse_and_repeat(f, n, alpha, q, success_probability=0.99,
+                     optimisation_target=u"bkz2",
+                     decision=True,
+                     *args, **kwds):
+    """Find best trade-off between success probability and running time.
+
+    :param f: a function returning a cost estimate
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  target success probability
+    :param optimisation_target:  what value out to be minimized
+    :param decision:             ``True`` if ``f`` solves Decision-LWE, ``False`` for Search-LWE.
+
+    """
+    best = None
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+
+    best = None
+    step_size = 32
+    i = 0
+    while True:
+        prob = min(2**-i, success_probability)
+        current = f(n, alpha, q,
+                    optimisation_target=optimisation_target,
+                    success_probability=prob,
+                    *args, **kwds)
+        repeat = amplify(success_probability, prob, majority=decision)
+        current = cost_repeat(current, repeat)
+        current["log(eps)"] = i
+
+        if get_verbose() >= 2:
+            print cost_str(current)
+
+        key = list(current)[0]
+        if best is None:
+            best = current
+            i += step_size
+            continue
+
+        if current[key] < best[key]:
+            best = current
+            i += step_size
+        else:
+            # we go back
+            i = best["log(eps)"] - step_size
+            i += step_size/2
+            if i <= 0:
+                i = step_size/2
+            # and half the step size
+            step_size = step_size/2
+
+        if step_size == 0:
+            break
+    return best
+
+
+@cached_function
+def distinguish_required_m(sigma, q, success_probability, other_sigma=None):
+    RR = sigma.parent()
+    if other_sigma is not None:
+        sigma = RR(sqrt(sigma**2 + other_sigma**2))
+    adv = RR(exp(-RR(pi)*(RR(sigma/q)**2)))
+    return RR(success_probability)/RR(adv**2)
 
 
 def uniform_variance_from_bounds(a, b, h=None):
@@ -357,16 +427,14 @@ def switch_modulus(n, alpha, q, s_variance, h=None):
         length = n
     p = RR(ceil(sqrt(2*pi*s_variance*length/ZZ(12)) / alpha))
 
-    if p < 32: # some random point
+    if p < 32:  # some random point
         # we can't pretend everything is uniform any more, p is too small
         p = RR(ceil(sqrt(2*pi*s_variance*length*2/ZZ(12)) / alpha))
     beta = RR(sqrt(2)*alpha)
     return n, beta, p
 
-
-################################
-# Section 3: Lattice Reduction #
-################################
+
+# Lattice Reduction
 
 
 def k_chen(delta):
@@ -576,18 +644,8 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
     ret["bop"] = RR(log(q, 2) * ret["rop"])
     return cost_reorder(ret, ["bop", "oracle", "mem"])
 
-####################
-# Section 5.2: BKW #
-####################
-
-
-@cached_function
-def bkw_required_m(sigma, q, success_probability, other_sigma=None):
-    RR = sigma.parent()
-    if other_sigma is not None:
-        sigma = RR(sqrt(sigma**2 + other_sigma**2))
-    adv = RR(exp(-RR(pi)*(RR(sigma/q)**2)))
-    return RR(success_probability)/RR(adv**2)
+
+# BKW
 
 
 def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, search=False):
@@ -640,7 +698,7 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
         b = RR(n/a)  # window width
         sigma_final = RR(n**t).sqrt() * sigma  # after n^t adds we get this σ
 
-        m = bkw_required_m(sigma_final, q, success_probability)
+        m = distinguish_required_m(sigma_final, q, success_probability)
 
         tmp = a*(a-1)/2 * (n+1) - b*a*(a-1)/4 - b/6 * RR((a-1)**3 + 3/2*(a-1)**2 + (a-1)/2)
         stage1a = RR(q**b-1)/2 * tmp
@@ -887,7 +945,7 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None, secret_
     cost[u"σ_final"] = RR(sigma_final)
 
     # we re-use our own estimator
-    M = bkw_required_m(sigmaf(sigma_final), q, success_probability)
+    M = distinguish_required_m(sigmaf(sigma_final), q, success_probability)
     cost["m"] = M
     m = (t1+t2)*(q**b-1)/2 + M
     cost["oracle"] = RR(m)
@@ -996,47 +1054,25 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
 #######################################################
 
 
-def sis(n, alpha, q, log_eps=None,
-        success_probability=0.99, optimisation_target=u"bkz2"):
+def sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2"):
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     f = lambda eps: RR(sqrt(log(1/eps)/pi))
     RR = alpha.parent()
 
-    best = None
-    if log_eps is None:
-        for log_eps in range(1, n):
-            current = sis(n, alpha, q, log_eps=-log_eps,
-                          optimisation_target=optimisation_target)
-
-            if get_verbose() >= 2:
-                print cost_str(current)
-
-            if best is None:
-                best = current
-            else:
-                if best[optimisation_target] > current[optimisation_target]:
-                    best = current
-                else:
-                    return best
-        return best
+    # we are solving Decision-LWE
+    log_delta_0 = log(f(success_probability)/alpha, 2)**2 / (4*n*log(q, 2))
+    delta_0 = RR(2**log_delta_0)
+    m = lattice_reduction_opt_m(n, q, delta_0)
+    ret = bkz_runtime_delta(delta_0, m)
+    ret[u"oracle"] = m
+    ret[u"|v|"] = RR(delta_0**m * q**(n/m))
+    ret[u"dim"] = m
+    if optimisation_target != u"oracle":
+        ret = cost_reorder(ret, [optimisation_target, u"oracle"])
     else:
-        # we are solving Decision-LWE
-        repeat = amplify(success_probability, RR(2)**log_eps, majority=True)
-        log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
-        delta_0 = RR(2**log_delta_0)
-        m = lattice_reduction_opt_m(n, q, delta_0)
-        ret = bkz_runtime_delta(delta_0, m, log(repeat, RR(2)))
-        ret[u"ε"] = ZZ(2)**log_eps
-        ret[u"oracle"] = m * repeat
-        ret[u"|v|"] = RR(delta_0**m * q**(n/m))
-        ret[u"amplify"] = repeat
-        ret[u"dim"] = m
-        if optimisation_target != u"oracle":
-            ret = cost_reorder(ret, [optimisation_target, u"oracle"])
-        else:
-            ret = cost_reorder(ret, [optimisation_target])
-        return ret
+        ret = cost_reorder(ret, [optimisation_target])
+    return ret
 
 
 ###################################
@@ -1112,8 +1148,8 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
     return r
 
 
-def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
-        enums_per_clock=-15.1, optimisation_target="bkz2"):
+def decode(n, alpha, q, success_probability=0.99,
+           enums_per_clock=-15.1, optimisation_target="bkz2"):
     """
     Estimates the optimal parameters for decoding attack
 
@@ -1129,48 +1165,15 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
 
-    if log_eps is None:
-        best = None
-        step_size = 32
-        log_eps = 1
-        while True:
-            current = bdd(n, alpha, q, -log_eps, success_probability,
-                          enums_per_clock, optimisation_target)
-
-            key = list(current)[0]
-            if best is None:
-                best = current
-                log_eps += step_size
-                continue
-
-            if best[key] > current[key]:
-                best = current
-                log_eps += step_size
-            else:
-                # we go back to the previous step (+1)
-                log_eps -= step_size - 1
-                if log_eps <= 0:
-                    log_eps = 1
-                # and half the step size
-                step_size = step_size/2
-
-            if step_size == 0:
-                break
-        # we clear the cache of gsa_basis because otherwise it grows too big
-        gsa_basis.clear_cache()
-        return best
-
     RR = alpha.parent()
 
-    delta_0m1 = sis(n, alpha, q, log_eps, success_probability)[u"δ_0"] - 1
+    delta_0m1 = sis(n, alpha, q, success_probability)[u"δ_0"] - 1
     step = RR(1.05)
     direction = -1
 
-    repeat = amplify(success_probability, RR(2)**log_eps)
-
     def combine(enum, bkz):
-        enum["enum"]   = repeat * ZZ(2)**enum["enum"]
-        enum["enumop"] = repeat * ZZ(2)**enum["enumop"]
+        enum["enum"]   = ZZ(2)**enum["enum"]
+        enum["enumop"] = ZZ(2)**enum["enumop"]
 
         current = OrderedDict()
         current["bop"]  = enum["enumop"] + bkz[optimisation_target]
@@ -1179,8 +1182,7 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
             current[key] = bkz[key]
         for key in enum:
             current[key] = enum[key]
-        current[u"ε"] = ZZ(2)**log_eps
-        current[u"oracle"]  = repeat * m
+        current[u"oracle"]  = m
         current = cost_reorder(current, ["bop", "oracle"])
         return current
 
@@ -1188,14 +1190,10 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     while True:
         delta_0 = 1 + delta_0m1
         m = lattice_reduction_opt_m(n, q, delta_0)
-        bkz = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
+        bkz = bkz_runtime_delta(delta_0, m)
 
-        enum = enum_cost(n, alpha, q, RR(2)**log_eps, delta_0, m,
-                         enums_per_clock=enums_per_clock)
+        enum = enum_cost(n, alpha, q, success_probability, delta_0, m, enums_per_clock=enums_per_clock)
         current = combine(enum, bkz)
-
-        if get_verbose() >= 2:
-            print cost_str(current)
 
         # if lattice reduction is cheaper than enumration, make it more expensive
         if current[optimisation_target] < current["enumop"]:
@@ -1434,7 +1432,7 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
 # 6.2 Modulus Switching for Lattice Reduction
 #############################################
 
-def sis_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+def sis_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
     """Solve LWE by reduction to SIS for small secret instances.
 
     :param n:                    dimension > 0
@@ -1449,83 +1447,7 @@ def sis_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     return small_secret_guess(sis, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
-def sis_small_secret_applebaum(n, alpha, q, secret_bounds, h=None, log_eps=None,
-                               success_probability=0.99, optimisation_target=u"bkz2"):
-    """
-    SIS after swapping part of the error vector with the secret as suggested in
-    [EPRINT:GenHalSma12]_
-
-    ..  [EPRINT:GenHalSma12] Gentry, C., Halevi, S., & Smart, N.  P.  (2012).  Homomorphic
-    evaluation of the AES circuit.
-
-    :param n: dimension
-    :param alpha: noise parameter
-    :param q: modulus q
-    :param secret_bounds: lower and upper bound on the secret
-    :param h: number of non-zero components of the secret
-    :param log_eps: log of the number of repetitions
-    :param success_probability: target success probability
-    :param optimisation_target: what value out to be minimized
-    """
-
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
-    f = lambda eps: RR(sqrt(log(1/eps)/pi))
-    RR = alpha.parent()
-
-    best = None
-    if log_eps is None:
-        for log_eps in range(1, n):
-            current = sis_small_secret_applebaum(n, alpha, q,
-                                                 secret_bounds=secret_bounds, h=h,
-                                                 log_eps=-log_eps,
-                                                 optimisation_target=optimisation_target)
-
-            if get_verbose() >= 2:
-                print cost_str(current)
-
-            if best is None:
-                best = current
-            else:
-                if best[optimisation_target] > current[optimisation_target]:
-                    best = current
-                else:
-                    return best
-        return best
-    else:
-        # we are solving Decision-LWE
-        repeat = amplify(success_probability, RR(2)**log_eps, majority=True)
-
-        # we compute an estimate for m
-        log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
-        delta_0 = RR(2**log_delta_0)
-        m = lattice_reduction_opt_m(n, q, delta_0)
-
-        # we update alpha to reflect that we're replacing part of the error by the secret
-        s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
-        e_var = stddevf(alpha*q)**2
-
-        stddev_ = ((n*s_var + (m-n)*e_var)/m).sqrt()
-        alpha_ = alphaf(stddev_, q, sigma_is_stddev=True)
-        alpha = alpha_
-
-        # we compute the new delta and m based on the new alpha
-        log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
-        delta_0 = RR(2**log_delta_0)
-        m = lattice_reduction_opt_m(n, q, delta_0)
-
-        ret = bkz_runtime_delta(delta_0, m, log(repeat, RR(2)))
-        ret[u"ε"] = ZZ(2)**log_eps
-        ret[u"oracle"] = m * repeat
-        ret[u"|v|"] = RR(delta_0**m * q**(n/m))
-        ret[u"amplify"] = repeat
-        if optimisation_target != u"oracle":
-            ret = cost_reorder(ret, [optimisation_target, u"oracle"])
-        else:
-            ret = cost_reorder(ret, [optimisation_target])
-        return ret
-
-
-def bdd_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+def decode_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
     """Solve LWE by solving BDD for small secret instances.
 
     :param n:                    dimension > 0
@@ -1537,10 +1459,10 @@ def bdd_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     """
     s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
-    return small_secret_guess(bdd, n, alpha, q, secret_bounds, h=h, **kwds)
+    return small_secret_guess(decode, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
-def kannan_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
     """Solve LWE by Kannan embedding for small secret instances.
 
     :param n:                    dimension > 0
@@ -1712,7 +1634,7 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
     def bkwssf(kappa):
         ret = OrderedDict()
         ret[u"κ"] = kappa
-        m = bkw_required_m(sigma_final, q, success_probability, sigma2f(kappa))
+        m = distinguish_required_m(sigma_final, q, success_probability, sigma2f(kappa))
         ret["m"] = m
         ropsm = (m + o)  * (a/2 * (n + 2))
         ropst = ops_tf(kappa)
@@ -1839,16 +1761,16 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
     if not small:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_coded),
-                                  ("sis", sis),
-                                  ("dec", bdd),
+                                  ("sis", partial(rinse_and_repeat, sis)),
+                                  ("dec", partial(rinse_and_repeat, decode, decision=False)),
                                   ("kannan", kannan),
                                   ("arora-gb", arora_gb)])
     else:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_coded),
-                                  ("sis", sis_small_secret),
-                                  ("dec", bdd_small_secret),
-                                  ("kannan", kannan_small_secret),
+                                  ("sis", sis_small_secret_mod_switch_and_guess),
+                                  ("dec", decode_small_secret_mod_switch_and_guess),
+                                  ("kannan", kannan_small_secret_mod_switch_and_guess),
                                   ("baigal", bai_gal_small_secret),
                                   ("arora-gb", arora_gb_small_secret)])
 
