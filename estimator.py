@@ -26,8 +26,9 @@ from sage.crypto.lwe import LWE, Regev, LindnerPeikert
 
 tau_default = 0.3  # τ used in uSVP
 tau_prob_default = 0.1  # probability of success for given τ
-cfft = 1  # cosions mod q
-enable_LP_estimates = False  # enable LP luestimates
+cfft = 1  # convolutions mod q
+enable_LP_estimates =  True  # enable LP estimates
+enable_fplll_estimates = False  # enable fplll estimates
 
 # utility functions #
 
@@ -496,9 +497,9 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     r[u"k"] = k
     if enable_LP_estimates:
         r[u"lp"] = RR(2)**t_lp
-    r[u"fplll"] = RR(2)**t_fplll
+    if enable_fplll_estimates:
+        r[u"fplll"] = RR(2)**t_fplll
     r[u"sieve"] = RR(2)**t_sieve
-
     return r
 
 
