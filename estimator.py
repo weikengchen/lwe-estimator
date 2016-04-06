@@ -156,6 +156,7 @@ def cost_repeat(d, times):
         u"sieve": True,
         u"enum": True,
         u"enumop": True,
+        u"log(eps)": False,
 
         u"mem": False,
         u"δ_0": False,
@@ -992,7 +993,6 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None, secret_
 def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
               cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2")):
     """
-
     Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
     by optimising parameters.
 
@@ -1054,7 +1054,19 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
 #######################################################
 
 
-def sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2"):
+def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", secret_bounds=None, h=None):
+    """Estimate cost of solving LWE by solving LWE.
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  probability of success < 1.0
+    :param secret_bounds:        ignored
+    :param h:                    ignored
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    """
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     f = lambda eps: RR(sqrt(log(1/eps)/pi))
@@ -1075,10 +1087,11 @@ def sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2"):
     return ret
 
 
+sis = partial(rinse_and_repeat, _sis)
+
 ###################################
 # Section 5.4: LP Decoding attack #
 ###################################
-
 
 @cached_function
 def gsa_basis(n, q, delta, m):
@@ -1148,8 +1161,9 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
     return r
 
 
-def decode(n, alpha, q, success_probability=0.99,
-           enums_per_clock=-15.1, optimisation_target="bkz2"):
+def _decode(n, alpha, q, success_probability=0.99,
+            enums_per_clock=-15.1, optimisation_target="bkz2",
+            secret_bounds=None, h=None):
     """
     Estimates the optimal parameters for decoding attack
 
@@ -1159,6 +1173,8 @@ def decode(n, alpha, q, success_probability=0.99,
     :param success_probability:  probability of success < 1.0
     :param enums_per_clock:      the log of the number of enumerations computed per clock cycle
     :param optimisation_target:  lattice reduction estimate to use
+    :param secret_bounds:        ignored
+    :param h:                    ignored
     :returns: a cost estimate
     :rtype: OrderedDict
     """
@@ -1167,7 +1183,7 @@ def decode(n, alpha, q, success_probability=0.99,
 
     RR = alpha.parent()
 
-    delta_0m1 = sis(n, alpha, q, success_probability)[u"δ_0"] - 1
+    delta_0m1 = _sis(n, alpha, q, success_probability)[u"δ_0"] - 1
     step = RR(1.05)
     direction = -1
 
@@ -1183,7 +1199,7 @@ def decode(n, alpha, q, success_probability=0.99,
         for key in enum:
             current[key] = enum[key]
         current[u"oracle"]  = m
-        current = cost_reorder(current, ["bop", "oracle"])
+        current = cost_reorder(current, ["bop", "oracle", optimisation_target])
         return current
 
     depth = 6
@@ -1215,6 +1231,8 @@ def decode(n, alpha, q, success_probability=0.99,
             break
 
     return current
+
+decode = partial(rinse_and_repeat, _decode, decision=False)
 
 ###################################################
 # Section 5.5: Reducing BDD to uSVP via embedding #
@@ -1483,13 +1501,16 @@ def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None,
 
 
 def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                          success_probability=0.99, h=None):
+                          success_probability=0.99,
+                          optimisation_target="bkz2",
+                          h=None):
     """
     :param n:                    dimension > 0
     :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param tau:                  0 < τ ≤ 1.0
     :param success_probability:  probability of success < 1.0
+    :param optimisation_target:  field to use to decide if parameters are better
     :param h:                    number of non-zero components in the secret
 
     """
@@ -1526,19 +1547,37 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
 
     r = bkz_runtime_delta(delta_0, m_prime, log(repeat, 2))
     r[u"oracle"] = repeat*m
-    r = cost_reorder(r, ["bkz2", "oracle"])
+
+    if optimisation_target != u"oracle":
+        r = cost_reorder(r, [optimisation_target, u"oracle"])
+    else:
+        r = cost_reorder(r, [optimisation_target])
+
     if get_verbose() >= 2:
         print cost_str(r)
     return r
 
 
 def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                         success_probability=0.99, h=None):
+                         success_probability=0.99,
+                         optimisation_target="bkz2",
+                         h=None):
     """
     Bai's and Galbraith's uSVP attack + small secret guessing.
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param tau:                  0 < τ ≤ 1.0
+    :param success_probability:  probability of success < 1.0
+    :param optimisation_target:  field to use to decide if parameters are better
+    :param h:                    number of non-zero components in the secret
     """
     return small_secret_guess(_bai_gal_small_secret, n, alpha, q, secret_bounds,
-                              tau=0.2, tau_prob=0.1, success_probability=0.99, h=h)
+                              tau=tau, tau_prob=tau_prob,
+                              success_probability=0.99,
+                              optimisation_target=optimisation_target,
+                              h=h)
 
 ########################
 # 6.3 BKW Small Secret #
@@ -1761,8 +1800,8 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
     if not small:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_coded),
-                                  ("sis", partial(rinse_and_repeat, sis)),
-                                  ("dec", partial(rinse_and_repeat, decode, decision=False)),
+                                  ("sis", sis),
+                                  ("dec", decode),
                                   ("kannan", kannan),
                                   ("arora-gb", arora_gb)])
     else:
