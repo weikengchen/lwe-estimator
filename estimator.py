@@ -18,7 +18,7 @@ from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
 from sage.misc.all import set_verbose, get_verbose, srange, prod
 from sage.numerical.optimize import find_root
-from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing
+from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing, RDF
 from sage.symbolic.all import pi, e
 
 from sage.crypto.lwe import LWE, Regev, LindnerPeikert
@@ -1104,10 +1104,12 @@ def gsa_basis(n, q, delta, m):
                       In Aggelos Kiayias, editor, CT-RSA 2011, volume 6558 of LNCS, pages 319–339. Springer,
                       February 2011.
     """
-    RR = delta.parent()
-    qnm = RR(q**(n/m))
-    b = [(qnm * delta**(m - 2*m/(m-1) * i)) for i in xrange(m)]
-    b = [RR(q/b[-1-i]) for i in xrange(m)]
+    log_delta = RDF(log(delta))
+    log_q = RDF(log(q))
+    qnm = log_q*(n/m)
+    b = [(qnm + log_delta*(m - 2*m/(m-1) * i)) for i in xrange(m)]
+    b = [log_q - b[-1-i] for i in xrange(m)]
+    b = map(lambda x: x.exp(), b)
     return b
 
 
@@ -1129,17 +1131,17 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
     """
 
     RR = alpha.parent()
-    step = RR(step)
+    step = RDF(step)
 
     if B is None:
         if m is None:
             m = lattice_reduction_opt_m(n, q, delta_0)
         B = gsa_basis(n, q, delta_0, m)
 
-    d = [RR(1)]*m
+    d = [RDF(1)]*m
     bd = [d[i] * B[i] for i in xrange(m)]
-    scaling_factor = RR(sqrt(pi) / (2*alpha*q))
-    probs_bd = [RR((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
+    scaling_factor = RDF(sqrt(pi) / (2*alpha*q))
+    probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
     success_probability = prod(probs_bd)
 
     bd = map(list, zip(bd, range(len(bd))))
@@ -1151,7 +1153,7 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
         d[i] += step
         v += B[i]*step
         success_probability /= probs_bd[i]
-        probs_bd[i] = RR((v * scaling_factor).erf())
+        probs_bd[i] = (v * scaling_factor).erf()
         success_probability *= probs_bd[i]
         bisect.insort_left(bd, [v, i])
 
