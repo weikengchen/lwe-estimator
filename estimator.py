@@ -630,8 +630,8 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
         m = ceil((2*n - log(alpha*q)*(n/2))/log(2*t*alpha))
         if m*(2*alpha) > 1- 1/(2*n):
             raise ValueError("Cannot find m to satisfy constraints (noise too big).")
-        ret["rop"] = RR((alpha*q)**(n/2) * 2*n)
-        ret["mem"] = RR((alpha*q)**(n/2) * 2*n)
+        ret["rop"] = RR((2*alpha*q+1)**(n/2) * 2*n)
+        ret["mem"] = RR((2*alpha*q+1)**(n/2) * 2*n)
     else:
         a, b = secret_bounds
         # assert((2*t*alpha)**m * (b-a+1)**(n/2) <= 2*n)
