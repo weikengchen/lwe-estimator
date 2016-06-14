@@ -1359,7 +1359,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     pred["t"] = t
     pred["oracle"] = m
     pred[u"Pr[⊥]"] = RR(m*(1-ps_single(C)))
-    pred["bop"] = log(q, 2) + pred["rop"]
+    pred["bop"] = log(q, 2) * pred["rop"]
     pred = cost_reorder(pred, ["t", "bop", "oracle", "Dreg"])
 
     if get_verbose() >= 2:
