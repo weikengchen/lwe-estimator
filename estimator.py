@@ -1107,7 +1107,9 @@ def gsa_basis(n, q, delta, m):
     log_delta = RDF(log(delta))
     log_q = RDF(log(q))
     qnm = log_q*(n/m)
-    b = [(qnm + log_delta*(m - 2*m/(m-1) * i)) for i in xrange(m)]
+    qnm_p_log_delta_m = qnm + log_delta*m
+    tmm1 = RDF(2*m/(m-1))
+    b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in xrange(m)]
     b = [log_q - b[-1-i] for i in xrange(m)]
     b = map(lambda x: x.exp(), b)
     return b
@@ -1209,6 +1211,7 @@ def _decode(n, alpha, q, success_probability=0.99,
         delta_0 = 1 + delta_0m1
         m = lattice_reduction_opt_m(n, q, delta_0)
         bkz = bkz_runtime_delta(delta_0, m)
+        bkz["dim"] = m
 
         enum = enum_cost(n, alpha, q, success_probability, delta_0, m, enums_per_clock=enums_per_clock)
         current = combine(enum, bkz)
