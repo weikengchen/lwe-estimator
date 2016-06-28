@@ -386,7 +386,7 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
     n, alpha, q =  ZZ(n), RR(alpha), ZZ(q),
 
     if success_probability is not None:
-        if success_probability >= 1.0 or success_probability <= 0.0:
+        if success_probability >= 1 or success_probability <= 0:
             raise ValueError("success_probability must be between 0 and 1.")
         return n, alpha, q, RR(success_probability)
     else:
