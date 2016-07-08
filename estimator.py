@@ -255,7 +255,8 @@ def amplify(target_success_probability, success_probability, majority=False):
     target_success_probability = RR(target_success_probability)
 
     if majority:
-        repeat = target_success_probability/success_probability**2
+        eps = success_probability/2
+        repeat = ceil(2*log(2 - 2*target_success_probability)/log(1 - 4*eps**2))
     else:
         # target_success_probability = 1 - (1-success_probability)^trials
         repeat = ceil(log(1-target_success_probability)/log(1 -success_probability))
