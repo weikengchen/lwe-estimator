@@ -34,53 +34,54 @@ enable_fplll_estimates = False  # enable fplll estimates
 
 # Utility Functions #
 
-def binary_search(Max,Min,f,param,extract,*arg,**kwd):
+def binary_search(mini, maxi, f, param, extract=lambda x: x, *arg, **kwd):
     """
-    Look for the minimum of f beetween Min and Max (if f is convex).
+    Look for the minimum of f beetween mini and maxi (if f is convex).
     The considered parameter is param and it must be a kwd.
     If f does not return the value, use extract to get it.
 
     """
-    kwd[param]=Max
-    D={}
-    D[Max]= f(*arg,**kwd)
-    best = D[Max]
-    b=ceil((Max+2)/2)
-    tmp=0
+    kwd[param] = maxi
+    D = {}
+    D[maxi] = f(*arg, **kwd)
+    best = D[maxi]
+    b = ceil((maxi+2)/2)
+    direction = 0
     while True:
-        if b == Min:
-            best = D[Min]
+        if b == mini:
+            best = D[mini]
             break
-        if b not in D.keys():
-            kwd[param]=b
-            D[b] = f(*arg,**kwd)
+        if b not in D:
+            kwd[param] = b
+            D[b] = f(*arg, **kwd)
         if extract(D[b]) > extract(best):
-            if tmp==0:
-                Min=b
-                b=ceil((Max+b)/2)
+            if direction == 0:
+                mini = b
+                b = ceil((maxi+b)/2)
             else:
-                Max=b
-                b=floor((Min+b)/2)
+                maxi = b
+                b = floor((mini+b)/2)
         else:
             best = D[b]
-            if b-1 not in D.keys():
-                kwd[param]=b-1
-                D[b-1]= f(*arg,**kwd)
+            if b-1 not in D:
+                kwd[param] = b-1
+                D[b-1] = f(*arg, **kwd)
             if extract(D[b-1]) <= extract(best):
-                Max=b
-                b=floor((b+Min)/2)
-                tmp=0
+                maxi = b
+                b = floor((b+mini)/2)
+                direction = 0
             else:
-                if b+1 not in D.keys():
-                    kwd[param]=b+1
-                    D[b+1]= f(*arg,**kwd)
+                if b+1 not in D:
+                    kwd[param] = b+1
+                    D[b+1] = f(*arg, **kwd)
                 if extract(D[b+1]) > extract(best):
                     break
                 else:
-                    Min=b
-                    b=ceil((Max+b)/2)
-                    tmp=1
+                    mini = b
+                    b = ceil((maxi+b)/2)
+                    direction = 1
     return best
+    
 
 def cost_str(d, keyword_width=None, newline=None):
     """
@@ -1062,15 +1063,15 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
     best = None
     bstart = ceil(log(q, 2))
 
-    def _run(b=0):
+    def _run(b=2):
         # the noise is 2**(t1+t2) * something so there is no need to go beyond, say, q**2
-        return binary_search(min(n//b, ceil(2*log(q,2))),2,_bkw_coded,"t2",
-                             lambda x:x["rop"],n, alpha, q,b=b,t2=0,
+        return binary_search(2, min(n//b, ceil(2*log(q, 2))), _bkw_coded, "t2",
+                             lambda x: x["rop"], n, alpha, q, b=b, t2=0,
                              secret_bounds=secret_bounds, h=h,
                              success_probability=success_probability)
 
-    return binary_search(3*bstart,2,_run,"b",
-                         lambda x:x["rop"],b=0)
+    return binary_search(2, 3*bstart, _run, "b",
+                         lambda x: x["rop"], b=2)
 
 
 #######################################################
