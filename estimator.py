@@ -38,8 +38,9 @@ def binary_search(mini, maxi, f, param, extract=lambda x: x, *arg, **kwd):
     """
     Look for the minimum of f beetween mini and maxi (if f is convex).
     The considered parameter is param and it must be a kwd.
-    If f does not only return the value which is used for the comparison,
-    you must extract it from the return value of f by using extract.
+    If f does not directly return the value which is used for the comparison,
+    you must change the default value of extract. Extract allows you to
+    extract a value in the output of f.
 
     """
     kwd[param] = maxi
