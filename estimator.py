@@ -34,6 +34,57 @@ enable_fplll_estimates = False  # enable fplll estimates
 
 # Utility Functions #
 
+def binary_search(mini, maxi, f, param, extract=lambda x: x, *arg, **kwd):
+    """
+    Look for the minimum of f beetween mini and maxi (if f is convex).
+    The considered parameter is param and it must be a kwd.
+    If f does not directly return the value which is used for the comparison,
+    you must change the default value of extract. Extract allows you to
+    extract a value in the output of f.
+
+    """
+    kwd[param] = maxi
+    D = {}
+    D[maxi] = f(*arg, **kwd)
+    best = D[maxi]
+    b = ceil((maxi+2)/2)
+    direction = 0
+    while True:
+        if b == mini:
+            best = D[mini]
+            break
+        if b not in D:
+            kwd[param] = b
+            D[b] = f(*arg, **kwd)
+        if extract(D[b]) > extract(best):
+            if direction == 0:
+                mini = b
+                b = ceil((maxi+b)/2)
+            else:
+                maxi = b
+                b = floor((mini+b)/2)
+        else:
+            best = D[b]
+            if b-1 not in D:
+                kwd[param] = b-1
+                D[b-1] = f(*arg, **kwd)
+            if extract(D[b-1]) <= extract(best):
+                maxi = b
+                b = floor((b+mini)/2)
+                direction = 0
+            else:
+                if b+1 not in D:
+                    kwd[param] = b+1
+                    D[b+1] = f(*arg, **kwd)
+                if extract(D[b+1]) > extract(best):
+                    break
+                else:
+                    mini = b
+                    b = ceil((maxi+b)/2)
+                    direction = 1
+    return best
+    
+
 def cost_str(d, keyword_width=None, newline=None):
     """
     Return string of key,value pairs as a string "key0: value0, key1: value1"
@@ -1015,39 +1066,15 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
     best = None
     bstart = ceil(log(q, 2))
 
-    def _run(b):
+    def _run(b=2):
         # the noise is 2**(t1+t2) * something so there is no need to go beyond, say, q**2
-        t2max = min(n//b, ceil(2*log(q, 2)))
-        best = None
-        for t2 in range(2, t2max)[::-1]:
-            cost = _bkw_coded(n, alpha, q, b=b, t2=t2,
-                              secret_bounds=secret_bounds, h=h,
-                              success_probability=success_probability)
-            if best is None or cost["rop"] <= best["rop"]:
-                best = cost
-            else:
-                return best
-        return best
+        return binary_search(2, min(n//b, ceil(2*log(q, 2))), _bkw_coded, "t2",
+                             lambda x: x["rop"], n, alpha, q, b=b, t2=0,
+                             secret_bounds=secret_bounds, h=h,
+                             success_probability=success_probability)
 
-    for b in range(bstart, 3*bstart):
-        current = _run(b)
-        if best is None or current["rop"] <= best["rop"]:
-            best = cost_filter(current, cost_include)
-            if get_verbose() > 1:
-                print cost_str(best)
-        else:
-            break
-
-    for b in range(2, bstart)[::-1]:
-        current = _run(b)
-        if best is None or current["rop"] <= best["rop"]:
-            best = cost_filter(current, cost_include)
-            if get_verbose() > 1:
-                print cost_str(best)
-        else:
-            break
-
-    return best
+    return binary_search(2, 3*bstart, _run, "b",
+                         lambda x: x["rop"], b=2)
 
 
 #######################################################
