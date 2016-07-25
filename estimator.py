@@ -1124,7 +1124,12 @@ sis = partial(rinse_and_repeat, _sis)
 @cached_function
 def gsa_basis(n, q, delta, m):
     """
-    Creates the basis lengths for the scaled dual
+    Create the basis lengths.
+
+    :param n: determinant is q^n
+    :param q:  determinant is q^n
+    :param delta: root-Hermite factor
+    :param m: lattice dimension
 
     ..  note:: based on the GSA in [RSA:LinPei11]_
 
