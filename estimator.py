@@ -528,16 +528,10 @@ def k_chen(delta):
     return k
 
 
-def bkz_runtime_delta_DS(delta, n):
-    """
-    Runtime estimation assuming the δ² model.
-    """
-    return RR(0.009/log(delta, 2)**2 - 27 + log(2.3*10**9, 2))
-
-
 def bkz_runtime_delta_LP(delta, n):
     """
     Runtime estimation assuming the Lindner-Peikert model.
+
     """
     return RR(1.8/log(delta, 2) - 110 + log(2.3*10**9, 2))
 
@@ -605,8 +599,6 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     """
     if enable_LP_estimates:
         t_lp = bkz_runtime_delta_LP(delta, n) + log_repeat
-
-    # t_ds = bkz_runtime_delta_DS(delta, n) + log_repeat
 
     RR = delta.parent()
 
@@ -1130,7 +1122,7 @@ def gsa_basis(n, q, delta, m):
     :param delta: root-Hermite factor
     :param m: lattice dimension
 
-    ..  note:: based on the GSA in [RSA:LinPei11]_
+    .. note:: based on the GSA in [RSA:LinPei11]_
 
     .. [RSA:LinPei11] Richard Lindner and Chris Peikert. Better key sizes (and attacks) for LWE-based encryption.
                       In Aggelos Kiayias, editor, CT-RSA 2011, volume 6558 of LNCS, pages 319–339. Springer,
