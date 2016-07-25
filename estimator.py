@@ -537,18 +537,22 @@ def bkz_runtime_delta_LP(delta, n):
 
 
 def bkz_runtime_k_sieve(k, n):
-    """
+    u"""
 
     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
 
     For small `k` we use estimates based on experiments. For `k ≥ 90` we use the asymptotics.
+
+    .. [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T. (2016). New
+       directions in nearest neighbor searching with applications to
+       lattice sieving. In SODA 2016, (pp. 10–24).
 
     """
     if k < 90:
         return RR(0.45*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
     else:
         # we simply pick the same additive constant 12.31 as above
-        return RR(0.3366*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+        return RR(0.292*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
