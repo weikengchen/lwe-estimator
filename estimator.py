@@ -490,6 +490,17 @@ def switch_modulus(n, alpha, q, s_variance, h=None):
 
 # Lattice Reduction
 
+def bkz_svp_repeat(n, k):
+    """Return number of SVP calls in BKZ-k
+
+    :param n: dimension
+    :param k: block size
+
+    .. note :: based on experiments in [PhD:Chen13]
+
+    """
+    return n
+
 
 def k_chen(delta):
     """
@@ -549,10 +560,10 @@ def bkz_runtime_k_sieve(k, n):
 
     """
     if k < 90:
-        return RR(0.45*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+        return RR(0.45*k + 12.31 + log(bkz_svp_repeat(n, k), 2))
     else:
         # we simply pick the same additive constant 12.31 as above
-        return RR(0.292*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+        return RR(0.292*k + 12.31 + log(bkz_svp_repeat(n, k), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
@@ -577,7 +588,7 @@ def bkz_runtime_k_bkz2(k, n):
 
 
     """
-    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
+    repeat = log(bkz_svp_repeat(n, k), 2)
     return RR(0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765 + repeat)
 
 
@@ -593,7 +604,7 @@ def bkz_runtime_k_fplll(k, n):
     """
     Runtime estimation extrapolated from fpLLL 4.0.4 experiments
     """
-    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
+    repeat = log(bkz_svp_repeat(n, k), 2)
     return RR(0.013487467331762426*k**2 - 0.28245244492771304*k + 21.017892848466957 + repeat)
 
 
