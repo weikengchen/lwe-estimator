@@ -560,10 +560,10 @@ def bkz_runtime_k_sieve(k, n):
 
     """
     if k < 90:
-        return RR(0.45*k + 12.31 + log(bkz_svp_repeat(n, k), 2))
+        return RR(0.45*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
     else:
         # we simply pick the same additive constant 12.31 as above
-        return RR(0.292*k + 12.31 + log(bkz_svp_repeat(n, k), 2))
+        return RR(0.292*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
