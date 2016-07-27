@@ -1235,14 +1235,14 @@ def _decode(n, alpha, q, success_probability=0.99,
         enum["enumop"] = ZZ(2)**enum["enumop"]
 
         current = OrderedDict()
-        current["bop"]  = enum["enumop"] + bkz[optimisation_target]
+        current["rop"]  = enum["enumop"] + bkz[optimisation_target]
 
         for key in bkz:
             current[key] = bkz[key]
         for key in enum:
             current[key] = enum[key]
         current[u"oracle"]  = m
-        current = cost_reorder(current, ["bop", "oracle", optimisation_target])
+        current = cost_reorder(current, ["rop", "oracle", optimisation_target])
         return current
 
     depth = 6
