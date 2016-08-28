@@ -222,6 +222,7 @@ def cost_repeat(d, times):
         u"|v|": False,
         u"amplify": False,
         u"repeat": False,  # we deal with it below
+        u"c": False,
     }
 
     ret = OrderedDict()
