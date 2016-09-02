@@ -211,7 +211,7 @@ def cost_repeat(d, times):
         u"log(eps)": False,
 
         u"mem": False,
-        u"δ_0": False,
+        u"delta_0": False,
         u"k": False,
         u"ε": False,
         u"D_reg": False,
@@ -624,7 +624,7 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     t_fplll = RR(bkz_runtime_k_fplll(k, n) + log_repeat)
 
     r = OrderedDict()
-    r[u"δ_0"] = delta
+    r[u"delta_0"] = delta
     r[u"bkz2"] = RR(2)**t_bkz2
     r[u"k"] = k
     if enable_LP_estimates:
@@ -1199,7 +1199,7 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
         success_probability *= probs_bd[i]
         bisect.insort_left(bd, [v, i])
 
-    r = OrderedDict([(u"δ_0", delta_0),
+    r = OrderedDict([(u"delta_0", delta_0),
                      ("enum", RR(log(prod(d), 2))),
                      ("enumop", RR(log(prod(d), 2)) - RR(enums_per_clock))])
     return r
@@ -1227,7 +1227,7 @@ def _decode(n, alpha, q, success_probability=0.99,
 
     RR = alpha.parent()
 
-    delta_0m1 = _sis(n, alpha, q, success_probability)[u"δ_0"] - 1
+    delta_0m1 = _sis(n, alpha, q, success_probability)[u"delta_0"] - 1
     step = RR(1.05)
     direction = -1
 
