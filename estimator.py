@@ -317,7 +317,11 @@ def amplify(target_success_probability, success_probability, majority=False):
 
     :returns: number of required trials to amplify
     """
-    prec = max(53, 2*(ceil(1/success_probability).nbits()))
+    prec = max(53,
+               2*ceil(abs(log(success_probability, 2))),
+               2*ceil(abs(log(1-success_probability, 2))),
+               2*ceil(abs(log(target_success_probability, 2))),
+               2*ceil(abs(log(1-target_success_probability, 2))))
     RR = RealField(prec)
 
     if target_success_probability < success_probability:
