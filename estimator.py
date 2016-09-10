@@ -238,6 +238,25 @@ def cost_repeat(d, times):
     return ret
 
 
+def cost_combine(left, right, base=None):
+    """Combine ``left`` and ``right``.
+
+    :param left: cost dictionary
+    :param right: cost dictionary
+    :param base: add entries to ``base``
+
+    """
+    if base is None:
+        cost = OrderedDict()
+    else:
+        cost = base
+    for key in left:
+        cost[key] = left[key]
+    for key in right:
+        cost[key] = right[key]
+    return cost
+
+
 def stddevf(sigma):
     """
     σ → std deviation
