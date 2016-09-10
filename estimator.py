@@ -174,12 +174,13 @@ def cost_filter(d, keys):
     return r
 
 
-def cost_repeat(d, times):
+def cost_repeat(d, times, repeat=None):
     """
     Return a report with all costs multiplied by `times`.
 
     :param d:     a cost estimate
     :param times: the number of times it should be run
+    :param repeat: toggle which fields ought to be repeated and which shouldn't
     :returns:     a new cost estimate
 
     We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
@@ -224,6 +225,10 @@ def cost_repeat(d, times):
         u"repeat": False,  # we deal with it below
         u"c": False,
     }
+
+    if repeat is not None:
+        for key in repeat:
+            do_repeat[key] = repeat[key]
 
     ret = OrderedDict()
     for key in d:
