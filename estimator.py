@@ -6,6 +6,7 @@ Complexity estimates for solving LWE.
 
 """
 
+from functools import partial
 from collections import OrderedDict
 
 from sage.modules.all import vector
@@ -17,18 +18,72 @@ from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
 from sage.misc.all import set_verbose, get_verbose, srange, prod
 from sage.numerical.optimize import find_root
-from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing
+from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing, RDF
 from sage.symbolic.all import pi, e
 
 from sage.crypto.lwe import LWE, Regev, LindnerPeikert
 
 # config
 
-tau_default = 0.3
-tau_prob_default = 0.1
-cfft = 1  # cost of FFT
+tau_default = 0.3  # τ used in uSVP
+tau_prob_default = 0.1  # probability of success for given τ
+cfft = 1  # convolutions mod q
+enable_LP_estimates =  True  # enable LP estimates
+enable_fplll_estimates = False  # enable fplll estimates
 
-# utility functions #
+
+# Utility Functions #
+
+def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
+    """
+    Return minimum of `f` if `f` is convex.
+
+    :param start: start of range to search
+    :param stop:  stop of range to search (exclusive)
+    :param param: the parameter to modify when calling `f`
+    :param extract: comparison is performed on `extract(f(param=?, *args, **kwds))`
+
+    """
+    kwds[param] = stop
+    D = {}
+    D[stop] = f(*arg, **kwds)
+    best = D[stop]
+    b = ceil((stop+2)/2)
+    direction = 0
+    while True:
+        if b == start:
+            best = D[start]
+            break
+        if b not in D:
+            kwds[param] = b
+            D[b] = f(*arg, **kwds)
+        if extract(D[b]) > extract(best):
+            if direction == 0:
+                start = b
+                b = ceil((stop+b)/2)
+            else:
+                stop = b
+                b = floor((start+b)/2)
+        else:
+            best = D[b]
+            if b-1 not in D:
+                kwds[param] = b-1
+                D[b-1] = f(*arg, **kwds)
+            if extract(D[b-1]) <= extract(best):
+                stop = b
+                b = floor((b+start)/2)
+                direction = 0
+            else:
+                if b+1 not in D:
+                    kwds[param] = b+1
+                    D[b+1] = f(*arg, **kwds)
+                if extract(D[b+1]) > extract(best):
+                    break
+                else:
+                    start = b
+                    b = ceil((stop+b)/2)
+                    direction = 1
+    return best
 
 
 def cost_str(d, keyword_width=None, newline=None):
@@ -119,12 +174,13 @@ def cost_filter(d, keys):
     return r
 
 
-def cost_repeat(d, times):
+def cost_repeat(d, times, repeat=None):
     """
     Return a report with all costs multiplied by `times`.
 
     :param d:     a cost estimate
     :param times: the number of times it should be run
+    :param repeat: toggle which fields ought to be repeated and which shouldn't
     :returns:     a new cost estimate
 
     We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
@@ -153,18 +209,26 @@ def cost_repeat(d, times):
         u"sieve": True,
         u"enum": True,
         u"enumop": True,
+        u"log(eps)": False,
 
         u"mem": False,
-        u"δ_0": False,
+        u"delta_0": False,
         u"k": False,
         u"ε": False,
         u"D_reg": False,
         u"t": False,
         u"Pr[⊥]": False,  # we are leaving probabilities alone
         u"m": False,
+        u"dim": False,
         u"|v|": False,
         u"amplify": False,
+        u"repeat": False,  # we deal with it below
+        u"c": False,
     }
+
+    if repeat is not None:
+        for key in repeat:
+            do_repeat[key] = repeat[key]
 
     ret = OrderedDict()
     for key in d:
@@ -175,8 +239,27 @@ def cost_repeat(d, times):
                 ret[key] = d[key]
         except KeyError:
             raise NotImplementedError(u"You found a bug, this function does not know about '%s' but should."%key)
-    ret[u"repeat"] = times
+    ret[u"repeat"] = times * ret.get("repeat", 1)
     return ret
+
+
+def cost_combine(left, right, base=None):
+    """Combine ``left`` and ``right``.
+
+    :param left: cost dictionary
+    :param right: cost dictionary
+    :param base: add entries to ``base``
+
+    """
+    if base is None:
+        cost = OrderedDict()
+    else:
+        cost = base
+    for key in left:
+        cost[key] = left[key]
+    for key in right:
+        cost[key] = right[key]
+    return cost
 
 
 def stddevf(sigma):
@@ -239,14 +322,22 @@ def amplify(target_success_probability, success_probability, majority=False):
 
     :returns: number of required trials to amplify
     """
-    prec = max(53, 2*(ceil(1/success_probability).nbits()))
+    prec = max(53,
+               2*ceil(abs(log(success_probability, 2))),
+               2*ceil(abs(log(1-success_probability, 2))),
+               2*ceil(abs(log(target_success_probability, 2))),
+               2*ceil(abs(log(1-target_success_probability, 2))))
     RR = RealField(prec)
+
+    if target_success_probability < success_probability:
+        return RR(1)
 
     success_probability = RR(success_probability)
     target_success_probability = RR(target_success_probability)
 
     if majority:
-        repeat = target_success_probability/success_probability**2
+        eps = success_probability/2
+        repeat = ceil(2*log(2 - 2*target_success_probability)/log(1 - 4*eps**2))
     else:
         # target_success_probability = 1 - (1-success_probability)^trials
         repeat = ceil(log(1-target_success_probability)/log(1 -success_probability))
@@ -254,18 +345,92 @@ def amplify(target_success_probability, success_probability, majority=False):
     return repeat
 
 
-def uniform_variance_from_bounds(a, b):
+def rinse_and_repeat(f, n, alpha, q, success_probability=0.99,
+                     optimisation_target=u"bkz2",
+                     decision=True,
+                     *args, **kwds):
+    """Find best trade-off between success probability and running time.
+
+    :param f: a function returning a cost estimate
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  target success probability
+    :param optimisation_target:  what value out to be minimized
+    :param decision:             ``True`` if ``f`` solves Decision-LWE, ``False`` for Search-LWE.
+
+    """
+    best = None
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+
+    best = None
+    step_size = 32
+    i = 0
+    while True:
+        prob = min(2**-i, success_probability)
+        current = f(n, alpha, q,
+                    optimisation_target=optimisation_target,
+                    success_probability=prob,
+                    *args, **kwds)
+        repeat = amplify(success_probability, prob, majority=decision)
+        current = cost_repeat(current, repeat)
+        current["log(eps)"] = i
+
+        if get_verbose() >= 2:
+            print cost_str(current)
+
+        key = list(current)[0]
+        if best is None:
+            best = current
+            i += step_size
+            continue
+
+        if current[key] < best[key]:
+            best = current
+            i += step_size
+        else:
+            # we go back
+            i = best["log(eps)"] - step_size
+            i += step_size/2
+            if i <= 0:
+                i = step_size/2
+            # and half the step size
+            step_size = step_size/2
+
+        if step_size == 0:
+            break
+    return best
+
+
+@cached_function
+def distinguish_required_m(sigma, q, success_probability, other_sigma=None):
+    RR = sigma.parent()
+    if other_sigma is not None:
+        sigma = RR(sqrt(sigma**2 + other_sigma**2))
+    adv = RR(exp(-RR(pi)*(RR(sigma/q)**2)))
+    return RR(success_probability)/RR(adv**2)
+
+
+def uniform_variance_from_bounds(a, b, h=None):
     """
     Variance for uniform distribution from bounds.
 
     :param a:
     :param b:
+    :param h:        number of non-zero components.
     :returns:
     :rtype:
 
     """
-    n = b - a + 1
-    return (n**2 - 1)/ZZ(12)
+    assert a < 0 and b > 0 and abs(a) == abs(b)
+    if h is None:
+        n = b - a + 1
+        return (n**2 - 1)/ZZ(12)
+    else:
+        # sage: var("i,a,b")
+        # sage: p = 1/(b-a)
+        # sage: sum(i^2*p, i, a, b)
+        return (2*a**3 - 2*b**3 - 3*a**2 - 3*b**2 + a - b)/(6*ZZ(a - b))
 
 
 def unpack_lwe(lwe):
@@ -293,7 +458,7 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
     """
     if n < 1:
         raise ValueError("LWE dimension must be greater than 0.")
-    if alpha <= 0.0:
+    if alpha <= 0:
         raise ValueError("Fraction of noise must be > 0.")
     if q < 1:
         raise ValueError("LWE modulus must be greater than 0.")
@@ -303,7 +468,7 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
     n, alpha, q =  ZZ(n), RR(alpha), ZZ(q),
 
     if success_probability is not None:
-        if success_probability >= 1.0 or success_probability <= 0.0:
+        if success_probability >= 1 or success_probability <= 0:
             raise ValueError("success_probability must be between 0 and 1.")
         return n, alpha, q, RR(success_probability)
     else:
@@ -315,7 +480,7 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
 ################################
 
 
-def switch_modulus(n, alpha, q, s_variance):
+def switch_modulus(n, alpha, q, s_variance, h=None):
     """
     Return modulus switched parameters.
 
@@ -323,7 +488,9 @@ def switch_modulus(n, alpha, q, s_variance):
     :param alpha:    noise size
     :param q:        modulus
     :param s_var:    the variance of the secret
+    :param h:        number of non-zero components.
 
+    If ``h`` is given, then ``s_var`` refers to the variance of non-zero components.
 
     EXAMPLE::
 
@@ -337,14 +504,31 @@ def switch_modulus(n, alpha, q, s_variance):
        (128, 0.00141421356237310, 25889.0000000000)
 
     """
-    p = RR(ceil(sqrt(2*pi*s_variance*n/ZZ(12)) / alpha))
+    if h is not None:
+        length = h
+    else:
+        length = n
+    p = RR(ceil(sqrt(2*pi*s_variance*length/ZZ(12)) / alpha))
+
+    if p < 32:  # some random point
+        # we can't pretend everything is uniform any more, p is too small
+        p = RR(ceil(sqrt(2*pi*s_variance*length*2/ZZ(12)) / alpha))
     beta = RR(sqrt(2)*alpha)
     return n, beta, p
 
+
+# Lattice Reduction
 
-################################
-# Section 3: Lattice Reduction #
-################################
+def bkz_svp_repeat(n, k):
+    """Return number of SVP calls in BKZ-k
+
+    :param n: dimension
+    :param k: block size
+
+    .. note :: based on experiments in [PhD:Chen13]
+
+    """
+    return n
 
 
 def k_chen(delta):
@@ -384,33 +568,31 @@ def k_chen(delta):
     return k
 
 
-def bkz_runtime_delta_DS(delta, n):
-    """
-    Runtime estimation assuming the δ² model.
-    """
-    return RR(0.009/log(delta, 2)**2 - 27 + log(2.3*10**9, 2))
-
-
 def bkz_runtime_delta_LP(delta, n):
     """
     Runtime estimation assuming the Lindner-Peikert model.
+
     """
     return RR(1.8/log(delta, 2) - 110 + log(2.3*10**9, 2))
 
 
 def bkz_runtime_k_sieve(k, n):
-    """
+    u"""
 
     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
 
     For small `k` we use estimates based on experiments. For `k ≥ 90` we use the asymptotics.
 
+    .. [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T. (2016). New
+       directions in nearest neighbor searching with applications to
+       lattice sieving. In SODA 2016, (pp. 10–24).
+
     """
     if k < 90:
-        return RR(0.45*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+        return RR(0.45*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
     else:
         # we simply pick the same additive constant 12.31 as above
-        return RR(0.3366*k + 12.31 + 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2))
+        return RR(0.292*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
 
 
 def bkz_runtime_k_bkz2(k, n):
@@ -435,7 +617,7 @@ def bkz_runtime_k_bkz2(k, n):
 
 
     """
-    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
+    repeat = log(bkz_svp_repeat(n, k), 2)
     return RR(0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765 + repeat)
 
 
@@ -451,7 +633,7 @@ def bkz_runtime_k_fplll(k, n):
     """
     Runtime estimation extrapolated from fpLLL 4.0.4 experiments
     """
-    repeat = 3*log(n, 2) - 2*log(k, 2) + log(log(n, 2), 2)
+    repeat = log(bkz_svp_repeat(n, k), 2)
     return RR(0.013487467331762426*k**2 - 0.28245244492771304*k + 21.017892848466957 + repeat)
 
 
@@ -459,8 +641,8 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     """
     Runtime estimates for BKZ (2.0) given δ and n
     """
-    # t_lp = bkz_runtime_delta_LP(delta, n) + log_repeat
-    # t_ds = bkz_runtime_delta_DS(delta, n) + log_repeat
+    if enable_LP_estimates:
+        t_lp = bkz_runtime_delta_LP(delta, n) + log_repeat
 
     RR = delta.parent()
 
@@ -469,14 +651,15 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     t_bkz2  = RR(bkz_runtime_k_bkz2(k, n)  + log_repeat)
     t_fplll = RR(bkz_runtime_k_fplll(k, n) + log_repeat)
 
-    r = OrderedDict([(u"δ_0", delta),
-                     (u"bkz2", RR(2)**t_bkz2),
-                     (u"k", k),
-                     # (u"lp", RR(2)**t_lp),
-                     # (u"ds", RR(2)**t_ds),
-                     (u"fplll", RR(2)**t_fplll),
-                     (u"sieve", RR(2)**t_sieve)])
-
+    r = OrderedDict()
+    r[u"delta_0"] = delta
+    r[u"bkz2"] = RR(2)**t_bkz2
+    r[u"k"] = k
+    if enable_LP_estimates:
+        r[u"lp"] = RR(2)**t_lp
+    if enable_fplll_estimates:
+        r[u"fplll"] = RR(2)**t_fplll
+    r[u"sieve"] = RR(2)**t_sieve
     return r
 
 
@@ -513,7 +696,7 @@ def sieve_or_enum(func):
     return wrapper
 
 
-def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
+def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
     """
     Return meet-in-the-middle estimates.
 
@@ -536,8 +719,8 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
         m = ceil((2*n - log(alpha*q)*(n/2))/log(2*t*alpha))
         if m*(2*alpha) > 1- 1/(2*n):
             raise ValueError("Cannot find m to satisfy constraints (noise too big).")
-        ret["rop"] = RR((alpha*q)**(n/2) * 2*n)
-        ret["mem"] = RR((alpha*q)**(n/2) * 2*n)
+        ret["rop"] = RR((2*alpha*q+1)**(n/2) * 2*n)
+        ret["mem"] = RR((2*alpha*q+1)**(n/2) * 2*n)
     else:
         a, b = secret_bounds
         # assert((2*t*alpha)**m * (b-a+1)**(n/2) <= 2*n)
@@ -551,18 +734,8 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None):
     ret["bop"] = RR(log(q, 2) * ret["rop"])
     return cost_reorder(ret, ["bop", "oracle", "mem"])
 
-####################
-# Section 5.2: BKW #
-####################
-
-
-@cached_function
-def bkw_required_m(sigma, q, success_probability, other_sigma=None):
-    RR = sigma.parent()
-    if other_sigma is not None:
-        sigma = RR(sqrt(sigma**2 + other_sigma**2))
-    adv = RR(exp(-RR(pi)*(RR(sigma/q)**2)))
-    return RR(success_probability)/RR(adv**2)
+
+# BKW
 
 
 def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, search=False):
@@ -615,7 +788,7 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
         b = RR(n/a)  # window width
         sigma_final = RR(n**t).sqrt() * sigma  # after n^t adds we get this σ
 
-        m = bkw_required_m(sigma_final, q, success_probability)
+        m = distinguish_required_m(sigma_final, q, success_probability)
 
         tmp = a*(a-1)/2 * (n+1) - b*a*(a-1)/4 - b/6 * RR((a-1)**3 + 3/2*(a-1)**2 + (a-1)/2)
         stage1a = RR(q**b-1)/2 * tmp
@@ -732,7 +905,7 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     return best
 
 
-def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
+def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None, secret_bounds=None, h=None):
     """
     Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
 
@@ -767,7 +940,10 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     cost["l"] = l
 
     gamma = RR(1.2)  # TODO make this dependent on success_probability
-    d = 3*sigma      # TODO make this dependent on success_probability
+    if secret_bounds:
+        d = secret_bounds[1] - secret_bounds[0] + 1
+    else:
+        d = 3*sigma      # TODO make this dependent on success_probability
 
     cost["d"] = d
     cost[u"γ"] = gamma
@@ -850,11 +1026,16 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     cost["ntest"] = ntest  # hypothesis testing
 
     # Theorem 1: quantization noise + addition noise
-    sigma_final = RR(sqrt(2**(t1+t2) * sigma**2 + gamma**2 * sigma**2 * sigma_set**2 * ntot))
+    if secret_bounds:
+        s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+        coding_variance = s_var * sigma_set**2 * ntot
+    else:
+        coding_variance = gamma**2 * sigma**2 * sigma_set**2 * ntot
+    sigma_final = RR(sqrt(2**(t1+t2) * sigma**2 + coding_variance))
     cost[u"σ_final"] = RR(sigma_final)
 
     # we re-use our own estimator
-    M = bkw_required_m(sigmaf(sigma_final), q, success_probability)
+    M = distinguish_required_m(sigmaf(sigma_final), q, success_probability)
     cost["m"] = M
     m = (t1+t2)*(q**b-1)/2 + M
     cost["oracle"] = RR(m)
@@ -898,10 +1079,9 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None):
     return cost
 
 
-def bkw_coded(n, alpha, q, success_probability=0.99,
+def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
               cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2")):
     """
-
     Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
     by optimising parameters.
 
@@ -920,41 +1100,16 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
         bop:   ≈2^53.1,  oracle:   ≈2^39.2,  m:   ≈2^30.2,  mem:   ≈2^40.2,  rop:   ≈2^49.5,  ...
 
     """
-    best = None
     bstart = ceil(log(q, 2))
 
-    def _run(b):
+    def _run(b=2):
         # the noise is 2**(t1+t2) * something so there is no need to go beyond, say, q**2
-        t2max = min(n//b, ceil(2*log(q, 2)))
-        best = None
-        for t2 in range(2, t2max)[::-1]:
-            cost = _bkw_coded(n, alpha, q, b=b, t2=t2,
-                              success_probability=success_probability)
-            if best is None or cost["rop"] <= best["rop"]:
-                best = cost
-            else:
-                return best
-        return best
+        return binary_search(_bkw_coded, 2, min(n//b, ceil(2*log(q, 2))), "t2",
+                             lambda x: x["rop"], n, alpha, q, b=b, t2=0,
+                             secret_bounds=secret_bounds, h=h,
+                             success_probability=success_probability)
 
-    for b in range(bstart, 3*bstart):
-        current = _run(b)
-        if best is None or current["rop"] <= best["rop"]:
-            best = cost_filter(current, cost_include)
-            if get_verbose() > 1:
-                print cost_str(best)
-        else:
-            break
-
-    for b in range(2, bstart)[::-1]:
-        current = _run(b)
-        if best is None or current["rop"] <= best["rop"]:
-            best = cost_filter(current, cost_include)
-            if get_verbose() > 1:
-                print cost_str(best)
-        else:
-            break
-
-    return best
+    return binary_search(_run, 2, 3*bstart, "b", lambda x: x["rop"], b=2)
 
 
 #######################################################
@@ -962,68 +1117,69 @@ def bkw_coded(n, alpha, q, success_probability=0.99,
 #######################################################
 
 
-def sis(n, alpha, q, log_eps=None,
-        success_probability=0.99, optimisation_target=u"bkz2"):
+def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", secret_bounds=None, h=None):
+    """Estimate cost of solving LWE by solving LWE.
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param success_probability:  probability of success < 1.0
+    :param secret_bounds:        ignored
+    :param h:                    ignored
+    :returns: a cost estimate
+    :rtype: OrderedDict
+
+    """
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     f = lambda eps: RR(sqrt(log(1/eps)/pi))
     RR = alpha.parent()
 
-    best = None
-    if log_eps is None:
-        for log_eps in range(1, n):
-            current = sis(n, alpha, q, log_eps=-log_eps,
-                          optimisation_target=optimisation_target)
-
-            if get_verbose() >= 2:
-                print cost_str(current)
-
-            if best is None:
-                best = current
-            else:
-                if best[optimisation_target] > current[optimisation_target]:
-                    best = current
-                else:
-                    return best
-        return best
+    # we are solving Decision-LWE
+    log_delta_0 = log(f(success_probability)/alpha, 2)**2 / (4*n*log(q, 2))
+    delta_0 = RR(2**log_delta_0)
+    m = lattice_reduction_opt_m(n, q, delta_0)
+    ret = bkz_runtime_delta(delta_0, m)
+    ret[u"oracle"] = m
+    ret[u"|v|"] = RR(delta_0**m * q**(n/m))
+    ret[u"dim"] = m
+    if optimisation_target != u"oracle":
+        ret = cost_reorder(ret, [optimisation_target, u"oracle"])
     else:
-        # we are solving Decision-LWE
-        repeat = amplify(success_probability, RR(2)**log_eps, majority=True)
-        log_delta_0 = log(f(RR(2)**log_eps)/alpha, 2)**2 / (4*n*log(q, 2))
-        delta_0 = RR(2**log_delta_0)
-        m = lattice_reduction_opt_m(n, q, delta_0)
-        ret = bkz_runtime_delta(delta_0, m, log(repeat, RR(2)))
-        ret[u"ε"] = ZZ(2)**log_eps
-        ret[u"oracle"] = m * repeat
-        ret[u"|v|"] = RR(delta_0**m * q**(n/m))
-        ret[u"amplify"] = repeat
-        if optimisation_target != u"oracle":
-            ret = cost_reorder(ret, [optimisation_target, u"oracle"])
-        else:
-            ret = cost_reorder(ret, [optimisation_target])
-        return ret
+        ret = cost_reorder(ret, [optimisation_target])
+    return ret
 
+
+sis = partial(rinse_and_repeat, _sis)
 
 ###################################
 # Section 5.4: LP Decoding attack #
 ###################################
 
-
 @cached_function
 def gsa_basis(n, q, delta, m):
     """
-    Creates the basis lengths for the scaled dual
+    Create the basis lengths.
 
-    ..  note:: based on the GSA in [RSA:LinPei11]_
+    :param n: determinant is q^n
+    :param q:  determinant is q^n
+    :param delta: root-Hermite factor
+    :param m: lattice dimension
+
+    .. note:: based on the GSA in [RSA:LinPei11]_
 
     .. [RSA:LinPei11] Richard Lindner and Chris Peikert. Better key sizes (and attacks) for LWE-based encryption.
                       In Aggelos Kiayias, editor, CT-RSA 2011, volume 6558 of LNCS, pages 319–339. Springer,
                       February 2011.
     """
-    RR = delta.parent()
-    qnm = RR(q**(n/m))
-    b = [(qnm * delta**(m - 2*m/(m-1) * i)) for i in xrange(m)]
-    b = [RR(q/b[-1-i]) for i in xrange(m)]
+    log_delta = RDF(log(delta))
+    log_q = RDF(log(q))
+    qnm = log_q*(n/m)
+    qnm_p_log_delta_m = qnm + log_delta*m
+    tmm1 = RDF(2*m/(m-1))
+    b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in xrange(m)]
+    b = [log_q - b[-1-i] for i in xrange(m)]
+    b = map(lambda x: x.exp(), b)
     return b
 
 
@@ -1045,17 +1201,17 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
     """
 
     RR = alpha.parent()
-    step = RR(step)
+    step = RDF(step)
 
     if B is None:
         if m is None:
             m = lattice_reduction_opt_m(n, q, delta_0)
         B = gsa_basis(n, q, delta_0, m)
 
-    d = [RR(1)]*m
+    d = [RDF(1)]*m
     bd = [d[i] * B[i] for i in xrange(m)]
-    scaling_factor = RR(sqrt(pi) / (2*alpha*q))
-    probs_bd = [RR((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
+    scaling_factor = RDF(sqrt(pi) / (2*alpha*q))
+    probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
     success_probability = prod(probs_bd)
 
     bd = map(list, zip(bd, range(len(bd))))
@@ -1067,18 +1223,19 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
         d[i] += step
         v += B[i]*step
         success_probability /= probs_bd[i]
-        probs_bd[i] = RR((v * scaling_factor).erf())
+        probs_bd[i] = (v * scaling_factor).erf()
         success_probability *= probs_bd[i]
         bisect.insort_left(bd, [v, i])
 
-    r = OrderedDict([(u"δ_0", delta_0),
+    r = OrderedDict([(u"delta_0", delta_0),
                      ("enum", RR(log(prod(d), 2))),
                      ("enumop", RR(log(prod(d), 2)) - RR(enums_per_clock))])
     return r
 
 
-def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
-        enums_per_clock=-15.1, optimisation_target="bkz2"):
+def _decode(n, alpha, q, success_probability=0.99,
+            enums_per_clock=-15.1, optimisation_target="bkz2",
+            secret_bounds=None, h=None):
     """
     Estimates the optimal parameters for decoding attack
 
@@ -1088,79 +1245,44 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
     :param success_probability:  probability of success < 1.0
     :param enums_per_clock:      the log of the number of enumerations computed per clock cycle
     :param optimisation_target:  lattice reduction estimate to use
+    :param secret_bounds:        ignored
+    :param h:                    ignored
     :returns: a cost estimate
     :rtype: OrderedDict
     """
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
 
-    if log_eps is None:
-        best = None
-        step_size = 32
-        log_eps = 1
-        while True:
-            current = bdd(n, alpha, q, -log_eps, success_probability,
-                          enums_per_clock, optimisation_target)
-
-            key = list(current)[0]
-            if best is None:
-                best = current
-                log_eps += step_size
-                continue
-
-            if best[key] > current[key]:
-                best = current
-                log_eps += step_size
-            else:
-                # we go back to the previous step (+1)
-                log_eps -= step_size - 1
-                if log_eps <= 0:
-                    log_eps = 1
-                # and half the step size
-                step_size = step_size/2
-
-            if step_size == 0:
-                break
-        # we clear the cache of gsa_basis because otherwise it grows too big
-        gsa_basis.clear_cache()
-        return best
-
     RR = alpha.parent()
 
-    delta_0m1 = sis(n, alpha, q, log_eps, success_probability)[u"δ_0"] - 1
+    delta_0m1 = _sis(n, alpha, q, success_probability)[u"delta_0"] - 1
     step = RR(1.05)
     direction = -1
 
-    repeat = amplify(success_probability, RR(2)**log_eps)
-
     def combine(enum, bkz):
-        enum["enum"]   = repeat * ZZ(2)**enum["enum"]
-        enum["enumop"] = repeat * ZZ(2)**enum["enumop"]
+        enum["enum"]   = ZZ(2)**enum["enum"]
+        enum["enumop"] = ZZ(2)**enum["enumop"]
 
         current = OrderedDict()
-        current["bop"]  = enum["enumop"] + bkz[optimisation_target]
+        current["rop"]  = enum["enumop"] + bkz[optimisation_target]
 
         for key in bkz:
             current[key] = bkz[key]
         for key in enum:
             current[key] = enum[key]
-        current[u"ε"] = ZZ(2)**log_eps
-        current[u"oracle"]  = repeat * m
-        current = cost_reorder(current, ["bop", "oracle"])
+        current[u"oracle"]  = m
+        current = cost_reorder(current, ["rop", "oracle", optimisation_target])
         return current
 
     depth = 6
     while True:
         delta_0 = 1 + delta_0m1
         m = lattice_reduction_opt_m(n, q, delta_0)
-        bkz = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
+        bkz = bkz_runtime_delta(delta_0, m)
+        bkz["dim"] = m
 
-        enum = enum_cost(n, alpha, q, RR(2)**log_eps, delta_0, m,
-                         enums_per_clock=enums_per_clock)
+        enum = enum_cost(n, alpha, q, success_probability, delta_0, m, enums_per_clock=enums_per_clock)
         current = combine(enum, bkz)
-
-        if get_verbose() >= 2:
-            print cost_str(current)
 
         # if lattice reduction is cheaper than enumration, make it more expensive
         if current[optimisation_target] < current["enumop"]:
@@ -1183,12 +1305,15 @@ def bdd(n, alpha, q, log_eps=None, success_probability=0.99,
 
     return current
 
+decode = partial(rinse_and_repeat, _decode, decision=False)
+
 ###################################################
 # Section 5.5: Reducing BDD to uSVP via embedding #
 ###################################################
 
 
-def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99):
+def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99,
+           optimisation_target="bkz2"):
     """
     Estimate optimal parameters for using Kannan-embedding to solve CVP.
 
@@ -1214,9 +1339,9 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     repeat = amplify(success_probability, tau_prob)
 
     r = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
-    r[u"oracle"] = repeat*m  # TODO: this shouldn't be hardcoded
+    r[u"oracle"] = repeat*m
     r[u"m"] = m
-    r = cost_reorder(r, ["bkz2", "oracle"])
+    r = cost_reorder(r, [optimisation_target, "oracle"])
     if get_verbose() >= 2:
         print cost_str(r)
     return r
@@ -1305,7 +1430,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     pred["t"] = t
     pred["oracle"] = m
     pred[u"Pr[⊥]"] = RR(m*(1-ps_single(C)))
-    pred["bop"] = log(q, 2) + pred["rop"]
+    pred["bop"] = log(q, 2) * pred["rop"]
     pred = cost_reorder(pred, ["t", "bop", "oracle", "Dreg"])
 
     if get_verbose() >= 2:
@@ -1357,7 +1482,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     return best
 
 
-def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
+def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
     size = secret_bounds[1]-secret_bounds[0] + 1
     best = None
     step_size = 16
@@ -1370,7 +1495,12 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
             current = f(n-i, alpha, q, secret_bounds=secret_bounds, **kwds)
         except TypeError:
             current = f(n-i, alpha, q, **kwds)
-        current = cost_repeat(current, size**i)
+        if h is None or i<h:
+            repeat = size**i
+        else:
+            # TODO: this is too pessimistic
+            repeat = (size)**h * binomial(i, h)
+        current = cost_repeat(current, repeat)
 
         key = list(current)[0]
         if best is None:
@@ -1393,43 +1523,49 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, **kwds):
 # 6.2 Modulus Switching for Lattice Reduction
 #############################################
 
-def sis_small_secret(n, alpha, q, secret_bounds, **kwds):
-    """
-    Modulus switch and estimate SIS.
+def sis_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
+    """Solve LWE by reduction to SIS for small secret instances.
 
-    :param n:
-    :param alpha:
-    :param q:
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
     :param secret_bounds:
+    :param h:                    number of non-zero components in the secret
+
     """
-    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
-    return small_secret_guess(sis, n, alpha, q, secret_bounds, **kwds)
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
+    return small_secret_guess(sis, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
-def bdd_small_secret(n, alpha, q, secret_bounds, **kwds):
-    """
-    Modulus switch and estimate BDD.
+def decode_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
+    """Solve LWE by solving BDD for small secret instances.
 
-    :param n:
-    :param alpha:
-    :param q:
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
     :param secret_bounds:
+    :param h:                    number of non-zero components in the secret
+
     """
-    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
-    return small_secret_guess(bdd, n, alpha, q, secret_bounds, **kwds)
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
+    return small_secret_guess(decode, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
-def kannan_small_secret(n, alpha, q, secret_bounds, **kwds):
-    """
-    Modulus switch and estimate Kannan-embedding for solving CVP.
+def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
+    """Solve LWE by Kannan embedding for small secret instances.
 
-    :param n:
-    :param alpha:
-    :param q:
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
     :param secret_bounds:
+    :param h:                    number of non-zero components in the secret.
+
     """
-    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
-    return small_secret_guess(kannan, n, alpha, q, secret_bounds, **kwds)
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
+    return small_secret_guess(kannan, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
 #######################################
@@ -1438,22 +1574,36 @@ def kannan_small_secret(n, alpha, q, secret_bounds, **kwds):
 
 
 def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                          success_probability=0.99):
+                          success_probability=0.99,
+                          optimisation_target="bkz2",
+                          h=None):
     """
     :param n:                    dimension > 0
     :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param tau:                  0 < τ ≤ 1.0
     :param success_probability:  probability of success < 1.0
+    :param optimisation_target:  field to use to decide if parameters are better
+    :param h:                    number of non-zero components in the secret
+
     """
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
 
     stddev = stddevf(alpha*q)
     a, b = secret_bounds
-    c = RR(2)/(b-a)
+
+    if h is None:
+        xi = RR(2)/(b-a)
+    else:
+        assert -a == b  # TODO: don't be so lazy
+        # we compute the stddev of |s| and xi to scale each component to σ on average
+        variance = sum([ZZ(h)/n * i**2 for i in range(a, b+1) if i])
+        s_stddev = variance.sqrt()
+        xi = ZZ(1)/s_stddev
+
     num = (log(q/stddev) - log(tau*sqrt(4*pi*e)))**2 * log(q/stddev)
-    den = n*(2*log(q/stddev)-log(c))**2
+    den = n*(2*log(q/stddev)-log(xi))**2
 
     log_delta_0 = RR(num/den)
 
@@ -1464,25 +1614,43 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
     m_prime = ceil(sqrt(n*(log(q)-log(stddev))/log_delta_0))
     m = m_prime - n
 
-    l2 = RR((q**m * (c*stddev)**n)**(1/m_prime) * sqrt(m_prime/(2*pi*e)))
+    l2 = RR((q**m * (xi*stddev)**n)**(1/m_prime) * sqrt(m_prime/(2*pi*e)))
     if l2 > q:
         raise NotImplementedError("Case λ_2 = q not implemented.")
 
     r = bkz_runtime_delta(delta_0, m_prime, log(repeat, 2))
     r[u"oracle"] = repeat*m
-    r = cost_reorder(r, ["bkz2", "oracle"])
+
+    if optimisation_target != u"oracle":
+        r = cost_reorder(r, [optimisation_target, u"oracle"])
+    else:
+        r = cost_reorder(r, [optimisation_target])
+
     if get_verbose() >= 2:
         print cost_str(r)
     return r
 
 
 def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
-                         success_probability=0.99):
+                         success_probability=0.99,
+                         optimisation_target="bkz2",
+                         h=None):
     """
     Bai's and Galbraith's uSVP attack + small secret guessing.
+
+    :param n:                    dimension > 0
+    :param alpha:                fraction of the noise α < 1.0
+    :param q:                    modulus > 0
+    :param tau:                  0 < τ ≤ 1.0
+    :param success_probability:  probability of success < 1.0
+    :param optimisation_target:  field to use to decide if parameters are better
+    :param h:                    number of non-zero components in the secret
     """
     return small_secret_guess(_bai_gal_small_secret, n, alpha, q, secret_bounds,
-                              tau=0.2, tau_prob=0.1, success_probability=0.99)
+                              tau=tau, tau_prob=tau_prob,
+                              success_probability=0.99,
+                              optimisation_target=optimisation_target,
+                              h=h)
 
 ########################
 # 6.3 BKW Small Secret #
@@ -1578,11 +1746,11 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
     def bkwssf(kappa):
         ret = OrderedDict()
         ret[u"κ"] = kappa
-        m = bkw_required_m(sigma_final, q, success_probability, sigma2f(kappa))
+        m = distinguish_required_m(sigma_final, q, success_probability, sigma2f(kappa))
         ret["m"] = m
-        ret["ropsm"] = (m + o)  * (a/2 * (n + 2))
-        ret["ropst"] = ops_tf(kappa)
-        ret["rop"] = ret["ropst"] + ret["ropsm"]
+        ropsm = (m + o)  * (a/2 * (n + 2))
+        ropst = ops_tf(kappa)
+        ret["rop"] = ropst + ropsm
         ret["bop"] = log(q, 2) * ret["rop"]
         T = Tf(kappa)
         ret["mem"] = T * a * (n + 1 - b * (a-1)/2)
@@ -1655,9 +1823,21 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
 # 6.4 Arora-GB Small Secret #
 #############################
 
-def arora_gb_small_secret(n, alpha, q, secret_bounds, **kwds):
+def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+    """FIXME! briefly describe function
+
+    :param n:
+    :param alpha:
+    :param q:
+    :param secret_bounds:
+    :param h:
+    :returns:
+    :rtype:
+
+    """
     a, b = secret_bounds
-    n, alpha, q = switch_modulus(n, alpha, q, uniform_variance_from_bounds(*secret_bounds))
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
     return arora_gb(n, alpha, q, d2=b-a+1, **kwds)
 
 ###########
@@ -1665,7 +1845,7 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, **kwds):
 ###########
 
 
-def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
+def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None):
     """
     Estimate the complexity of solving LWE with the given parameters.
 
@@ -1694,15 +1874,15 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_coded),
                                   ("sis", sis),
-                                  ("dec", bdd),
+                                  ("dec", decode),
                                   ("kannan", kannan),
                                   ("arora-gb", arora_gb)])
     else:
         algorithms = OrderedDict([("mitm", mitm),
-                                  ("bkw", bkw_small_secret),
-                                  ("sis", sis_small_secret),
-                                  ("dec", bdd_small_secret),
-                                  ("kannan", kannan_small_secret),
+                                  ("bkw", bkw_coded),
+                                  ("sis", sis_small_secret_mod_switch_and_guess),
+                                  ("dec", decode_small_secret_mod_switch_and_guess),
+                                  ("kannan", kannan_small_secret_mod_switch_and_guess),
                                   ("baigal", bai_gal_small_secret),
                                   ("arora-gb", arora_gb_small_secret)])
 
@@ -1721,11 +1901,11 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None):
     for alg in algorithms:
         if alg not in skip:
             algf = algorithms[alg]
-            if alg in ("bdd", "sis"):
+            if alg in ("dec", "sis", "kannan"):
                 algf = sieve_or_enum(algf)
             try:
                 if small:
-                    tmp = algf(n, alpha, q, secret_bounds=secret_bounds)
+                    tmp = algf(n, alpha, q, secret_bounds=secret_bounds, h=h)
                 else:
                     tmp = algf(n, alpha, q)
                 if tmp:
