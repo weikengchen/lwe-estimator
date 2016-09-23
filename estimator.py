@@ -525,10 +525,10 @@ def bkz_svp_repeat(n, k):
     :param n: dimension
     :param k: block size
 
-    .. note :: based on experiments in [PhD:Chen13]
+    .. note :: loosely based on experiments in [PhD:Chen13]
 
     """
-    return n
+    return 8*n
 
 
 def k_chen(delta):
