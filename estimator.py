@@ -86,7 +86,7 @@ def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
     return best
 
 
-def cost_str(d, keyword_width=None, newline=None):
+def cost_str(d, keyword_width=None, newline=None, round_bound=2048):
     """
     Return string of key,value pairs as a string "key0: value0, key1: value1"
 
@@ -116,7 +116,7 @@ def cost_str(d, keyword_width=None, newline=None):
         if keyword_width:
             fmt = u"%%%ds" % keyword_width
             k = fmt % k
-        if ZZ(1)/2048 < v < 2048 or v == 0:
+        if ZZ(1)/round_bound < v < round_bound or v == 0:
             try:
                 s.append(u"%s: %9d" % (k, ZZ(v)))
             except TypeError:
