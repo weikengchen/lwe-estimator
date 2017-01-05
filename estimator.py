@@ -86,7 +86,7 @@ def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
     return best
 
 
-def cost_str(d, keyword_width=None, newline=None):
+def cost_str(d, keyword_width=None, newline=None, round_bound=2048):
     """
     Return string of key,value pairs as a string "key0: value0, key1: value1"
 
@@ -116,7 +116,7 @@ def cost_str(d, keyword_width=None, newline=None):
         if keyword_width:
             fmt = u"%%%ds" % keyword_width
             k = fmt % k
-        if ZZ(1)/2048 < v < 2048 or v == 0:
+        if ZZ(1)/round_bound < v < round_bound or v == 0:
             try:
                 s.append(u"%s: %9d" % (k, ZZ(v)))
             except TypeError:
@@ -525,10 +525,10 @@ def bkz_svp_repeat(n, k):
     :param n: dimension
     :param k: block size
 
-    .. note :: based on experiments in [PhD:Chen13]
+    .. note :: loosely based on experiments in [PhD:Chen13]
 
     """
-    return n
+    return 8*n
 
 
 def k_chen(delta):
@@ -571,29 +571,56 @@ def k_chen(delta):
 def bkz_runtime_delta_LP(delta, n):
     """
     Runtime estimation assuming the Lindner-Peikert model.
-
     """
     return RR(1.8/log(delta, 2) - 110 + log(2.3*10**9, 2))
 
 
+def bkz_runtime_k_sieve_laarhoven14(k, n):
+    u"""
+     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
+
+     For small `k` we use estimates based on experiments in [Laarhoven14]_
+
+    :param k: block size
+    :param n: lattice dimension
+
+     ..  [Laarhoven14] Thijs Laarhoven.  Sieving for shortest vectors in lattices using angular
+         locality-sensitive hashing.  Cryptology ePrint Archive, Report 2014/744, 2014.
+         http://eprint.iacr.org/2014/744.
+
+     """
+    return RR(0.45*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
+
+
+def bkz_runtime_k_sieve_bdgl16(k, n):
+    u"""
+     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
+
+    :param k: block size
+    :param n: lattice dimension
+
+     ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
+         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 10–24).
+     """
+    # we simply pick the same additive constant 12.31 as in [Laarhoven14]
+    return RR(0.292*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
+
+
+bkz_runtime_k_sieve_asymptotic  = bkz_runtime_k_sieve_bdgl16
+bkz_runtime_k_sieve_small       = bkz_runtime_k_sieve_laarhoven14
+
 def bkz_runtime_k_sieve(k, n):
     u"""
+     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
 
-    Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
+    :param k: block size
+    :param n: lattice dimension
 
-    For small `k` we use estimates based on experiments. For `k ≥ 90` we use the asymptotics.
-
-    .. [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T. (2016). New
-       directions in nearest neighbor searching with applications to
-       lattice sieving. In SODA 2016, (pp. 10–24).
-
-    """
-    if k < 90:
-        return RR(0.45*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
+     """
+    if k <= 90:
+        return bkz_runtime_k_sieve_small(k, n)
     else:
-        # we simply pick the same additive constant 12.31 as above
-        return RR(0.292*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
-
+        return bkz_runtime_k_sieve_asymptotic(k, n)
 
 def bkz_runtime_k_bkz2(k, n):
     """
