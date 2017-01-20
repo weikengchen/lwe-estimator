@@ -16,7 +16,8 @@ from sage.functions.other import ceil, sqrt, floor, binomial, erf
 from sage.interfaces.magma import magma
 from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
-from sage.misc.all import set_verbose, get_verbose, srange, prod
+from sage.misc.all import set_verbose, get_verbose, prod
+from sage.arith.srange import srange
 from sage.numerical.optimize import find_root
 from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing, RDF
 from sage.symbolic.all import pi, e
@@ -1139,10 +1140,8 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
     return binary_search(_run, 2, 3*bstart, "b", lambda x: x["rop"], b=2)
 
 
-#######################################################
-# Section 5.3: Using Lattice Reduction To Distinguish #
-#######################################################
-
+
+# Dual Strategy
 
 def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", secret_bounds=None, h=None):
     """Estimate cost of solving LWE by solving LWE.
@@ -1179,9 +1178,8 @@ def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", sec
 
 sis = partial(rinse_and_repeat, _sis)
 
-###################################
-# Section 5.4: LP Decoding attack #
-###################################
+
+# Decoding
 
 @cached_function
 def gsa_basis(n, q, delta, m):
@@ -1334,10 +1332,8 @@ def _decode(n, alpha, q, success_probability=0.99,
 
 decode = partial(rinse_and_repeat, _decode, decision=False)
 
-###################################################
-# Section 5.5: Reducing BDD to uSVP via embedding #
-###################################################
-
+
+# uSVP
 
 def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99,
            optimisation_target="bkz2"):
@@ -1373,11 +1369,8 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
         print cost_str(r)
     return r
 
-
-#########################
-# Section 5.6: Arora-GB #
-#########################
-
+
+# Gröbner bases
 
 def gb_complexity(m, n, d, omega=2, call_magma=True, d2=None):
     """Estimate the complexity of computing a Gröbner basis.
@@ -1509,6 +1502,9 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     return best
 
 
+
+# Exhaustive Search for Small Secrets
+
 def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
     size = secret_bounds[1]-secret_bounds[0] + 1
     best = None
@@ -1546,9 +1542,8 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
     return best
 
 
-#############################################
-# 6.2 Modulus Switching for Lattice Reduction
-#############################################
+
+# Modulus Switching
 
 def sis_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
     """Solve LWE by reduction to SIS for small secret instances.
@@ -1595,10 +1590,8 @@ def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None,
     return small_secret_guess(kannan, n, alpha, q, secret_bounds, h=h, **kwds)
 
 
-#######################################
-# 6.3 Bai's and Galbraith's uSVP Attack
-#######################################
-
+
+# Bai's and Galbraith's uSVP Attack
 
 def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
                           success_probability=0.99,
@@ -1679,9 +1672,257 @@ def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=t
                               optimisation_target=optimisation_target,
                               h=h)
 
-########################
-# 6.3 BKW Small Secret #
-########################
+
+
+# Small, Sparse Secret SIS
+
+
+def success_probability_drop(n, h, k, fail=0):
+    """
+    Probability ``k`` randomly sampled components have at most
+    ``fail`` non-zero components amongst them.
+
+    :param n: dimension of LWE samples
+    :param h: number of non-zero components
+    :param k: number of components to ignore
+    :param fail: we tolerate ``fail`` number of non-zero components
+        amongst the ``k`` ignored components
+    """
+
+    N = n         # population size
+    K = n-h       # number of success states in the population
+    n = k         # number of draws
+    k = n - fail  # number of observed successes
+    return (binomial(K, k)*binomial(N-K, n-k)) / binomial(N, n)
+
+
+def drop_and_solve(f, n, alpha, q, secret_bounds=None, h=None,
+                   success_probability=0.99,
+                   optimisation_target=u"bkz2", postprocess=False, **kwds):
+    """
+    Solve instances of dimension ``n-k`` with increasing ``k`` using
+    ``f`` and pick parameters such that cost is reduced.
+
+    :param n: dimension
+    :param alpha: noise parameter
+    :param q: modulus q
+    :param secret_bounds: lower and upper bound on the secret
+    :param h: number of non-zero components of the secret
+    :param success_probability: target success probability
+    :param optimisation_target: what value out to be minimized
+    """
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+
+    RR = alpha.parent()
+
+    best = None
+
+    # too small a step size leads to an early abort, too large a step
+    # size means stepping over target
+    step_size = int(n/32)
+
+    k = 0
+    while True:
+        current = f(n-k, alpha, q,
+                    success_probability=max(1-1/RR(2)**80, success_probability),
+                    optimisation_target=optimisation_target,
+                    h=h, secret_bounds=secret_bounds, **kwds)
+
+        cost_lat  = current[optimisation_target]
+        cost_post = 0
+        probability = success_probability_drop(n, h, k)
+        if postprocess:
+            repeat = current["repeat"]
+            dim    = current["dim"]
+            for i in range(1, k):
+                # compute inner products with rest of A
+                cost_post_i = 2 * repeat * dim * k
+                # there are (k)(i) positions and max(s_i)-min(s_i) options per position
+                # for each position we need to add/subtract the right elements
+                cost_post_i += repeat * binomial(k, i) * (secret_bounds[1]-secret_bounds[0])**i  * i
+                if cost_post + cost_post_i >= cost_lat:
+                    postprocess = i
+                    break
+                cost_post += cost_post_i
+                probability += success_probability_drop(n, h, k, i)
+
+        current["rop"] = cost_lat + cost_post
+        current = cost_repeat(current, 1/probability)
+        current["k"] = k
+        current["postprocess"] = postprocess
+        current = cost_reorder(current, ["rop"])
+
+        key = list(current)[0]
+        if best is None:
+            best = current
+            k += step_size
+            continue
+
+        if current[key] < best[key]:
+            best = current
+            k += step_size
+        else:
+            # we go back
+            k = best["k"] - step_size
+            k += step_size/2
+            if k <= 0:
+                k = step_size/2
+            # and half the step size
+            step_size = step_size/2
+
+        if step_size == 0:
+            break
+
+    return best
+
+sis_drop_and_solve = partial(drop_and_solve, sis)
+decode_drop_and_solve = partial(drop_and_solve, decode)
+bai_gal_drop_and_solve = partial(drop_and_solve, bai_gal_small_secret)
+
+def sis_small_secret_mod_switch(n, alpha, q, secret_bounds, h=None,
+                                success_probability=0.99,
+                                optimisation_target=u"bkz2",
+                                c=None,
+                                use_lll=False):
+    """
+    Estimate cost of solveing LWE by finding small `(y,x/c)` such that
+    `y A = c x`.
+
+    :param n:                   dimension
+    :param alpha:               noise parameter
+    :param q:                   modulus q
+    :param secret_bounds:       lower and upper bound on the secret
+    :param h:                   number of non-zero components of the secret
+    :param success_probability: target success probability
+    :param optimisation_target: what value out to be minimized
+    :param c:                   explicit constant `c`
+    :param use_lll:             use LLL calls to produce more small vectors
+
+    """
+
+    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    RR = alpha.parent()
+
+    assert(secret_bounds[0] >= -1 and secret_bounds[1] <= 1)
+
+    # stddev of the error
+    e = stddevf(alpha*q).n()
+
+    delta_0 = sis(n, alpha, q, optimisation_target=optimisation_target)["delta_0"]
+
+    best = None
+
+    if c is None:
+        c = RR(e*sqrt(2*n - n)/sqrt(h))
+
+    if use_lll:
+        scale = 2
+    else:
+        scale = 1
+
+    while True:
+
+        m = lattice_reduction_opt_m(n, c*q, delta_0)
+
+        # the vector found will have norm
+        v = scale * delta_0**m * (q/c)**(n/m)
+
+        # each component has stddev v_
+        v_ = v/RR(sqrt(m))
+
+        # we split our vector in two parts.
+        # 1. v_r is multiplied with the error e (dimension m-n)
+        # 2. v_l is the rounding noise (dimension n)
+
+        # scale last q components down again.
+        v_r = e*sqrt(m-n)*v_
+        v_l = c*sqrt(h)*v_
+
+        repeat = max(distinguish_required_m(v_r, q, success_probability, other_sigma=v_l), RR(1))
+
+        ret = bkz_runtime_delta(delta_0, m, log(repeat, 2))
+
+        if use_lll:
+            if "lp" in ret:
+                keys = ("bkz2", "sieve", "lp")
+            else:
+                keys = ("bkz2", "sieve")
+            ret_lll = bkz_runtime_delta(delta_0, m)
+            for key in keys:
+                # CN11: LLL: n^3 log^2 B
+                ret_lll[key] += (n**3 * log(q, 2)**2) * repeat
+            ret = ret_lll
+
+        ret[u"oracle"] = m * repeat
+        ret[u"repeat"] = repeat
+        ret[u"dim"] = m
+        ret[u"c"] = c
+        ret = cost_reorder(ret, [optimisation_target, u"oracle"])
+
+        if get_verbose() >= 2:
+            print cost_str(ret)
+
+        if best is None:
+            best = ret
+
+        if ret[optimisation_target] > best[optimisation_target]:
+            break
+
+        best = ret
+        delta_0 = delta_0 + RR(0.00005)
+
+    return best
+
+
+def applebaum_transform(n, alpha, q, m, secret_bounds, h=None):
+    """
+    Swap part of the error vector with the secret as suggested in [EPRINT:GenHalSma12]_
+
+    ..  [EPRINT:GenHalSma12] Gentry, C., Halevi, S., & Smart, N.  P.  (2012).  Homomorphic
+        evaluation of the AES circuit.
+
+    :param n:                    dimension
+    :param alpha:                noise parameter
+    :param q:                    modulus q
+    :param m:                    number of samples in lattice.
+    :param secret_bounds:        lower and upper bound on the secret
+    :param h:                    number of non-zero components of the secret
+    :param success_probability:  target success probability
+    """
+    # we update alpha to reflect that we're replacing part of the error by the secret
+    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
+    e_var = stddevf(alpha*q)**2
+
+    stddev_ = ((n*s_var + (m-n)*e_var)/m).sqrt()
+    alpha_ = alphaf(stddev_, q, sigma_is_stddev=True)
+    alpha = alpha_
+    return n, alpha, q
+
+
+def applebaum(f, n, alpha, q, m, secret_bounds, h=None,
+              success_probability=0.99,
+              optimisation_target=u"bkz2", **kwds):
+    """Run ``f`` after transforming LWE instance using ``applebaum_transform``.
+
+    :param f:                    LWE solving cost function
+    :param n:                    dimension
+    :param alpha:                noise parameter
+    :param q:                    modulus q
+    :param m:                    number of samples in lattice.
+    :param secret_bounds:        lower and upper bound on the secret
+    :param h:                    number of non-zero components of the secret
+    :param success_probability:  target success probability
+    :param optimisation_target:  use this field to optimise
+
+    """
+    n, alpha, q = applebaum_transform(n, alpha, q, m, secret_bounds, h)
+    return f(n, alpha, q, success_probability=success_probability, optimisation_target=optimisation_target)
+
+sis_applebaum = partial(applebaum, sis)
+decode_applebaum =  partial(applebaum, decode)
+
+
+# BKW for Small Secrets
 
 
 def bkw_small_secret_variances(q, a, b, kappa, o, RR=None):
@@ -1846,9 +2087,8 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
     return best
 
 
-#############################
-# 6.4 Arora-GB Small Secret #
-#############################
+
+# Arora-GB for Small Secrets
 
 def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     """FIXME! briefly describe function
@@ -1867,10 +2107,10 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
     return arora_gb(n, alpha, q, d2=b-a+1, **kwds)
 
-###########
-# Overall #
-###########
 
+
+
+# Toplevel function
 
 def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None):
     """
@@ -1907,7 +2147,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
     else:
         algorithms = OrderedDict([("mitm", mitm),
                                   ("bkw", bkw_coded),
-                                  ("sis", sis_small_secret_mod_switch_and_guess),
+                                  ("sis", partial(drop_and_solve, sis_small_secret_mod_switch)),
                                   ("dec", decode_small_secret_mod_switch_and_guess),
                                   ("kannan", kannan_small_secret_mod_switch_and_guess),
                                   ("baigal", bai_gal_small_secret),
@@ -1928,7 +2168,7 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
     for alg in algorithms:
         if alg not in skip:
             algf = algorithms[alg]
-            if alg in ("dec", "sis", "kannan"):
+            if alg in ("dec", "sis", "kannan", "baigal"):
                 algf = sieve_or_enum(algf)
             try:
                 if small:
@@ -1945,6 +2185,8 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
 
     return results
 
+
+# Plots
 
 def plot_costs(LWE, N, skip=None, filename=None, small=False, secret_bounds=None):
     plots = {}
@@ -2021,9 +2263,9 @@ def plot_fhe_costs(L, N, skip=None, filename=None, small=False, secret_bounds=No
         filename="FHE-%d%s-%d-%d.pdf"%(L, small_str, N[0], N[-1])
     plt.savefig(filename, dpi=128)
 
-################
-# LaTeX tables #
-################
+
+
+# LaTeX tables
 
 dfs = "%4.0f"
 
