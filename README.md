@@ -34,14 +34,21 @@ For small secrets, the following variants are covered:
 - modulus switching in combination with any of the algorithms mentioned above
 - small-secret embedding [ACISP:BaiGal14]
 - small-secret BKW [PKC:AFFP14]
+- small, sparse secret dual lattice attacks [EPRINT:Albrecht17]
 
 Above, we use [cryptobib](http://cryptobib.di.ens.fr)-style bibtex keys as references.
 
-## Contributions #
+## Evolution ##
+
+This code is evolving, new results are added and bugs are fixed. Hence, estimations from earlier versions might not match current estimations. This is annoying but unavoidable at present. We recommend to also state the commit that was used when referencing this project.
+
+We also encourage authors to let us know if their paper uses this code. In particular, we thrive to tag commits with those cryptobib ePrint references that use it. For example, [this commit](https://bitbucket.org/malb/lwe-estimator/src/6295aa59048daa5d9598378386cb61887a1fe949/?at=EPRINT_Albrecht17) corresponds to this [ePrint entry](https://ia.cr/2017/047).
+
+## Contributions ##
 
 Our intend is for this estimator to be maintained by the research community. For example, we encourage algorithm designers to add their own algorithms to this estimator and we are happy to help with that process.
 
-More generally, all contributions such as bugfixes, documentation and tests are very welcome. Please go ahead and submit your pull requests. Also, don’t forget to add yourself to the list of contributors below in your pull requests.
+More generally, all contributions such as bugfixes, documentation and tests are welcome. Please go ahead and submit your pull requests. Also, don’t forget to add yourself to the list of contributors below in your pull requests.
 
 At present, this estimator is maintained by Martin Albrecht. Contributors are:
 
