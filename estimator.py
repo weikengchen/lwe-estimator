@@ -667,7 +667,9 @@ def bkz_runtime_k_fplll(k, n):
 
 def bkz_runtime_k_quantum_sieve(k, n):
     """
-    Runtime estimation for quantum sieving
+    Runtime estimation for quantum sieving, following [LMP14]
+	Thijs Laarhoven, Michele Mosca, and Joop van de Pol: Finding shortest lattice vectors faster using quantum search
+	https://eprint.iacr.org/2014/907.pdf
     """
     return RR((0.265*k + log(bkz_svp_repeat(n, k), 2)))
 
