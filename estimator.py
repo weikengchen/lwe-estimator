@@ -608,6 +608,17 @@ def bkz_runtime_k_sieve_bdgl16(k, n):
     return RR(0.292*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
 
 
+def bkz_runtime_k_quantum_sieve(k, n):
+    """
+    Runtime estimation for quantum sieving.
+
+    ..  [LaaMosPol14] Thijs Laarhoven, Michele Mosca, & Joop van de Pol.  Finding shortest lattice
+        vectors faster using quantum search.  Cryptology ePrint Archive, Report 2014/907, 2014.
+        https://eprint.iacr.org/2014/907.
+    """
+    return RR((0.265*k + log(bkz_svp_repeat(n, k), 2)))
+
+
 bkz_runtime_k_sieve_asymptotic  = bkz_runtime_k_sieve_bdgl16
 bkz_runtime_k_sieve_small       = bkz_runtime_k_sieve_laarhoven14
 
@@ -665,13 +676,6 @@ def bkz_runtime_k_fplll(k, n):
     repeat = log(bkz_svp_repeat(n, k), 2)
     return RR(0.013487467331762426*k**2 - 0.28245244492771304*k + 21.017892848466957 + repeat)
 
-def bkz_runtime_k_quantum_sieve(k, n):
-    """
-    Runtime estimation for quantum sieving, following [LMP14]
-	Thijs Laarhoven, Michele Mosca, and Joop van de Pol: Finding shortest lattice vectors faster using quantum search
-	https://eprint.iacr.org/2014/907.pdf
-    """
-    return RR((0.265*k + log(bkz_svp_repeat(n, k), 2)))
 
 def bkz_runtime_delta(delta, n, log_repeat=0):
     """
