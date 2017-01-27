@@ -211,6 +211,7 @@ def cost_repeat(d, times, repeat=None):
         u"enum": True,
         u"enumop": True,
         u"log(eps)": False,
+        u"quantum_sieve": True,
 
         u"mem": False,
         u"delta_0": False,
@@ -664,6 +665,13 @@ def bkz_runtime_k_fplll(k, n):
     repeat = log(bkz_svp_repeat(n, k), 2)
     return RR(0.013487467331762426*k**2 - 0.28245244492771304*k + 21.017892848466957 + repeat)
 
+def bkz_runtime_k_quantum_sieve(k, n):
+    """
+    Runtime estimation for quantum sieving, following [LMP14]
+	Thijs Laarhoven, Michele Mosca, and Joop van de Pol: Finding shortest lattice vectors faster using quantum search
+	https://eprint.iacr.org/2014/907.pdf
+    """
+    return RR((0.265*k + log(bkz_svp_repeat(n, k), 2)))
 
 def bkz_runtime_delta(delta, n, log_repeat=0):
     """
@@ -678,6 +686,7 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     t_sieve = RR(bkz_runtime_k_sieve(k, n) + log_repeat)
     t_bkz2  = RR(bkz_runtime_k_bkz2(k, n)  + log_repeat)
     t_fplll = RR(bkz_runtime_k_fplll(k, n) + log_repeat)
+    t_quantum_sieve = RR(bkz_runtime_k_quantum_sieve(k, n) + log_repeat)
 
     r = OrderedDict()
     r[u"delta_0"] = delta
@@ -688,6 +697,7 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     if enable_fplll_estimates:
         r[u"fplll"] = RR(2)**t_fplll
     r[u"sieve"] = RR(2)**t_sieve
+    r[u"quantum_sieve"] = RR(2)**t_quantum_sieve
     return r
 
 
