@@ -590,7 +590,7 @@ def bkz_runtime_k_sieve_bdgl16_small(k, n):
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 10–24).
 
     """
-    return RR(0.39*k + 22.4 + log(bkz_svp_repeat(n, k), 2))
+    return RR(0.39*k + 16.4 + log(bkz_svp_repeat(n, k), 2))
 
 
 def bkz_runtime_k_sieve_bdgl16_asymptotic(k, n):
@@ -603,8 +603,8 @@ def bkz_runtime_k_sieve_bdgl16_asymptotic(k, n):
     ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 10–24).
     """
-    # we simply pick the same additive constant 22.4 as for the experimental result in [BDGL16]
-    return RR(0.292*k + 22.4 + log(bkz_svp_repeat(n, k), 2))
+    # we simply pick the same additive constant 16.4 as for the experimental result in [BDGL16]
+    return RR(0.292*k + 16.4 + log(bkz_svp_repeat(n, k), 2))
 
 
 def bkz_runtime_k_quantum_sieve(k, n):
