@@ -577,24 +577,23 @@ def bkz_runtime_delta_LP(delta, n):
     return RR(1.8/log(delta, 2) - 110 + log(2.3*10**9, 2))
 
 
-def bkz_runtime_k_sieve_laarhoven14(k, n):
+def bkz_runtime_k_sieve_bdgl16_small(k, n):
     u"""
     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
 
-    For small `k` we use estimates based on experiments in [Laarhoven14]_
+    For small `k` we use estimates based on experiments in [BDGL16]
 
     :param k: block size
     :param n: lattice dimension
 
-    ..  [Laarhoven14] Thijs Laarhoven.  Sieving for shortest vectors in lattices using angular
-        locality-sensitive hashing.  Cryptology ePrint Archive, Report 2014/744, 2014.
-        http://eprint.iacr.org/2014/744.
+    ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
+        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 10–24).
 
     """
-    return RR(0.45*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
+    return RR(0.39*k + 22.4 + log(bkz_svp_repeat(n, k), 2))
 
 
-def bkz_runtime_k_sieve_bdgl16(k, n):
+def bkz_runtime_k_sieve_bdgl16_asymptotic(k, n):
     u"""
     Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
 
@@ -604,8 +603,8 @@ def bkz_runtime_k_sieve_bdgl16(k, n):
     ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 10–24).
     """
-    # we simply pick the same additive constant 12.31 as in [Laarhoven14]
-    return RR(0.292*k + 12.8 + log(bkz_svp_repeat(n, k), 2))
+    # we simply pick the same additive constant 22.4 as for the experimental result in [BDGL16]
+    return RR(0.292*k + 22.4 + log(bkz_svp_repeat(n, k), 2))
 
 
 def bkz_runtime_k_quantum_sieve(k, n):
@@ -619,8 +618,8 @@ def bkz_runtime_k_quantum_sieve(k, n):
     return RR((0.265*k + log(bkz_svp_repeat(n, k), 2)))
 
 
-bkz_runtime_k_sieve_asymptotic  = bkz_runtime_k_sieve_bdgl16
-bkz_runtime_k_sieve_small       = bkz_runtime_k_sieve_laarhoven14
+bkz_runtime_k_sieve_asymptotic  = bkz_runtime_k_sieve_bdgl16_asymptotic
+bkz_runtime_k_sieve_small       = bkz_runtime_k_sieve_bdgl16_small
 
 def bkz_runtime_k_sieve(k, n):
     u"""
