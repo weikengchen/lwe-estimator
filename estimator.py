@@ -590,7 +590,7 @@ def bkz_runtime_k_sieve_bdgl16_small(k, n):
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 10–24).
 
     """
-    return RR(0.39*k + 16.4 + log(bkz_svp_repeat(n, k), 2))
+    return RR(0.387*k + 16.4 + log(bkz_svp_repeat(n, k), 2))
 
 
 def bkz_runtime_k_sieve_bdgl16_asymptotic(k, n):
