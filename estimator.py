@@ -615,7 +615,7 @@ def bkz_runtime_k_quantum_sieve(k, n):
         vectors faster using quantum search.  Cryptology ePrint Archive, Report 2014/907, 2014.
         https://eprint.iacr.org/2014/907.
     """
-    return RR((0.265*k + log(bkz_svp_repeat(n, k), 2)))
+    return RR((0.265*k + 16.4 + log(bkz_svp_repeat(n, k), 2)))
 
 
 bkz_runtime_k_sieve_asymptotic  = bkz_runtime_k_sieve_bdgl16_asymptotic
