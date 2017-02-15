@@ -1315,6 +1315,10 @@ def _decode(n, alpha, q, success_probability=0.99,
     depth = 6
     while True:
         delta_0 = 1 + delta_0m1
+
+        if delta_0 >= 1.0219: # LLL is enough
+            break
+
         m = lattice_reduction_opt_m(n, q, delta_0)
         bkz = bkz_runtime_delta(delta_0, m)
         bkz["dim"] = m
