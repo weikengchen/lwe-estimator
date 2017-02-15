@@ -1558,20 +1558,6 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
 
 # Modulus Switching
 
-def sis_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
-    """Solve LWE by reduction to SIS for small secret instances.
-
-    :param n:                    dimension > 0
-    :param alpha:                fraction of the noise α < 1.0
-    :param q:                    modulus > 0
-    :param secret_bounds:
-    :param h:                    number of non-zero components in the secret
-
-    """
-    s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
-    n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
-    return small_secret_guess(sis, n, alpha, q, secret_bounds, h=h, **kwds)
-
 
 def decode_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
     """Solve LWE by solving BDD for small secret instances.
