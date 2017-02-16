@@ -49,7 +49,7 @@ def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
     D = {}
     D[stop] = f(*arg, **kwds)
     best = D[stop]
-    b = ceil((stop+2)/2)
+    b = ceil((start+stop)/2)
     direction = 0
     while True:
         if b == start:
