@@ -533,6 +533,14 @@ def bkz_svp_repeat(n, k):
     return 8*n
 
 
+def delta_0f(k):
+    """
+    Compute `δ_0` from block size `k`.
+    """
+    k = ZZ(k)
+    return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
+
+
 def k_chen(delta):
     """
     Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
@@ -552,18 +560,13 @@ def k_chen(delta):
                     complètement homomorphe. PhD thesis, Paris 7, 2013.
     """
     k = ZZ(40)
-    RR = delta.parent()
-    pi_r = RR(pi)
-    e_r = RR(e)
 
-    f = lambda k: (k/(2*pi_r*e_r) * (pi_r*k)**(1/k))**(1/(2*(k-1)))
-
-    while f(2*k) > delta:
+    while delta_0f(2*k) > delta:
         k *= 2
-    while f(k+10) > delta:
+    while delta_0f(k+10) > delta:
         k += 10
     while True:
-        if f(k) < delta:
+        if delta_0f(k) < delta:
             break
         k += 1
 
