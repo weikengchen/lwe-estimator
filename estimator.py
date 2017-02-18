@@ -1371,6 +1371,8 @@ def _decode(n, alpha, q, success_probability=0.99,
         if depth == 0:
             break
 
+    if get_verbose() >= 2:
+        print cost_str(current)
     return current
 
 decode = partial(rinse_and_repeat, _decode, decision=False)
