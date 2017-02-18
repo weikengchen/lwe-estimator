@@ -1255,22 +1255,48 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
     probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
     success_probability = prod(probs_bd)
 
+    if RR(success_probability).is_NaN():
+        # try in higher precision
+        step = RR(step)
+        d = [RR(1)]*m
+        bd = [d[i] * B[i] for i in xrange(m)]
+        scaling_factor = RR(sqrt(pi) / (2*alpha*q))
+        probs_bd = [RR((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
+        success_probability = prod(probs_bd)
+
+        if success_probability.is_NaN():
+            return OrderedDict([(u"delta_0", delta_0),
+                                ("enum", Infinity),
+                                ("enumop", Infinity)])
+
+
     bd = map(list, zip(bd, range(len(bd))))
     bd = sorted(bd)
 
     import bisect
-    while success_probability < eps:
+
+    last_success_probability = success_probability
+
+    while success_probability < RDF(eps):
         v, i = bd.pop(0)
         d[i] += step
         v += B[i]*step
+        last_success_probability = success_probability
         success_probability /= probs_bd[i]
         probs_bd[i] = (v * scaling_factor).erf()
         success_probability *= probs_bd[i]
         bisect.insort_left(bd, [v, i])
 
+        if success_probability == 0 or last_success_probability >= success_probability:
+            return OrderedDict([(u"delta_0", delta_0),
+                                ("enum", Infinity),
+                                ("enumop", Infinity)])
+
+
     r = OrderedDict([(u"delta_0", delta_0),
-                     ("enum", RR(log(prod(d), 2))),
-                     ("enumop", RR(log(prod(d), 2)) - RR(enums_per_clock))])
+                     ("enum", RR(prod(d))),
+                     ("enumop", RR(prod(d)) / RR(2)**enums_per_clock)])
+
     return r
 
 
@@ -1301,9 +1327,6 @@ def _decode(n, alpha, q, success_probability=0.99,
     direction = -1
 
     def combine(enum, bkz):
-        enum["enum"]   = ZZ(2)**enum["enum"]
-        enum["enumop"] = ZZ(2)**enum["enumop"]
-
         current = OrderedDict()
         current["rop"]  = enum["enumop"] + bkz[optimisation_target]
 
