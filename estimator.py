@@ -215,6 +215,7 @@ def cost_repeat(d, times, repeat=None):
 
         u"mem": False,
         u"delta_0": False,
+        u"beta": False,
         u"k": False,
         u"ε": False,
         u"D_reg": False,
@@ -697,7 +698,7 @@ def bkz_runtime_delta(delta, n, log_repeat=0):
     r = OrderedDict()
     r[u"delta_0"] = delta
     r[u"bkz2"] = RR(2)**t_bkz2
-    r[u"k"] = k
+    r[u"beta"] = k
     if enable_LP_estimates:
         r[u"lp"] = RR(2)**t_lp
     if enable_fplll_estimates:
@@ -1371,8 +1372,6 @@ def _decode(n, alpha, q, success_probability=0.99,
         if depth == 0:
             break
 
-    if get_verbose() >= 2:
-        print cost_str(current)
     return current
 
 decode = partial(rinse_and_repeat, _decode, decision=False)
