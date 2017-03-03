@@ -1833,7 +1833,11 @@ def sis_small_secret_mod_switch(n, alpha, q, secret_bounds, h=None,
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
 
-    assert(secret_bounds[0] >= -1 and secret_bounds[1] <= 1)
+    assert(secret_bounds[0] == -1 and secret_bounds[1] == 1)
+
+    if h is None:
+        B = ZZ(secret_bounds[1] - secret_bounds[0] + 1)
+        h = ceil((B-1)/B * n)
 
     # stddev of the error
     e = stddevf(alpha*q).n()
