@@ -58,6 +58,15 @@ At present, this estimator is maintained by Martin Albrecht. Contributors are:
 - Rachel Player
 - Sam Scott
 
+Please follow [PEP8](https://www.python.org/dev/peps/pep-0008/) in your submissions. You can use [flake8](http://flake8.pycqa.org/en/latest/) to check for compliance. We use the following flake8 configuration (to allow longer line numbers and more complex functions):
+
+```
+[flake8]
+max-line-length = 120
+max-complexity = 16
+ignore = E22,E241
+```
+
 ## Bugs ##
 
 If you run into a bug, please open an [issue on bitbucket](https://bitbucket.org/malb/lwe-estimator/issues?status=new&status=open). Also, please check there first if the issue has already been reported.
