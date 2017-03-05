@@ -1686,15 +1686,19 @@ def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=t
                          optimisation_target="bkz2",
                          h=None):
     """
-    Bai's and Galbraith's uSVP attack + small secret guessing.
+    Bai's and Galbraith's uSVP attack + small secret guessing [ACISP:BaiGal14]_
 
-    :param n:                    dimension > 0
-    :param alpha:                fraction of the noise α < 1.0
-    :param q:                    modulus > 0
-    :param tau:                  0 < τ ≤ 1.0
-    :param success_probability:  probability of success < 1.0
-    :param optimisation_target:  field to use to decide if parameters are better
-    :param h:                    number of non-zero components in the secret
+    :param n: dimension > 0
+    :param alpha: fraction of the noise α < 1.0
+    :param q: modulus > 0
+    :param tau: 0 < τ ≤ 1.0
+    :param success_probability: probability of success < 1.0
+    :param optimisation_target: field to use to decide if parameters are better
+    :param h: number of non-zero components in the secret
+
+    .. [ACISP:BaiGal14] Bai, S., & Galbraith, S. D. (2014). Lattice decoding attacks on binary
+       LWE. In W. Susilo, & Y. Mu, ACISP 14 (pp.  322–337).
+
     """
     return small_secret_guess(_bai_gal_small_secret, n, alpha, q, secret_bounds,
                               tau=tau, tau_prob=tau_prob,
