@@ -1,4 +1,4 @@
-# Estimator for the Bit Security of LWE Instances
+﻿# Estimator for the Bit Security of LWE Instances
 
 This [Sage](http://sagemath.org) module provides functions for estimating the bit security of [Learning with Errors](https://en.wikipedia.org/wiki/Learning_with_errors) instances.
 
@@ -56,6 +56,7 @@ At present, this estimator is maintained by Martin Albrecht. Contributors are:
 - Florian Göpfert
 - Cedric Lefebvre
 - Rachel Player
+- Markus Schmidt
 - Sam Scott
 
 Please follow [PEP8](https://www.python.org/dev/peps/pep-0008/) in your submissions. You can use [flake8](http://flake8.pycqa.org/en/latest/) to check for compliance. We use the following flake8 configuration (to allow longer line numbers and more complex functions):

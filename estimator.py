@@ -9,6 +9,8 @@ Complexity estimates for solving LWE.
 from functools import partial
 from collections import OrderedDict
 
+from scipy.optimize import newton
+
 from sage.modules.all import vector
 from sage.calculus.var import var
 from sage.functions.log import exp, log
@@ -18,14 +20,16 @@ from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
 from sage.misc.all import set_verbose, get_verbose, prod
 from sage.arith.srange import srange
-from sage.numerical.optimize import find_root
+from sage.numerical.optimize import find_root, find_local_maximum
 from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing, RDF
 from sage.symbolic.all import pi, e
+from sage.rings.infinity import PlusInfinity
 
 from sage.crypto.lwe import LWE, Regev, LindnerPeikert
 
 # config
 
+oo = PlusInfinity()
 tau_default = 0.3  # τ used in uSVP
 tau_prob_default = 0.1  # probability of success for given τ
 cfft = 1  # convolutions mod q
@@ -33,9 +37,26 @@ enable_LP_estimates =  True  # enable LP estimates
 enable_fplll_estimates = False  # enable fplll estimates
 
 
+# Utility Classes #
+
+class OutOfBoundsError(ValueError):
+    """
+    Used to indicate a wrong value, for example delta_0 < 1.
+    """
+    pass
+
+
+class InsufficientSamplesError(ValueError):
+    """
+    Used to indicate the number of samples given is too small, especially
+    useful for #samples <= 0.
+    """
+    pass
+
+
 # Utility Functions #
 
-def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
+def binary_search_minimum(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
     """
     Return minimum of `f` if `f` is convex.
 
@@ -43,6 +64,20 @@ def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
     :param stop:  stop of range to search (exclusive)
     :param param: the parameter to modify when calling `f`
     :param extract: comparison is performed on `extract(f(param=?, *args, **kwds))`
+
+    """
+    return binary_search(f, start, stop, param, better=lambda x,best: extract(x)<=extract(best), *arg, **kwds)
+
+
+def binary_search(f, start, stop, param, better=lambda x,best: x<=best, *arg, **kwds):
+    """
+    Searches for the `best` value in the interval [start,stop]
+    depending on the given predicate `better`.
+
+    :param start: start of range to search
+    :param stop:  stop of range to search (exclusive)
+    :param param: the parameter to modify when calling `f`
+    :param better: comparison is performed by evaluating `better(current, best)`
 
     """
     kwds[param] = stop
@@ -58,7 +93,7 @@ def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
         if b not in D:
             kwds[param] = b
             D[b] = f(*arg, **kwds)
-        if extract(D[b]) > extract(best):
+        if not better(D[b], best):
             if direction == 0:
                 start = b
                 b = ceil((stop+b)/2)
@@ -70,7 +105,7 @@ def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
             if b-1 not in D:
                 kwds[param] = b-1
                 D[b-1] = f(*arg, **kwds)
-            if extract(D[b-1]) <= extract(best):
+            if better(D[b-1], best):
                 stop = b
                 b = floor((b+start)/2)
                 direction = 0
@@ -78,7 +113,7 @@ def binary_search(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
                 if b+1 not in D:
                     kwds[param] = b+1
                     D[b+1] = f(*arg, **kwds)
-                if extract(D[b+1]) > extract(best):
+                if not better(D[b+1], best):
                     break
                 else:
                     start = b
@@ -117,7 +152,7 @@ def cost_str(d, keyword_width=None, newline=None, round_bound=2048):
         if keyword_width:
             fmt = u"%%%ds" % keyword_width
             k = fmt % k
-        if ZZ(1)/round_bound < v < round_bound or v == 0:
+        if ZZ(1)/round_bound < v < round_bound or v == 0 or ZZ(-1)/round_bound > v > -round_bound:
             try:
                 s.append(u"%s: %9d" % (k, ZZ(v)))
             except TypeError:
@@ -126,7 +161,7 @@ def cost_str(d, keyword_width=None, newline=None, round_bound=2048):
                 else:
                     s.append(u"%s: %9.4f" % (k, v))
         else:
-            t = u"≈2^%.1f" % log(v, 2).n()
+            t = u"≈%s2^%.1f" % ("-" if v < 0 else "", log(abs(v), 2).n())
             s.append(u"%s: %9s" % (k, t))
     if not newline:
         return u",  ".join(s)
@@ -351,6 +386,7 @@ def amplify(target_success_probability, success_probability, majority=False):
 def rinse_and_repeat(f, n, alpha, q, success_probability=0.99,
                      optimisation_target=u"bkz2",
                      decision=True,
+                     samples=None,
                      *args, **kwds):
     """Find best trade-off between success probability and running time.
 
@@ -361,23 +397,34 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99,
     :param success_probability:  target success probability
     :param optimisation_target:  what value out to be minimized
     :param decision:             ``True`` if ``f`` solves Decision-LWE, ``False`` for Search-LWE.
+    :param samples:              the number of available samples
 
     """
-    best = None
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
 
     best = None
     step_size = 32
-    i = 0
+    i = floor(-log(success_probability, 2))
+    has_solution = False
     while True:
         prob = min(2**-i, success_probability)
-        current = f(n, alpha, q,
-                    optimisation_target=optimisation_target,
-                    success_probability=prob,
-                    *args, **kwds)
-        repeat = amplify(success_probability, prob, majority=decision)
-        current = cost_repeat(current, repeat)
-        current["log(eps)"] = i
+        try:
+            current = f(n, alpha, q,
+                        optimisation_target=optimisation_target,
+                        success_probability=prob,
+                        samples=samples,
+                        *args, **kwds)
+            repeat = amplify(success_probability, prob, majority=decision)
+            do_repeat = None if samples is None else {"oracle": False}
+            current = cost_repeat(current, repeat, do_repeat)
+            has_solution = True
+        except (OutOfBoundsError, InsufficientSamplesError) as err:
+            key = list(best)[0] if best is not None else optimisation_target
+            current = OrderedDict()
+            current[key] = oo
+            if get_verbose() >= 2:
+                print err
+        current["log(eps)"] = -i
 
         if get_verbose() >= 2:
             print cost_str(current)
@@ -388,12 +435,12 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99,
             i += step_size
             continue
 
-        if current[key] < best[key]:
+        if key not in best or current[key] < best[key]:
             best = current
             i += step_size
         else:
             # we go back
-            i = best["log(eps)"] - step_size
+            i = -best["log(eps)"] - step_size
             i += step_size/2
             if i <= 0:
                 i = step_size/2
@@ -402,6 +449,10 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99,
 
         if step_size == 0:
             break
+
+    if not has_solution:
+        raise RuntimeError("No solution found for chosen parameters.")
+
     return best
 
 
@@ -455,9 +506,25 @@ def unpack_lwe(lwe):
     return n, alpha, q
 
 
-def preprocess_params(n, alpha, q, success_probability=None, prec=None):
+def unpack_lwe_dict(lwe):
+    """
+    Return dictionary consisting of n, α, q and samples given an LWE instance object.
+
+    :param lwe: LWE object
+    :returns: "n": n, "alpha": α, "q": q, "samples": samples
+    :rtype: dictionary
+
+    """
+    n, alpha, q = unpack_lwe(lwe)
+    samples = lwe.m
+    return {"n": n, "alpha": alpha, "q": q, "samples": samples}
+
+
+def preprocess_params(n, alpha, q, success_probability=None, prec=None, samples=None):
     """
     Check if parameters n, α, q are sound and return correct types.
+    Also, if given, the soundness of the success probability and the
+    number of samples is ensured.
     """
     if n < 1:
         raise ValueError("LWE dimension must be greater than 0.")
@@ -465,10 +532,14 @@ def preprocess_params(n, alpha, q, success_probability=None, prec=None):
         raise ValueError("Fraction of noise must be > 0.")
     if q < 1:
         raise ValueError("LWE modulus must be greater than 0.")
+    if samples is not None and samples < 1:
+        raise ValueError("Given number of samples must be greater than 0.")
     if prec is None:
         prec = 128
     RR = RealField(prec)
     n, alpha, q =  ZZ(n), RR(alpha), ZZ(q),
+
+    samples = ZZ(samples)
 
     if success_probability is not None:
         if success_probability >= 1 or success_probability <= 0:
@@ -534,15 +605,88 @@ def bkz_svp_repeat(n, k):
     return 8*n
 
 
+def _delta_0f(k):
+    """
+    Compute `δ_0` from block size `k` without considering `k` in ZZ.
+    """
+    return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
+
+
 def delta_0f(k):
     """
     Compute `δ_0` from block size `k`.
     """
     k = ZZ(k)
-    return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
+    return _delta_0f(k)
+
+
+def k_chen_secant(delta):
+    """
+    Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
+
+    :param delta: root-hermite factor
+
+    EXAMPLE::
+
+        sage: 50 == k_chen(1.0121)
+        True
+        sage: 100 == k_chen(1.0093)
+        True
+        sage: k_chen(1.0024) # Chen reports 800
+        808
+
+    .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité concrète du chiffrement
+                    complètement homomorphe. PhD thesis, Paris 7, 2013.
+    """
+    # newton() will produce a "warning", if two subsequent function values are
+    # indistinguishable (i.e. equal in terms of machine precision). In this case
+    # newton() will return the value k in the middle between the two values
+    # k1,k2 for which the function values were indistinguishable.
+    # Since f approaches zero for k->+Infinity, this may be the case for very
+    # large inputs, like k=1e16.
+    # For now, these warnings just get printed and the value k is used anyways.
+    # This seems reasonable, since for such large inputs the exact value of k
+    # doesn't make such a big difference.
+    try:
+        k = newton(lambda k: RR(_delta_0f(k) - delta), 100, fprime=None, args=(), tol=1.48e-08, maxiter=500)
+        k = ceil(k)
+        if k < 40:
+            # newton may output k < 40. The old k_chen method wouldn't do this. For
+            # consistency, call the old k_chen method, i.e. consider this try as "failed".
+            raise RuntimeError("k < 40")
+        return k
+    except (RuntimeError, TypeError):
+        # if something fails, use old k_chen method
+        if get_verbose() >= 2:
+            print "secant method failed, using k_chen_old(delta) instead!"
+        k = k_chen_old(delta)
+        return k
+
+
+def k_chen_find_root(delta):
+    # handle k < 40 separately
+    k = ZZ(40)
+    if delta_0f(k) < delta:
+        return k
+
+    try:
+        k = find_root(lambda k: RR(_delta_0f(k) - delta), 40, 2**16, maxiter=500)
+        k = ceil(k)
+    except RuntimeError:
+        # finding root failed; reasons:
+        # 1. maxiter not sufficient
+        # 2. no root in given interval
+        k = k_chen_old(delta)
+    return k
 
 
 def k_chen(delta):
+    # TODO: decide for one strategy (secant, find_root, old) and it's handling of errors.
+    k = k_chen_find_root(delta)
+    return k
+
+
+def k_chen_old(delta):
     """
     Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
 
@@ -741,7 +885,7 @@ def sieve_or_enum(func):
     return wrapper
 
 
-def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
+def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None, samples=None):
     """
     Return meet-in-the-middle estimates.
 
@@ -750,6 +894,7 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
     :param q: modulus
     :param success_probability: desired success probability
     :param secret_bounds: tuple with lower and upper bound on the secret
+    :param samples: the number of available samples
     :returns: a cost estimate
     :rtype: OrderedDict
 
@@ -758,10 +903,20 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
     ret = OrderedDict()
     RR = alpha.parent()
 
+    m = None
+    if samples is not None:
+        if not samples > n:
+            raise InsufficientSamplesError("Number of samples: %d" % samples)
+        m = samples - n
+
     t = ceil(2*sqrt(log(n)))
     if secret_bounds is None:
         # assert((2*t*alpha)**m * (alpha*q)**(n/2) <= 2*n)
-        m = ceil((log(2*n) - log(alpha*q)*(n/2))/log(2*t*alpha))
+        m_required = ceil((log(2*n) - log(alpha*q)*(n/2))/log(2*t*alpha))
+        if m is not None and m < m_required:
+            raise InsufficientSamplesError("Requirement not fulfilled. Number of samples: %d - %d < %d" % (
+                samples, n, m_required))
+        m = m_required
         if m*(2*alpha) > 1- 1/(2*n):
             raise ValueError("Cannot find m to satisfy constraints (noise too big).")
         ret["rop"] = RR((2*alpha*q+1)**(n/2) * 2*n * m)
@@ -769,7 +924,11 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
     else:
         a, b = secret_bounds
         # assert((2*t*alpha)**m * (b-a+1)**(n/2) <= 2*n)
-        m = ceil(log(2*n/((b-a+1)**(n/2)))/log(2*t*alpha))
+        m_required = ceil(log(2*n/((b-a+1)**(n/2)))/log(2*t*alpha))
+        if m is not None and m < m_required:
+            raise InsufficientSamplesError("Requirement not fulfilled. Number of samples: %d - %d < %d" % (
+                samples, n, m_required))
+        m = m_required
         if (m*(2*alpha) > 1- 1/(2*n)):
             raise ValueError("Cannot find m to satisfy constraints (noise too big).")
         ret["rop"] = RR((b-a+1)**(n/2) * 2*n * m)
@@ -783,7 +942,7 @@ def mitm(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None):
 # BKW
 
 
-def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, search=False):
+def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, search=False, samples=None):
     """
     Estimate the cost of running BKW to solve LWE
 
@@ -794,17 +953,17 @@ def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=N
     :param optimisation_target:  field to use to decide if parameters are better
     :param prec:                 precision used for floating point computations
     :param search:               if `True` solve Search-LWE, otherwise solve Decision-LWE
+    :param samples:              the number of available samples
     :returns: a cost estimate
     :rtype: OrderedDict
 
     """
     if search:
-        return bkw_search(n, alpha, q, success_probability, optimisation_target, prec)
+        return bkw_search(n, alpha, q, success_probability, optimisation_target, prec, samples)
     else:
-        return bkw_decision(n, alpha, q, success_probability, optimisation_target, prec)
+        return bkw_decision(n, alpha, q, success_probability, optimisation_target, prec, samples)
 
-
-def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
+def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, samples=None):
     """
     Estimate the cost of running BKW to solve Decision-LWE following [DCC:ACFFP15]_.
 
@@ -814,6 +973,7 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
     :param success_probability:  probability of success < 1.0
     :param optimisation_target:  field to use to decide if parameters are better
     :param prec:                 precision used for floating point computations
+    :param samples:              the number of available samples
     :returns: a cost estimate
     :rtype: OrderedDict
 
@@ -824,11 +984,12 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     sigma = alpha*q
 
+    has_samples = samples is not None
+    has_enough_samples = True
+
     RR = alpha.parent()
 
-    best = None
-    t = RR(2*(log(q, 2) - log(sigma, 2))/log(n, 2))
-    while True:
+    def _run(t):
         a = RR(t*log(n, 2))  # target number of adds: a = t*log_2(n)
         b = RR(n/a)  # window width
         sigma_final = RR(n**t).sqrt() * sigma  # after n^t adds we get this σ
@@ -860,21 +1021,61 @@ def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop
         else:
             current = cost_reorder(current, (optimisation_target, u"t"))
 
+        return current
+
+    best_runtime = None
+    best_samples = None
+    best = None
+    may_terminate = False
+    t = RR(2*(log(q, 2) - log(sigma, 2))/log(n, 2))
+    while True:
+        current = _run(t)
+
         if get_verbose() >= 2:
             print cost_str(current)
 
-        if not best:
-            best = current
-        else:
-            if best[optimisation_target] > current[optimisation_target]:
-                best = current
+        # Usually, both the fewest samples required and the best runtime are
+        # provided when choosing 't' such that the two steps are balanced. But,
+        # better safe than sorry, both cases are searched for independently.
+        # So, 'best_samples' and 'best_runtime' are only used to ensure termination,
+        # such that 't' is increased until both the best runtime and the fewest
+        # samples were seen. The result to be returned is hold in 'best'.
+
+        if has_samples:
+            has_enough_samples = current["oracle"] < samples
+            if not best_samples:
+                best_samples = current
             else:
-                break
+                if best_samples["oracle"] > current["oracle"]:
+                    best_samples = current
+                    if has_enough_samples and (
+                            best is None or best[optimisation_target] > current[optimisation_target]):
+                        best = current
+                else:
+                    if may_terminate:
+                        break
+                    may_terminate = True
+
+        if not best_runtime:
+            best_runtime = current
+        else:
+            if best_runtime[optimisation_target] > current[optimisation_target]:
+                best_runtime = current
+                if has_enough_samples and (best is None or best[optimisation_target] > current[optimisation_target]):
+                    best = current
+            else:
+                if not has_samples or may_terminate:
+                    break
+                may_terminate = True
         t += 0.05
+
+    if best is None:
+        raise InsufficientSamplesError("Too few samples (%d given) to achieve a success probability of %f." % (
+            samples, success_probability))
     return best
 
 
-def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None):
+def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, samples=None):
     """
     Estimate the cost of running BKW to solve Search-LWE following [C:DucTraVau15]_.
 
@@ -884,6 +1085,7 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     :param success_probability:  probability of success < 1.0
     :param optimisation_target:  field to use to decide if parameters are better
     :param prec:                 precision used for floating point computations
+    :param samples:              the number of available samples
     :returns: a cost estimate
     :rtype: OrderedDict
 
@@ -894,6 +1096,9 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     sigma = stddevf(alpha*q)
     eps = success_probability
 
+    has_samples = samples is not None
+    has_enough_samples = True
+
     RR = alpha.parent()
 
     # "To simplify our result, we considered operations over C to have the same
@@ -902,9 +1107,7 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
     c_cost = 1
     c_mem = 1
 
-    best = None
-    t = RR(2*(log(q, 2) - log(sigma, 2))/log(n, 2))
-    while True:
+    def _run(t):
         a = RR(t*log(n, 2))  # target number of adds: a = t*log_2(n)
         b = RR(n/a)  # window width
         epp = (1- eps)/a
@@ -936,17 +1139,55 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
         else:
             current = cost_reorder(current, (optimisation_target, u"t"))
 
+        return current
+
+    best_runtime = None
+    best_samples = None
+    best = None
+    may_terminate = False
+    t = RR(2*(log(q, 2) - log(sigma, 2))/log(n, 2))
+    while True:
+        current = _run(t)
+
         if get_verbose() >= 2:
             print cost_str(current)
 
-        if not best:
-            best = current
-        else:
-            if best[optimisation_target] > current[optimisation_target]:
-                best = current
+        # Similar to BKW-Decision, both the fewest samples required and the
+        # best runtime are provided when choosing 't' such that the two steps
+        # are balanced. To be safe, every 't' is tested until the fewest number
+        # of samples required is found.
+
+        if has_samples:
+            has_enough_samples = current["oracle"] < samples
+            if not best_samples:
+                best_samples = current
             else:
-                break
+                if best_samples["oracle"] > current["oracle"]:
+                    best_samples = current
+                    if has_enough_samples and (
+                            best is None or best[optimisation_target] > current[optimisation_target]):
+                        best = current
+                else:
+                    if may_terminate:
+                        break
+                    may_terminate = True
+
+        if not best_runtime:
+            best_runtime = current
+        else:
+            if best_runtime[optimisation_target] > current[optimisation_target]:
+                best_runtime = current
+                if has_enough_samples and (best is None or best[optimisation_target] > current[optimisation_target]):
+                    best = current
+            else:
+                if not has_samples or may_terminate:
+                    break
+                may_terminate = True
         t += 0.05
+
+    if best is None:
+        raise InsufficientSamplesError("Too few samples (%d given) to achieve a success probability of %f." % (
+            samples, success_probability))
     return best
 
 
@@ -1125,7 +1366,7 @@ def _bkw_coded(n, alpha, q, t2, b, success_probability=0.99, ntest=None, secret_
 
 
 def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
-              cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2")):
+              cost_include=("bop", "oracle", "m", "mem", "rop", "b", "t1", "t2"), samples=None):
     """
     Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
     by optimising parameters.
@@ -1134,6 +1375,7 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
     :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param success_probability:  probability of success < 1.0, IGNORED
+    :param samples:              the number of available samples
     :returns: a cost estimate
     :rtype: OrderedDict
 
@@ -1150,17 +1392,23 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
     def _run(b=2):
         # the noise is 2**(t1+t2) * something so there is no need to go beyond, say, q**2
         return binary_search(_bkw_coded, 2, min(n//b, ceil(2*log(q, 2))), "t2",
-                             lambda x: x["rop"], n, alpha, q, b=b, t2=0,
+                             lambda x, best: x["rop"]<=best["rop"] and (
+                                 samples is None or best["oracle"]>samples or x["oracle"]<=samples),
+                             n, alpha, q, b=b, t2=0,
                              secret_bounds=secret_bounds, h=h,
                              success_probability=success_probability)
 
-    return binary_search(_run, 2, 3*bstart, "b", lambda x: x["rop"], b=2)
+    best = binary_search(_run, 2, 3*bstart, "b", lambda x, best: x["rop"]<=best["rop"] and (
+        samples is None or best["oracle"]>samples or x["oracle"]<=samples), b=2)
+    # binary search cannot "fail". It just outputs some X with X["oracle"]>samples.
+    if samples is not None and best["oracle"] > samples:
+        raise InsufficientSamplesError("Too few samples given (%d)." % samples)
+    return best
 
 
-
 # Dual Strategy
 
-def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", secret_bounds=None, h=None):
+def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", secret_bounds=None, h=None, samples=None):
     """Estimate cost of solving LWE by solving LWE.
 
     :param n:                    dimension > 0
@@ -1169,6 +1417,7 @@ def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", sec
     :param success_probability:  probability of success < 1.0
     :param secret_bounds:        ignored
     :param h:                    ignored
+    :param samples:              the number of available samples
     :returns: a cost estimate
     :rtype: OrderedDict
 
@@ -1181,7 +1430,20 @@ def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", sec
     # we are solving Decision-LWE
     log_delta_0 = log(f(success_probability)/alpha, 2)**2 / (4*n*log(q, 2))
     delta_0 = RR(2**log_delta_0)
-    m = lattice_reduction_opt_m(n, q, delta_0)
+    m_optimal = lattice_reduction_opt_m(n, q, delta_0)
+    if samples is None or samples > m_optimal:
+        m = m_optimal
+    else:
+        if not samples > 0:
+            raise InsufficientSamplesError("Number of samples: %d" % samples)
+        m = samples
+        log_delta_0 = log(f(success_probability)/alpha, 2)/m - RR(log(q, 2)*n)/(m**2)
+        delta_0 = RR(2**log_delta_0)
+
+    # check for valid delta
+    if delta_0 < 1:
+        raise OutOfBoundsError(u"Detected delta_0 = %f < 1. Too few samples?!" % delta_0)
+
     ret = bkz_runtime_delta(delta_0, m)
     ret[u"oracle"] = m
     ret[u"|v|"] = RR(delta_0**m * q**(n/m))
@@ -1270,6 +1532,16 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
                                 ("enum", Infinity),
                                 ("enumop", Infinity)])
 
+    # if m too small, probs_bd entries are of magnitude 1e-10 or
+    # something like that. Therefore, success_probability=prod(probs_bd)
+    # results in success_probability==0 and so, the loop never terminates.
+    # To prevent this, success_probability should be calculated when needed,
+    # i.e. at the end of each iteration and not be used to calculate things.
+    # Then, a new problem arises: for step=1 this can take very long time,
+    # starting at, for example, success_probability==1e-300.
+    # Since this is a (rare) special case, an error is thrown.
+    if not success_probability > 0:
+        raise InsufficientSamplesError("success_probability == 0! Too few samples?!")
 
     bd = map(list, zip(bd, range(len(bd))))
     bd = sorted(bd)
@@ -1303,7 +1575,7 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
 
 def _decode(n, alpha, q, success_probability=0.99,
             enums_per_clock=-15.1, optimisation_target="bkz2",
-            secret_bounds=None, h=None):
+            secret_bounds=None, h=None, samples=None):
     """
     Estimates the optimal parameters for decoding attack
 
@@ -1315,15 +1587,22 @@ def _decode(n, alpha, q, success_probability=0.99,
     :param optimisation_target:  lattice reduction estimate to use
     :param secret_bounds:        ignored
     :param h:                    ignored
+    :param samples:              the number of available samples
     :returns: a cost estimate
     :rtype: OrderedDict
     """
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    if samples is not None and not samples > 1:
+        raise InsufficientSamplesError("Number of samples: %d" % samples)
 
     RR = alpha.parent()
 
-    delta_0m1 = _sis(n, alpha, q, success_probability)[u"delta_0"] - 1
+    # Number of samples are'nt considered here, because only a "good" starting delta_0
+    # is needed and there is no "good" value for number of samples known,
+    # i.e. the given number of samples may not produce "good" results
+    delta_0m1 = _sis(n, alpha, q, success_probability=success_probability)[u"delta_0"] - 1
+
     step = RR(1.05)
     direction = -1
 
@@ -1340,13 +1619,18 @@ def _decode(n, alpha, q, success_probability=0.99,
         return current
 
     depth = 6
+    current = None
     while True:
         delta_0 = 1 + delta_0m1
 
-        if delta_0 >= 1.0219: # LLL is enough
+        if delta_0 >= 1.0219 and current is not None:  # LLL is enough
             break
 
-        m = lattice_reduction_opt_m(n, q, delta_0)
+        m_optimal = lattice_reduction_opt_m(n, q, delta_0)
+        if samples is None or samples > m_optimal:
+            m = m_optimal
+        else:
+            m = samples
         bkz = bkz_runtime_delta(delta_0, m)
         bkz["dim"] = m
 
@@ -1380,7 +1664,7 @@ decode = partial(rinse_and_repeat, _decode, decision=False)
 # uSVP
 
 def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_probability=0.99,
-           optimisation_target="bkz2"):
+           optimisation_target="bkz2", samples=None):
     """
     Estimate optimal parameters for using Kannan-embedding to solve CVP.
 
@@ -1388,16 +1672,35 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     :param alpha:                fraction of the noise α < 1.0
     :param q:                    modulus > 0
     :param success_probability:  probability of success < 1.0
+    :param samples:              the number of available samples
 
     :returns: a cost estimate
     :rtype: OrderedDict
     """
+    # TODO: Include the attack described in
+    # [RSA:BaiGal14] Shi Bai and Steven D. Galbraith. An improved compression technique
+    #                for signatures based on learning with errors. In Josh Benaloh,
+    #                editor, Topics in Cryptology – CT-RSA 2014, volume 8366 of Lecture
+    #                Notes in Computer Science, pages 28–47, San Francisco, CA, USA,
+    #                February 25–28, 2014. Springer, Heidelberg, Germany.
+    # The estimation of computational cost is the same as kannan with dimension samples=n+m.
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
     beta = 1.01
     log_delta_0 = log(tau*beta*alpha*sqrt(2*e), 2)**2/(4*n*log(q, 2))
     delta_0 = RR(2**log_delta_0)
-    m = lattice_reduction_opt_m(n, q, delta_0)
+    m_optimal = lattice_reduction_opt_m(n, q, delta_0)
+    if samples is None or samples > m_optimal:
+        m = m_optimal
+    else:
+        if not samples > 0:
+            raise InsufficientSamplesError("Number of samples: %d" % samples)
+        m = samples
+        delta_0 = RR((q**(1-n/m)*sqrt(1/(2*e)) / (tau*beta*alpha*q))**(1.0/m))
+
+    # check for valid delta
+    if delta_0 < 1:
+        raise OutOfBoundsError(u"Detected delta_0 = %f < 1. Too few samples?!" % delta_0)
 
     l2 = q**(1-n/m) * sqrt(m/(2*pi*e))
     if l2 > q:
@@ -1406,7 +1709,7 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     repeat = amplify(success_probability, tau_prob)
 
     r = bkz_runtime_delta(delta_0, m, log(repeat, 2.0))
-    r[u"oracle"] = repeat*m
+    r[u"oracle"] = repeat*m if samples is None else m
     r[u"m"] = m
     r = cost_reorder(r, [optimisation_target, "oracle"])
     if get_verbose() >= 2:
@@ -1470,7 +1773,11 @@ def gb_complexity(m, n, d, omega=2, call_magma=True, d2=None):
     return retval
 
 
-def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, guess=0, d2=None):
+def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, guess=0, d2=None, samples=None):
+
+    if samples is not None:
+        from warnings import warn
+        warn("Given number of samples is ignored for arora_gb()!")
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability,
                                                          prec=2*log(n, 2)*n)
@@ -1546,28 +1853,42 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     return best
 
 
-
+
 # Exhaustive Search for Small Secrets
 
-def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
+def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, samples=None, **kwds):
     size = secret_bounds[1]-secret_bounds[0] + 1
     best = None
     step_size = 16
+    fail_attempts, max_fail_attempts = 0, 5
     while step_size >= n:
         step_size /= 2
     i = 0
     while True:
+        if i<0:
+            break
+
         try:
-            # some implementations make use of the secret_bounds parameter
-            current = f(n-i, alpha, q, secret_bounds=secret_bounds, **kwds)
-        except TypeError:
-            current = f(n-i, alpha, q, **kwds)
+            try:
+                # some implementations make use of the secret_bounds parameter
+                current = f(n-i, alpha, q, secret_bounds=secret_bounds, samples=samples, **kwds)
+            except TypeError:
+                current = f(n-i, alpha, q, samples=samples, **kwds)
+        except (OutOfBoundsError, RuntimeError, InsufficientSamplesError) as err:
+            if get_verbose() >= 2:
+                print type(err).__name__,":", err
+            i += abs(step_size)
+            fail_attempts += 1
+            if fail_attempts > max_fail_attempts:
+                break
+            continue
         if h is None or i<h:
             repeat = size**i
         else:
             # TODO: this is too pessimistic
             repeat = (size)**h * binomial(i, h)
-        current = cost_repeat(current, repeat)
+        do_repeat = None if samples is None else {"oracle": False}
+        current = cost_repeat(current, repeat, do_repeat)
 
         key = list(current)[0]
         if best is None:
@@ -1578,11 +1899,13 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
                 best = current
                 i += step_size
             else:
-                step_size = -1*step_size/2
+                step_size = -1*step_size//2
                 i += step_size
 
         if step_size == 0:
             break
+    if best is None:
+        raise RuntimeError("No solution could be found.")
     return best
 
 
@@ -1590,7 +1913,7 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, **kwds):
 # Modulus Switching
 
 
-def decode_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
+def decode_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, samples=None, **kwds):
     """Solve LWE by solving BDD for small secret instances.
 
     :param n:                    dimension > 0
@@ -1598,14 +1921,15 @@ def decode_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None,
     :param q:                    modulus > 0
     :param secret_bounds:
     :param h:                    number of non-zero components in the secret
+    :param samples:              the number of available samples
 
     """
     s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
-    return small_secret_guess(decode, n, alpha, q, secret_bounds, h=h, **kwds)
+    return small_secret_guess(decode, n, alpha, q, secret_bounds, h=h, samples=samples, **kwds)
 
 
-def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, **kwds):
+def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, samples=None, **kwds):
     """Solve LWE by Kannan embedding for small secret instances.
 
     :param n:                    dimension > 0
@@ -1613,12 +1937,12 @@ def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None,
     :param q:                    modulus > 0
     :param secret_bounds:
     :param h:                    number of non-zero components in the secret.
+    :param samples:              the number of available samples
 
     """
     s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
-    return small_secret_guess(kannan, n, alpha, q, secret_bounds, h=h, **kwds)
-
+    return small_secret_guess(kannan, n, alpha, q, secret_bounds, h=h, samples=samples, **kwds)
 
 
 # Bai's and Galbraith's uSVP Attack
@@ -1626,7 +1950,7 @@ def kannan_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None,
 def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
                           success_probability=0.99,
                           optimisation_target="bkz2",
-                          h=None):
+                          h=None, samples=None):
     """
     :param n:                    dimension > 0
     :param alpha:                fraction of the noise α < 1.0
@@ -1658,18 +1982,28 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
     log_delta_0 = RR(num/den)
 
     delta_0 = RR(e**log_delta_0)
+    m_prime_optimal = ceil(sqrt(n*(log(q)-log(stddev))/log_delta_0))
+    if samples is None or samples > m_prime_optimal - n:
+        m_prime = m_prime_optimal
+    else:
+        m = samples
+        m_prime = m+n
+        num = m_prime*(log(q/stddev) - log(2*tau*sqrt(pi*e))) +n*log(xi)-n*log(q/stddev)
+        den = m_prime**2
+        log_delta_0 = RR(num/den)
+        delta_0 = RR(e**log_delta_0)
 
-    repeat = amplify(success_probability, tau_prob)
-
-    m_prime = ceil(sqrt(n*(log(q)-log(stddev))/log_delta_0))
     m = m_prime - n
 
     l2 = RR((q**m * (xi*stddev)**n)**(1/m_prime) * sqrt(m_prime/(2*pi*e)))
     if l2 > q:
         raise NotImplementedError("Case λ_2 = q not implemented.")
 
+    repeat = amplify(success_probability, tau_prob)
+
     r = bkz_runtime_delta(delta_0, m_prime, log(repeat, 2))
-    r[u"oracle"] = repeat*m
+    r[u"oracle"] = repeat*m if samples is None else m
+    r[u"m"] = m
 
     if optimisation_target != u"oracle":
         r = cost_reorder(r, [optimisation_target, u"oracle"])
@@ -1684,7 +2018,7 @@ def _bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=
 def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=tau_prob_default,
                          success_probability=0.99,
                          optimisation_target="bkz2",
-                         h=None):
+                         h=None, samples=None):
     """
     Bai's and Galbraith's uSVP attack + small secret guessing [ACISP:BaiGal14]_
 
@@ -1695,6 +2029,7 @@ def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=t
     :param success_probability: probability of success < 1.0
     :param optimisation_target: field to use to decide if parameters are better
     :param h: number of non-zero components in the secret
+    :param samples: the number of available samples
 
     .. [ACISP:BaiGal14] Bai, S., & Galbraith, S. D. (2014). Lattice decoding attacks on binary
        LWE. In W. Susilo, & Y. Mu, ACISP 14 (pp.  322–337).
@@ -1704,7 +2039,7 @@ def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=t
                               tau=tau, tau_prob=tau_prob,
                               success_probability=0.99,
                               optimisation_target=optimisation_target,
-                              h=h)
+                              h=h, samples=samples)
 
 
 
@@ -1817,7 +2152,8 @@ def sis_small_secret_mod_switch(n, alpha, q, secret_bounds, h=None,
                                 success_probability=0.99,
                                 optimisation_target=u"bkz2",
                                 c=None,
-                                use_lll=False):
+                                use_lll=False,
+                                samples=None):
     """
     Estimate cost of solveing LWE by finding small `(y,x/c)` such that
     `y A = c x`.
@@ -1833,6 +2169,10 @@ def sis_small_secret_mod_switch(n, alpha, q, secret_bounds, h=None,
     :param use_lll:             use LLL calls to produce more small vectors
 
     """
+
+    if samples is not None:
+        from warnings import warn
+        warn("Given number of samples is ignored for sis_small_secret_mod_switch()!")
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
@@ -2030,12 +2370,13 @@ def bkw_small_secret_variances(q, a, b, kappa, o, RR=None):
     return v
 
 
-def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1), t=None, o=0):
+def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1), t=None, o=0, samples=None):
     """
     :param n:               number of variables in the LWE instance
     :param alpha:           standard deviation of the LWE instance
     :param q:               size of the finite field (default: n^2)
     :param secret_bounds:   minimum and maximum value of secret
+    :param samples:         the number of available samples
     """
 
     def sigma2f(kappa):
@@ -2067,12 +2408,17 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
     RR = alpha.parent()
     sigma = alpha*q
 
+    has_samples = samples is not None
+
     if o is None:
         best = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=0)
         o = best["oracle"]/2
         while True:
-            current = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=o)
-            if best is None or current["bop"] < best["bop"]:
+            try:
+                current = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=o)
+            except InsufficientSamplesError:
+                break
+            if best is None or (current["bop"] < best["bop"] and (not has_samples or current["oracle"] <= samples)):
                 best = current
             if current["bop"] > best["bop"]:
                 break
@@ -2080,20 +2426,27 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
                 print cost_str(current)
 
             o = o/2
+        if has_samples and best["oracle"] > samples:
+            raise InsufficientSamplesError("No solution could be found with given samples (%d)" % samples)
         return best
 
     if t is None:
         t = RR(2*(log(q, 2) - log(sigma, 2))/log(n, 2))
         best = None
         while True:
-            current = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=o)
-            if best is None or current["bop"] < best["bop"]:
+            try:
+                current = bkw_small_secret(n, alpha, q, success_probability, secret_bounds, t=t, o=o)
+            except InsufficientSamplesError:
+                break
+            if best is None or (current["bop"] < best["bop"] and (not has_samples or current["oracle"] <= samples)):
                 best = current
             if current["bop"] > best["bop"]:
                 break
             if get_verbose() >= 2:
                 print cost_str(current)
             t += 0.01
+        if has_samples and best["oracle"] > samples:
+            raise InsufficientSamplesError("No solution could be found with given samples (%d)" % samples)
         return best
 
     secret_variance = uniform_variance_from_bounds(*secret_bounds)
@@ -2111,11 +2464,13 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
     best = None
     while kappa > 0:
         current = bkwssf(kappa)
-        if best is None or current["bop"] < best["bop"]:
+        if best is None or (current["bop"] < best["bop"] and (not has_samples or current["oracle"] <= samples)):
             best = current
         if current["bop"] > best["bop"]:
             break
         kappa -= 1
+    if has_samples and best["oracle"] > samples:
+        raise InsufficientSamplesError("No solution could be found with given samples (%d)" % samples)
 
     best["o"] = o
     best["t"] = t
@@ -2128,7 +2483,7 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
 
 # Arora-GB for Small Secrets
 
-def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
+def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, samples=None, **kwds):
     """FIXME! briefly describe function
 
     :param n:
@@ -2146,11 +2501,10 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, **kwds):
     return arora_gb(n, alpha, q, d2=b-a+1, **kwds)
 
 
-
 
 # Toplevel function
 
-def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None):
+def estimate_lwe(n, alpha, q, samples=None, skip=None, small=False, secret_bounds=None, h=None):
     """
     Estimate the complexity of solving LWE with the given parameters.
 
@@ -2210,9 +2564,9 @@ def estimate_lwe(n, alpha, q, skip=None, small=False, secret_bounds=None, h=None
                 algf = sieve_or_enum(algf)
             try:
                 if small:
-                    tmp = algf(n, alpha, q, secret_bounds=secret_bounds, h=h)
+                    tmp = algf(n, alpha, q, secret_bounds=secret_bounds, h=h, samples=samples)
                 else:
-                    tmp = algf(n, alpha, q)
+                    tmp = algf(n, alpha, q, samples=samples)
                 if tmp:
                     results[alg] = tmp
                     if get_verbose() >= 1:
@@ -2230,7 +2584,7 @@ def plot_costs(LWE, N, skip=None, filename=None, small=False, secret_bounds=None
     plots = {}
     for n in N:
         lwe = LWE(n)
-        r = estimate_lwe(*unpack_lwe(lwe), skip=skip, small=small, secret_bounds=secret_bounds)
+        r = estimate_lwe(skip=skip, small=small, secret_bounds=secret_bounds, **unpack_lwe_dict(lwe))
         if get_verbose() >= 1:
             print
 
@@ -2314,7 +2668,7 @@ latex_config = {
     "sis":      OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
     "kannan":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
     "baigal":   OrderedDict([("bkz2", dfs), ("sieve", dfs), ("oracle", dfs), ("repeat", dfs)]),
-    "dec":      OrderedDict([("bop", dfs), ("enum", dfs), ("oracle", dfs), ("repeat", dfs)]),
+    "dec":      OrderedDict([("rop", dfs), ("enum", dfs), ("oracle", dfs), ("repeat", dfs)]),
 }
 
 
@@ -2390,7 +2744,7 @@ def latex_costs(LWE, N, skip=None, small=False, secret_bounds=None):
     for i, n in enumerate(N):
         line = ["%4d"%n]
         lwe = LWE(n)
-        cur = estimate_lwe(*unpack_lwe(lwe), skip=skip, small=small, secret_bounds=secret_bounds)
+        cur = estimate_lwe(skip=skip, small=small, secret_bounds=secret_bounds, **unpack_lwe_dict(lwe))
         line.extend(latex_cost_row(cur))
         line = " & ".join(line) + "\\\\"
         ret.append(line)
