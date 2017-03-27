@@ -1686,9 +1686,10 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
     # The estimation of computational cost is the same as kannan with dimension samples=n+m.
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
     RR = alpha.parent()
-    beta = 1.01
-    log_delta_0 = log(tau*beta*alpha*sqrt(2*e), 2)**2/(4*n*log(q, 2))
+
+    log_delta_0 = log(tau*alpha*sqrt(e), 2)**2/(4*n*log(q, 2))
     delta_0 = RR(2**log_delta_0)
+
     m_optimal = lattice_reduction_opt_m(n, q, delta_0)
     if samples is None or samples > m_optimal:
         m = m_optimal
@@ -1696,7 +1697,7 @@ def kannan(n, alpha, q, tau=tau_default, tau_prob=tau_prob_default, success_prob
         if not samples > 0:
             raise InsufficientSamplesError("Number of samples: %d" % samples)
         m = samples
-        delta_0 = RR((q**(1-n/m)*sqrt(1/(2*e)) / (tau*beta*alpha*q))**(1.0/m))
+        delta_0 = RR((q**(1-n/m)*sqrt(1/(e)) / (tau*alpha*q))**(1.0/m))
 
     # check for valid delta
     if delta_0 < 1:
