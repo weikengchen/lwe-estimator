@@ -607,16 +607,73 @@ def bkz_svp_repeat(n, k):
 
 def _delta_0f(k):
     """
-    Compute `δ_0` from block size `k` without considering `k` in ZZ.
+    Compute `δ_0` from block size `k` without enforcing `k` in ZZ.
+
+    δ_0 for k<=40 were computed as follows:
+
+    ```
+    # -*- coding: utf-8 -*-
+    from fpylll import BKZ, IntegerMatrix
+
+    from multiprocessing import Pool
+    from sage.all import mean, sqrt, exp, log, cputime
+
+    d, trials = 320, 32
+
+    def f((A, beta)):
+
+        par = BKZ.Param(block_size=beta, strategies=BKZ.DEFAULT_STRATEGY, flags=BKZ.AUTO_ABORT)
+        q = A[-1, -1]
+        d = A.nrows
+        t = cputime()
+        A = BKZ.reduction(A, par, float_type="dd")
+        t = cputime(t)
+        return t, exp(log(A[0].norm()/sqrt(q).n())/d)
+
+    if __name__ == '__main__':
+        for beta in (5, 10, 15, 20, 25, 28, 30, 35, 40):
+            delta_0 = []
+            t = []
+            i = 0
+            while i < trials:
+                threads = int(open("delta_0.nthreads").read()) # make sure this file exists
+                pool = Pool(threads)
+                A = [(IntegerMatrix.random(d, "qary", k=d//2, bits=50), beta) for j in range(threads)]
+                for (t_, delta_0_) in pool.imap_unordered(f, A):
+                    t.append(t_)
+                    delta_0.append(delta_0_)
+                i += threads
+                print u"β: %2d, δ_0: %.5f, time: %5.1fs, (%2d,%2d)"%(beta, mean(delta_0), mean(t), i, threads)
+            print
+    ```
+
     """
-    return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
+    small = (( 2, 1.02190),  # noqa
+             ( 5, 1.01862),  # noqa
+             (10, 1.01616),
+             (15, 1.01485),
+             (20, 1.01420),
+             (25, 1.01342),
+             (28, 1.01331),
+             (40, 1.01295))
+
+    if k <= 2:
+        return RR(1.0219)
+    elif k < 40:
+        for i in range(1, len(small)):
+            if small[i][0] > k:
+                return small[i-1][1]
+    elif k == 40:
+        return small[-1][1]
+    else:
+        return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
 
 
 def delta_0f(k):
     """
     Compute `δ_0` from block size `k`.
     """
-    k = ZZ(k)
+    k = ZZ(round(k))
     return _delta_0f(k)
 
 
