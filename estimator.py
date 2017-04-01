@@ -20,7 +20,7 @@ from sage.matrix.all import Matrix
 from sage.misc.all import cached_function
 from sage.misc.all import set_verbose, get_verbose, prod
 from sage.arith.srange import srange
-from sage.numerical.optimize import find_root, find_local_maximum
+from sage.numerical.optimize import find_root
 from sage.rings.all import QQ, RR, ZZ, RealField, PowerSeriesRing, RDF
 from sage.symbolic.all import pi, e
 from sage.rings.infinity import PlusInfinity
@@ -66,10 +66,10 @@ def binary_search_minimum(f, start, stop, param, extract=lambda x: x, *arg, **kw
     :param extract: comparison is performed on `extract(f(param=?, *args, **kwds))`
 
     """
-    return binary_search(f, start, stop, param, better=lambda x,best: extract(x)<=extract(best), *arg, **kwds)
+    return binary_search(f, start, stop, param, better=lambda x, best: extract(x)<=extract(best), *arg, **kwds)
 
 
-def binary_search(f, start, stop, param, better=lambda x,best: x<=best, *arg, **kwds):
+def binary_search(f, start, stop, param, better=lambda x, best: x<=best, *arg, **kwds):
     """
     Searches for the `best` value in the interval [start,stop]
     depending on the given predicate `better`.
@@ -826,6 +826,7 @@ def bkz_runtime_k_quantum_sieve(k, n):
 bkz_runtime_k_sieve_asymptotic  = bkz_runtime_k_sieve_bdgl16_asymptotic
 bkz_runtime_k_sieve_small       = bkz_runtime_k_sieve_bdgl16_small
 
+
 def bkz_runtime_k_sieve(k, n):
     u"""
      Runtime estimation given `k` and assuming sieving is used to realise the SVP oracle.
@@ -839,6 +840,7 @@ def bkz_runtime_k_sieve(k, n):
     else:
         return bkz_runtime_k_sieve_asymptotic(k, n)
 
+
 def bkz_runtime_k_bkz2(k, n):
     """
     Runtime estimation given `k` and assuming [CheNgu12]_ estimates are correct.
@@ -846,7 +848,7 @@ def bkz_runtime_k_bkz2(k, n):
     The constants in this function were derived as follows based on Table 4 in [CheNgu12]_::
 
         sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250]
-        sage: nodes = [39.0, 44.0, 49.0, 54.0, 60.0, 66.0, 72.0, 78.0, 84.0, 96.0, 99.0, 105.0, 111.0, 120.0, 127.0, 134.0]
+        sage: nodes = [39.0, 44.0, 49.0, 54.0, 60.0, 66.0, 72.0, 78.0, 84.0, 96.0, 99.0, 105.0, 111.0, 120.0, 127.0, 134.0]  # noqa
         sage: times = [c + log(200,2).n() for c in nodes]
         sage: T = zip(dim, nodes)
         sage: var("a,b,c,k")
@@ -1020,6 +1022,7 @@ def bkw(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=N
     else:
         return bkw_decision(n, alpha, q, success_probability, optimisation_target, prec, samples)
 
+
 def bkw_decision(n, alpha, q, success_probability=0.99, optimisation_target="bop", prec=None, samples=None):
     """
     Estimate the cost of running BKW to solve Decision-LWE following [DCC:ACFFP15]_.
@@ -1169,7 +1172,7 @@ def bkw_search(n, alpha, q, success_probability=0.99, optimisation_target="bop",
         b = RR(n/a)  # window width
         epp = (1- eps)/a
 
-        m = lambda j, eps: 8 * b * log(q/eps) * (1 -  (2 * pi**2 * sigma**2)/(q**2))**(-2**(a-j))
+        m = lambda j, eps: 8 * b * log(q/eps) * (1 -  (2 * pi**2 * sigma**2)/(q**2))**(-2**(a-j))  # noqa
 
         c1 = (q**b-1)/2 * ((a-1)*(a-2)/2 * (n+1) - b/6 * (a*(a-1) * (a-2)))
         c2 = sum([m(j, epp) * (a-1-j)/2 * (n+2) for j in range(a)])
@@ -1481,7 +1484,7 @@ def _sis(n, alpha, q, success_probability=0.99, optimisation_target=u"bkz2", sec
     """
 
     n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
-    f = lambda eps: RR(sqrt(log(1/eps)/pi))
+    f = lambda eps: RR(sqrt(log(1/eps)/pi))  # noqa
     RR = alpha.parent()
 
     # we are solving Decision-LWE
@@ -1586,8 +1589,8 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
 
         if success_probability.is_NaN():
             return OrderedDict([(u"delta_0", delta_0),
-                                ("enum", Infinity),
-                                ("enumop", Infinity)])
+                                ("enum", oo),
+                                ("enumop", oo)])
 
     # if m too small, probs_bd entries are of magnitude 1e-10 or
     # something like that. Therefore, success_probability=prod(probs_bd)
@@ -1619,9 +1622,8 @@ def enum_cost(n, alpha, q, eps, delta_0, m=None, B=None, step=1, enums_per_clock
 
         if success_probability == 0 or last_success_probability >= success_probability:
             return OrderedDict([(u"delta_0", delta_0),
-                                ("enum", Infinity),
-                                ("enumop", Infinity)])
-
+                                ("enum", oo),
+                                ("enumop", oo)])
 
     r = OrderedDict([(u"delta_0", delta_0),
                      ("enum", RR(prod(d))),
@@ -1715,6 +1717,7 @@ def _decode(n, alpha, q, success_probability=0.99,
 
     return current
 
+
 decode = partial(rinse_and_repeat, _decode, decision=False)
 
 
@@ -1807,11 +1810,11 @@ def gb_complexity(m, n, d, omega=2, call_magma=True, d2=None):
     if call_magma:
         R = magma.PowerSeriesRing(QQ, 2*n)
         z = R.gen(1)
-        coeff = lambda f, d: f.Coefficient(d)
+        coeff = lambda f, d: f.Coefficient(d)  # noqa
     else:
         R = PowerSeriesRing(QQ, "z", 2*n)
         z = R.gen()
-        coeff = lambda f, d: f[d]
+        coeff = lambda f, d: f[d]  # noqa
 
     if d2 is None:
         s = (1-z**d)**m / (1-z)**n
@@ -1849,7 +1852,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
     if d2 is True:
         d2 = 2*ceil(3*stddev)+1
 
-    ps_single = lambda C: RR(1 - (2/(C*RR(sqrt(2*pi))) * exp(-C**2/2)))
+    ps_single = lambda C: RR(1 - (2/(C*RR(sqrt(2*pi))) * exp(-C**2/2)))  # noqa
 
     m = floor(exp(RR(0.75)*n))
     d = n
@@ -1910,8 +1913,7 @@ def arora_gb(n, alpha, q, success_probability=0.99, omega=2, call_magma=True, gu
                     break
     return best
 
-
-
+
 # Exhaustive Search for Small Secrets
 
 def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, samples=None, **kwds):
@@ -1934,7 +1936,7 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, samples=None, **kw
                 current = f(n-i, alpha, q, samples=samples, **kwds)
         except (OutOfBoundsError, RuntimeError, InsufficientSamplesError) as err:
             if get_verbose() >= 2:
-                print type(err).__name__,":", err
+                print type(err).__name__, ":", err
             i += abs(step_size)
             fail_attempts += 1
             if fail_attempts > max_fail_attempts:
@@ -1966,10 +1968,8 @@ def small_secret_guess(f, n, alpha, q, secret_bounds, h=None, samples=None, **kw
         raise RuntimeError("No solution could be found.")
     return best
 
-
 
 # Modulus Switching
-
 
 def decode_small_secret_mod_switch_and_guess(n, alpha, q, secret_bounds, h=None, samples=None, **kwds):
     """Solve LWE by solving BDD for small secret instances.
@@ -2099,10 +2099,8 @@ def bai_gal_small_secret(n, alpha, q, secret_bounds, tau=tau_default, tau_prob=t
                               optimisation_target=optimisation_target,
                               h=h, samples=samples)
 
-
 
 # Small, Sparse Secret SIS
-
 
 def success_probability_drop(n, h, k, fail=0):
     """
@@ -2202,9 +2200,11 @@ def drop_and_solve(f, n, alpha, q, secret_bounds=None, h=None,
 
     return best
 
+
 sis_drop_and_solve = partial(drop_and_solve, sis)
 decode_drop_and_solve = partial(drop_and_solve, decode)
 bai_gal_drop_and_solve = partial(drop_and_solve, bai_gal_small_secret)
+
 
 def sis_small_secret_mod_switch(n, alpha, q, secret_bounds, h=None,
                                 success_probability=0.99,
@@ -2354,6 +2354,7 @@ def applebaum(f, n, alpha, q, m, secret_bounds, h=None,
     n, alpha, q = applebaum_transform(n, alpha, q, m, secret_bounds, h)
     return f(n, alpha, q, success_probability=success_probability, optimisation_target=optimisation_target)
 
+
 sis_applebaum = partial(applebaum, sis)
 decode_applebaum =  partial(applebaum, decode)
 
@@ -2385,7 +2386,7 @@ def bkw_small_secret_variances(q, a, b, kappa, o, RR=None):
     T = RR(2)**(b*kappa)
     n = RR(o)/RR(T*(a+1)) + RR(1)
 
-    U_Var = lambda x: (x**2 - 1)/12
+    U_Var = lambda x: (x**2 - 1)/12  # noqa
     red_var   = 2*U_Var(q/(2**kappa))
 
     if o:
@@ -2428,7 +2429,7 @@ def bkw_small_secret_variances(q, a, b, kappa, o, RR=None):
     return v
 
 
-def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1), t=None, o=0, samples=None):
+def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1), t=None, o=0, samples=None):  # noqa
     """
     :param n:               number of variables in the LWE instance
     :param alpha:           standard deviation of the LWE instance
@@ -2537,7 +2538,6 @@ def bkw_small_secret(n, alpha, q, success_probability=0.99, secret_bounds=(0, 1)
     best = cost_reorder(best, ["bop", "oracle", "t", "m", "mem"])
     return best
 
-
 
 # Arora-GB for Small Secrets
 
@@ -2557,7 +2557,6 @@ def arora_gb_small_secret(n, alpha, q, secret_bounds, h=None, samples=None, **kw
     s_var = uniform_variance_from_bounds(*secret_bounds, h=h)
     n, alpha, q = switch_modulus(n, alpha, q, s_var, h=h)
     return arora_gb(n, alpha, q, d2=b-a+1, **kwds)
-
 
 
 # Toplevel function
@@ -2712,7 +2711,6 @@ def plot_fhe_costs(L, N, skip=None, filename=None, small=False, secret_bounds=No
             small_str = ""
         filename="FHE-%d%s-%d-%d.pdf"%(L, small_str, N[0], N[-1])
     plt.savefig(filename, dpi=128)
-
 
 
 # LaTeX tables
