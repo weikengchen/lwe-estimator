@@ -662,9 +662,9 @@ def _delta_0f(k):
     elif k < 40:
         for i in range(1, len(small)):
             if small[i][0] > k:
-                return small[i-1][1]
+                return RR(small[i-1][1])
     elif k == 40:
-        return small[-1][1]
+        return RR(small[-1][1])
     else:
         return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
 
