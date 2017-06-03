@@ -11,5 +11,5 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - export SAGE_ROOT=`sage -c "import os; print os.environ['SAGE_ROOT']"`
           - . $SAGE_ROOT/local/bin/sage-env
-          - umask 002 # set umask to allow doctests to run
+          - chmod 700 . # change rights so that doctests run
           - PYTHONIOENCODING=UTF-8 PYTHONPATH=`pwd` sage-runtests estimator.py 
