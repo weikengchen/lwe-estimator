@@ -87,12 +87,12 @@ def binary_search(f, start, stop, param, better=lambda x, best: x<=best, *arg, *
     b = ceil((start+stop)/2)
     direction = 0
     while True:
-        if b == start:
-            best = D[start]
-            break
         if b not in D:
             kwds[param] = b
             D[b] = f(*arg, **kwds)
+        if b == start:
+            best = D[start]
+            break
         if not better(D[b], best):
             if direction == 0:
                 start = b
@@ -133,12 +133,14 @@ def cost_str(d, keyword_width=None, newline=None, round_bound=2048):
 
     By default dicts are unordered, hence the order of the output of this function is undefined::
 
+        sage: from estimator import cost_str
         sage: s = {"delta":5, "bar":2}
         sage: print cost_str(s)
         bar:         2,  delta:         5
 
     Use `OrderedDict` if you require ordered output::
 
+        sage: from collections import OrderedDict
         sage: s = OrderedDict([(u"delta", 5), ("bar",2)])
         sage: print cost_str(s)
         delta:         5,  bar:         2
@@ -180,9 +182,11 @@ def cost_reorder(d, ordering):
 
     EXAMPLE::
 
+        sage: from collections import OrderedDict
         sage: d = OrderedDict([("a",1),("b",2),("c",3)]); d
         OrderedDict([('a', 1), ('b', 2), ('c', 3)])
 
+        sage: from estimator import cost_reorder
         sage: cost_reorder(d, ["b","c","a"])
         OrderedDict([('b', 2), ('c', 3), ('a', 1)])
 
@@ -211,7 +215,7 @@ def cost_filter(d, keys):
 
 
 def cost_repeat(d, times, repeat=None):
-    """
+    u"""
     Return a report with all costs multiplied by `times`.
 
     :param d:     a cost estimate
@@ -226,11 +230,13 @@ def cost_repeat(d, times, repeat=None):
 
     EXAMPLE::
 
+        sage: from sage.crypto.lwe import Regev
+        sage: from estimator import unpack_lwe, cost_str, cost_repeat, sis
         sage: n, alpha, q = unpack_lwe(Regev(128))
         sage: print cost_str(cost_repeat(sis(n, alpha, q), 2^10))
-        bkz2:   ≈2^85.4,  oracle:   ≈2^36.5,  δ_0: 1.0089681, ...
+        bkz2:   ≈2^84.7,  oracle:   ≈2^37.5,  delta_0: 1.0088095,  beta:       111, ...
         sage: print cost_str(cost_repeat(sis(n, alpha, q), 1))
-        bkz2:   ≈2^75.4,  oracle:   ≈2^26.5,  δ_0: 1.0089681, ...
+        bkz2:   ≈2^74.7,  oracle:   ≈2^27.5,  delta_0: 1.0088095,  beta:       111, ...
 
     """
 
@@ -308,6 +314,7 @@ def stddevf(sigma):
 
     EXAMPLE::
 
+        sage: from estimator import stddevf
         sage: n = 64.0
         sage: stddevf(n)
         25.532...
@@ -323,6 +330,7 @@ def sigmaf(stddev):
 
     EXAMPLE::
 
+        sage: from estimator import stddevf, sigmaf
         sage: n = 64.0
         sage: sigmaf(stddevf(n))
         64.000...
@@ -568,11 +576,12 @@ def switch_modulus(n, alpha, q, s_variance, h=None):
 
     EXAMPLE::
 
-       sage: switch_modulus(128, 0.01, 65537, uniform_variance_from_bounds(0,1))
-       (128, 0.0141421356237310, 410.000000000000)
+       sage: from estimator import switch_modulus, uniform_variance_from_bounds
+       sage: switch_modulus(128, 0.01, 65537, uniform_variance_from_bounds(-1,1))
+       (128, 0.0141421356237310, 669.000000000000)
 
-       sage: switch_modulus(128, 0.001, 65537, uniform_variance_from_bounds(0,1))
-       (128, 0.00141421356237310, 4094.00000000000)
+       sage: switch_modulus(128, 0.001, 65537, uniform_variance_from_bounds(-1,1))
+       (128, 0.00141421356237310, 6685.00000000000)
 
        sage: switch_modulus(128, 0.001, 65537, uniform_variance_from_bounds(-5,5))
        (128, 0.00141421356237310, 25889.0000000000)
@@ -685,6 +694,7 @@ def k_chen_secant(delta):
 
     EXAMPLE::
 
+        sage: from estimator import k_chen
         sage: 50 == k_chen(1.0121)
         True
         sage: 100 == k_chen(1.0093)
@@ -751,6 +761,7 @@ def k_chen_old(delta):
 
     EXAMPLE::
 
+        sage: from estimator import k_chen
         sage: 50 == k_chen(1.0121)
         True
         sage: 100 == k_chen(1.0093)
@@ -1442,9 +1453,11 @@ def bkw_coded(n, alpha, q, success_probability=0.99, secret_bounds=None, h=None,
     EXAMPLE::
 
 
+        sage: from sage.crypto.lwe import Regev
+        sage: from estimator import unpack_lwe, bkw_coded, cost_str
         sage: n, alpha, q = unpack_lwe(Regev(64))
         sage: print cost_str(bkw_coded(n, alpha, q))
-        bop:   ≈2^53.1,  oracle:   ≈2^39.2,  m:   ≈2^30.2,  mem:   ≈2^40.2,  rop:   ≈2^49.5,  ...
+        bop:   ≈2^64.1,  oracle:   ≈2^50.8,  m:    4.1148,  mem:   ≈2^51.8,  rop:   ≈2^60.5,  b:         4, ...
 
     """
     bstart = ceil(log(q, 2))
@@ -2576,15 +2589,16 @@ def estimate_lwe(n, alpha, q, samples=None, skip=None, small=False, secret_bound
 
     EXAMPLE::
 
+        sage: from sage.crypto.lwe import Regev
+        sage: from estimator import unpack_lwe, estimate_lwe
         sage: n, alpha, q = unpack_lwe(Regev(64))
         sage: set_verbose(1)
         sage: d = estimate_lwe(n,alpha,q, skip="arora-gb")
-          mitm   bop:  ≈2^133.2,  oracle:        52,    mem:  ≈2^129.6,    rop:  ≈2^129.6
-           bkw   bop:   ≈2^53.1,  oracle:   ≈2^39.2,      m:   ≈2^30.2,    mem:   ≈2^40.2, ...
-           sis  bkz2:   ≈2^34.5,  oracle:   ≈2^11.7,    δ_0: 1.0130466,      k:        40, ...
-           dec   bop:   ≈2^33.9,  oracle:      1288,    δ_0: 1.0157998,   bkz2:   ≈2^32.8, ...
-        kannan  bkz2:   ≈2^35.3,  oracle:   ≈2^12.9,    δ_0: 1.0171085,      k:        40, ...
-
+          mitm   bop:  ≈2^171.4,  oracle:        88,    mem:  ≈2^160.8,    rop:  ≈2^167.8
+           bkw   bop:   ≈2^64.1,  oracle:   ≈2^50.8,      m:    4.1148,    mem:   ≈2^51.8,    ...
+           sis  bkz2:   ≈2^32.8,  oracle:   ≈2^14.6,  delta_0: 1.0130466,   beta:        40,  ...
+           dec   rop:   ≈2^29.1,  oracle:       209,   bkz2:   ≈2^28.1,  delta_0: 1.0122107,  ...
+        kannan  bkz2:   ≈2^31.0,  oracle:   ≈2^12.8,  delta_0: 1.0192183,   beta:        40,  ...
     """
     if not small:
         algorithms = OrderedDict([("mitm", mitm),
