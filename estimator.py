@@ -255,7 +255,7 @@ def alphaf(sigma, q, sigma_is_stddev=False):
     Gaussian width σ, modulus q → noise rate α
 
     :param sigma: Gaussian width parameter (or standard deviation if ``sigma_is_stddev`` is set)
-    :param q: modulus
+    :param q: modulus `0 < q`
     :param sigma_is_stddev: if set then `sigma` is interpreted as the standard deviation
 
     :returns: α = σ/q or σ·sqrt(2π)/q depending on `sigma_is_stddev`
@@ -536,7 +536,7 @@ class SDis:
     def is_sparse(secret_distribution):
         """Return true if the secret distribution is sparse
 
-        :param secret_distribution:
+        :param secret_distribution: distribution of secret, see module level documentation for details
 
         """
         try:
@@ -550,7 +550,7 @@ class SDis:
     def is_small(secret_distribution):
         """Return true if the secret distribution is small
 
-        :param secret_distribution:
+        :param secret_distribution: distribution of secret, see module level documentation for details
 
         """
 
@@ -570,7 +570,7 @@ class SDis:
     def bounds(secret_distribution):
         """Return bounds of secret distribution
 
-        :param secret_distribution:
+        :param secret_distribution: distribution of secret, see module level documentation for details
 
         """
         try:
@@ -587,8 +587,8 @@ class SDis:
     def nonzero(secret_distribution, n):
         """Return number of non-zero elements or ``None``
 
-        :param secret_distribution:
-        :param n: dimension of the secret
+        :param secret_distribution: distribution of secret, see module level documentation for details
+        :param n: LWE dimension `n > 0`
 
         """
         try:
@@ -636,10 +636,10 @@ def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
     """
 
     :param f: run f
-    :param n:
-    :param alpha:
-    :param q:
-    :param secret_distribution:
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
 
 
     """
@@ -662,8 +662,8 @@ def amplify(target_success_probability, success_probability, majority=False):
     Return the number of trials needed to amplify current `success_probability` to
     `target_success_probability`
 
-    :param target_success_probability: 0 < real value < 1
-    :param success_probability:        0 < real value < 1
+    :param target_success_probability: targeted success probability < 1
+    :param success_probability: targeted success probability < 1
     :param majority: if `True` amplify a deicsional problem, not a computational one
        if `False` then we assume that we can check solutions, so one success suffices
 
@@ -700,7 +700,7 @@ def amplify_sigma(target_advantage, sigma, q):
 
     :param target_advantage:
     :param sigma: (lists of) Gaussian width parameters
-    :param q: modulus
+    :param q: modulus `0 < q`
 
     """
     try:
@@ -720,10 +720,10 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
     """Find best trade-off between success probability and running time.
 
     :param f:                    a function returning a cost estimate
-    :param n:                    dimension > 0
-    :param alpha:                noise rate 0 ≤ α < 1.0
-    :param q:                    modulus > 0
-    :param success_probability:  target success probability
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param success_probability: targeted success probability < 1
     :param optimisation_target:  which value to minimise
     :param decision:             set if `f` solves a decision problem, unset for search problems
     :param repeat_select:        passed through to ``cost_repeat`` as parameter ``select``
@@ -780,299 +780,329 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
     return best
 
 
-# BKZ block size β v root-Hermite factor δ_0
-
-def _delta_0f(k):
+class BKZ:
     """
-    Compute `δ_0` from block size `k` without enforcing `k` in ZZ.
-
-    δ_0 for k≤40 were computed as follows:
-
-    ```
-    # -*- coding: utf-8 -*-
-    from fpylll import BKZ, IntegerMatrix
-
-    from multiprocessing import Pool
-    from sage.all import mean, sqrt, exp, log, cputime
-
-    d, trials = 320, 32
-
-    def f((A, beta)):
-
-        par = BKZ.Param(block_size=beta, strategies=BKZ.DEFAULT_STRATEGY, flags=BKZ.AUTO_ABORT)
-        q = A[-1, -1]
-        d = A.nrows
-        t = cputime()
-        A = BKZ.reduction(A, par, float_type="dd")
-        t = cputime(t)
-        return t, exp(log(A[0].norm()/sqrt(q).n())/d)
-
-    if __name__ == '__main__':
-        for beta in (5, 10, 15, 20, 25, 28, 30, 35, 40):
-            delta_0 = []
-            t = []
-            i = 0
-!!            while i < trials:
-                threads = int(open("delta_0.nthreads").read()) # make sure this file exists
-                pool = Pool(threads)
-                A = [(IntegerMatrix.random(d, "qary", k=d//2, bits=50), beta) for j in range(threads)]
-                for (t_, delta_0_) in pool.imap_unordered(f, A):
-                    t.append(t_)
-                    delta_0.append(delta_0_)
-                i += threads
-                print u"β: %2d, δ_0: %.5f, time: %5.1fs, (%2d,%2d)"%(beta, mean(delta_0), mean(t), i, threads)
-            print
-    ```
-
+    Cost estimates for BKZ.
     """
-    small = (( 2, 1.02190),  # noqa
-             ( 5, 1.01862),  # noqa
-             (10, 1.01616),
-             (15, 1.01485),
-             (20, 1.01420),
-             (25, 1.01342),
-             (28, 1.01331),
-             (40, 1.01295))
 
-    if k <= 2:
-        return RR(1.0219)
-    elif k < 40:
-        for i in range(1, len(small)):
-            if small[i][0] > k:
-                return RR(small[i-1][1])
-    elif k == 40:
-        return RR(small[-1][1])
-    else:
-        return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
+    @staticmethod
+    def _delta_0f(k):
+        """
+        Compute `δ_0` from block size `k` without enforcing `k` in ZZ.
+
+        δ_0 for k≤40 were computed as follows:
+
+        ```
+        # -*- coding: utf-8 -*-
+        from fpylll import BKZ, IntegerMatrix
+
+        from multiprocessing import Pool
+        from sage.all import mean, sqrt, exp, log, cputime
+
+        d, trials = 320, 32
+
+        def f((A, beta)):
+
+            par = BKZ.Param(block_size=beta, strategies=BKZ.DEFAULT_STRATEGY, flags=BKZ.AUTO_ABORT)
+            q = A[-1, -1]
+            d = A.nrows
+            t = cputime()
+            A = BKZ.reduction(A, par, float_type="dd")
+            t = cputime(t)
+            return t, exp(log(A[0].norm()/sqrt(q).n())/d)
+
+        if __name__ == '__main__':
+            for beta in (5, 10, 15, 20, 25, 28, 30, 35, 40):
+                delta_0 = []
+                t = []
+                i = 0
+    !!            while i < trials:
+                    threads = int(open("delta_0.nthreads").read()) # make sure this file exists
+                    pool = Pool(threads)
+                    A = [(IntegerMatrix.random(d, "qary", k=d//2, bits=50), beta) for j in range(threads)]
+                    for (t_, delta_0_) in pool.imap_unordered(f, A):
+                        t.append(t_)
+                        delta_0.append(delta_0_)
+                    i += threads
+                    print u"β: %2d, δ_0: %.5f, time: %5.1fs, (%2d,%2d)"%(beta, mean(delta_0), mean(t), i, threads)
+                print
+        ```
+
+        """
+        small = (( 2, 1.02190),  # noqa
+                 ( 5, 1.01862),  # noqa
+                 (10, 1.01616),
+                 (15, 1.01485),
+                 (20, 1.01420),
+                 (25, 1.01342),
+                 (28, 1.01331),
+                 (40, 1.01295))
+
+        if k <= 2:
+            return RR(1.0219)
+        elif k < 40:
+            for i in range(1, len(small)):
+                if small[i][0] > k:
+                    return RR(small[i-1][1])
+        elif k == 40:
+            return RR(small[-1][1])
+        else:
+            return RR(k/(2*pi*e) * (pi*k)**(1/k))**(1/(2*(k-1)))
+
+    @staticmethod
+    def _beta_secant(delta):
+        """
+        Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
+
+        :param delta: root-hermite factor
+
+        EXAMPLE::
+
+            sage: from estimator import BKZ
+            sage: 50 == BKZ._beta_secant(1.0121)
+            True
+            sage: 100 == BKZ._beta_secant(1.0093)
+            True
+            sage: BKZ._beta_secant(1.0024) # Chen reports 800
+            808
+
+        .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité concrète du chiffrement
+                        complètement homomorphe. PhD thesis, Paris 7, 2013.
+        """
+        # newton() will produce a "warning", if two subsequent function values are
+        # indistinguishable (i.e. equal in terms of machine precision). In this case
+        # newton() will return the value k in the middle between the two values
+        # k1,k2 for which the function values were indistinguishable.
+        # Since f approaches zero for k->+Infinity, this may be the case for very
+        # large inputs, like k=1e16.
+        # For now, these warnings just get printed and the value k is used anyways.
+        # This seems reasonable, since for such large inputs the exact value of k
+        # doesn't make such a big difference.
+        try:
+            k = newton(lambda k: RR(BKZ._delta_0f(k) - delta), 100, fprime=None, args=(), tol=1.48e-08, maxiter=500)
+            k = ceil(k)
+            if k < 40:
+                # newton may output k < 40. The old beta method wouldn't do this. For
+                # consistency, call the old beta method, i.e. consider this try as "failed".
+                raise RuntimeError("k < 40")
+            return k
+        except (RuntimeError, TypeError):
+            # if something fails, use old beta method
+            k = BKZ._beta_simple(delta)
+            return k
+
+    @staticmethod
+    def _beta_find_root(delta):
+        # handle k < 40 separately
+        k = ZZ(40)
+        if delta_0f(k) < delta:
+            return k
+
+        try:
+            k = find_root(lambda k: RR(BKZ._delta_0f(k) - delta), 40, 2**16, maxiter=500)
+            k = ceil(k)
+        except RuntimeError:
+            # finding root failed; reasons:
+            # 1. maxiter not sufficient
+            # 2. no root in given interval
+            k = BKZ._beta_simple(delta)
+        return k
+
+    @staticmethod
+    def _beta_simple(delta):
+        """
+        Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
+
+        :param delta: root-hermite factor
+
+        EXAMPLE::
+
+            sage: from estimator import betaf
+            sage: 50 == betaf(1.0121)
+            True
+            sage: 100 == betaf(1.0093)
+            True
+            sage: betaf(1.0024) # Chen reports 800
+            808
+
+        .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité concrète du chiffrement
+                        complètement homomorphe. PhD thesis, Paris 7, 2013.
+        """
+        k = ZZ(40)
+
+        while delta_0f(2*k) > delta:
+            k *= 2
+        while delta_0f(k+10) > delta:
+            k += 10
+        while True:
+            if delta_0f(k) < delta:
+                break
+            k += 1
+
+        return k
+
+    @staticmethod
+    def svp_repeat(beta, d):
+        """Return number of SVP calls in BKZ-β
+
+        :param beta: block size
+        :param d: dimension
+
+        .. note :: loosely based on experiments in [PhD:Chen13]
+
+        """
+        return 8*d
+
+    @staticmethod
+    @cached_function
+    def GSA(n, q, delta, m):
+        """
+        Compute the Gram-Schmidt lengths based on the GSA.
+
+        :param n: LWE dimension `n > 0`
+        :param q: modulus `0 < q`
+        :param delta: root-Hermite factor
+        :param m: lattice dimension
+
+        .. [RSA:LinPei11] Richard Lindner and Chris Peikert. Better key sizes (and attacks) for LWE-based encryption.
+                          In Aggelos Kiayias, editor, CT-RSA 2011, volume 6558 of LNCS, pages 319–339. Springer,
+                          February 2011.
+        """
+        log_delta = RDF(log(delta))
+        log_q = RDF(log(q))
+        qnm = log_q*(n/m)
+        qnm_p_log_delta_m = qnm + log_delta*m
+        tmm1 = RDF(2*m/(m-1))
+        b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in xrange(m)]
+        b = [log_q - b[-1-i] for i in xrange(m)]
+        b = map(lambda x: x.exp(), b)
+        return b
+
+    @staticmethod
+    def LinPei11(beta, d):
+        """
+        Runtime estimation assuming the Lindner-Peikert model in elementary operations.
+
+        ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for LWE-based
+        encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
+
+        :param beta: block size
+        :param d: lattice dimension
+        """
+        delta_0 = delta_0f(beta)
+        return RR(1.8/log(delta_0, 2) - 110 + log(2.3*10**9, 2))
+
+    @staticmethod
+    def __BDGL16_small(beta, d):
+        u"""
+         Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle for small dimensions.
+
+         :param beta: block size
+         :param d: lattice dimension
+
+        ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
+        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
+        10–24).
+         """
+        return RR(0.387*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
+
+    @staticmethod
+    def _BDGL16_asymptotic(beta, d):
+        u"""
+         Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle.
+
+         :param beta: block size
+         :param d: lattice dimension
+
+        ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
+        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
+        10–24).
+        """
+        # TODO we simply pick the same additive constant 16.4 as for the experimental result in [BDGL16]
+        return RR(0.292*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
+
+    @staticmethod
+    def BDGL16(beta, d):
+        u"""
+         Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle.
+
+         :param beta: block size
+         :param n: LWE dimension `n > 0`
+
+        ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
+        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
+        10–24).
+        """
+        # TODO this is somewhat arbitrary
+        if beta <= 90:
+            return BKZ._BDGL16_small(beta, d)
+        else:
+            return BKZ._BDGL16_asymptotic(beta, d)
+
+    @staticmethod
+    def LaaMosPol14(beta, n):
+        u"""
+        Runtime estimation for quantum sieving.
+
+         :param beta: block size
+         :param n: LWE dimension `n > 0`
+
+         ..  [LaaMosPol14] Thijs Laarhoven, Michele Mosca, & Joop van de Pol.  Finding shortest lattice
+             vectors faster using quantum search.  Cryptology ePrint Archive, Report 2014/907, 2014.
+             https://eprint.iacr.org/2014/907.
+        """
+        return RR((0.265*beta + 16.4 + log(BKZ.svp_repeat(beta, n), 2)))
+
+    @staticmethod
+    def CheNgu12(beta, d):
+        """
+        Runtime estimation given `β` and assuming [CheNgu12]_ estimates are correct.
+
+        The constants in this function were derived as follows based on Table 4 in [CheNgu12]_::
+
+            sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250]
+            sage: nodes = [39.0, 44.0, 49.0, 54.0, 60.0, 66.0, 72.0, 78.0, 84.0, 96.0, 99.0, 105.0, 111.0, 120.0, 127.0, 134.0]  # noqa
+            sage: times = [c + log(200,2).n() for c in nodes]
+            sage: T = zip(dim, nodes)
+            sage: var("a,b,c,k")
+            (a, b, c, k)
+            sage: f = a*k*log(k, 2.0) + b*k + c
+            sage: f = f.function(k)
+            sage: f.subs(find_fit(T, f, solution_dict=True))
+            k |--> 0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765
+
+        .. [CheNgu12] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates (Full Version).
+                      2012. http://www.di.ens.fr/~ychen/research/Full_BKZ.pdf
+
+        """
+        # TODO replace these by fplll timings
+        repeat = log(BKZ.svp_repeat(beta, d), 2)
+        return RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765 + repeat)
+
+    sieve = BDGL16
+    qsieve = LaaMosPol14
+    lp =     LinPei11
+    enum =   CheNgu12
 
 
 def delta_0f(beta):
     """
-    Compute `δ_0` from block size `β`.
+    Compute root-Hermite factor `δ_0` from block size `β`.
     """
     beta = ZZ(round(beta))
-    return _delta_0f(beta)
-
-
-def _beta_secant(delta):
-    """
-    Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
-
-    :param delta: root-hermite factor
-
-    EXAMPLE::
-
-        sage: from estimator import _beta_secant
-        sage: 50 == _beta_secant(1.0121)
-        True
-        sage: 100 == _beta_secant(1.0093)
-        True
-        sage: _beta_secant(1.0024) # Chen reports 800
-        808
-
-    .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité concrète du chiffrement
-                    complètement homomorphe. PhD thesis, Paris 7, 2013.
-    """
-    # newton() will produce a "warning", if two subsequent function values are
-    # indistinguishable (i.e. equal in terms of machine precision). In this case
-    # newton() will return the value k in the middle between the two values
-    # k1,k2 for which the function values were indistinguishable.
-    # Since f approaches zero for k->+Infinity, this may be the case for very
-    # large inputs, like k=1e16.
-    # For now, these warnings just get printed and the value k is used anyways.
-    # This seems reasonable, since for such large inputs the exact value of k
-    # doesn't make such a big difference.
-    try:
-        k = newton(lambda k: RR(_delta_0f(k) - delta), 100, fprime=None, args=(), tol=1.48e-08, maxiter=500)
-        k = ceil(k)
-        if k < 40:
-            # newton may output k < 40. The old beta method wouldn't do this. For
-            # consistency, call the old beta method, i.e. consider this try as "failed".
-            raise RuntimeError("k < 40")
-        return k
-    except (RuntimeError, TypeError):
-        # if something fails, use old beta method
-        k = _beta_simple(delta)
-        return k
-
-
-def _beta_find_root(delta):
-    # handle k < 40 separately
-    k = ZZ(40)
-    if delta_0f(k) < delta:
-        return k
-
-    try:
-        k = find_root(lambda k: RR(_delta_0f(k) - delta), 40, 2**16, maxiter=500)
-        k = ceil(k)
-    except RuntimeError:
-        # finding root failed; reasons:
-        # 1. maxiter not sufficient
-        # 2. no root in given interval
-        k = _beta_simple(delta)
-    return k
-
-
-def _beta_simple(delta):
-    """
-    Estimate required blocksize `k` for a given root-hermite factor δ based on [PhD:Chen13]_
-
-    :param delta: root-hermite factor
-
-    EXAMPLE::
-
-        sage: from estimator import betaf
-        sage: 50 == betaf(1.0121)
-        True
-        sage: 100 == betaf(1.0093)
-        True
-        sage: betaf(1.0024) # Chen reports 800
-        808
-
-    .. [PhD:Chen13] Yuanmi Chen. Réduction de réseau et sécurité concrète du chiffrement
-                    complètement homomorphe. PhD thesis, Paris 7, 2013.
-    """
-    k = ZZ(40)
-
-    while delta_0f(2*k) > delta:
-        k *= 2
-    while delta_0f(k+10) > delta:
-        k += 10
-    while True:
-        if delta_0f(k) < delta:
-            break
-        k += 1
-
-    return k
+    return BKZ._delta_0f(beta)
 
 
 def betaf(delta):
+    """
+    Compute block size `β` from root-Hermite factor `δ_0`.
+    """
     # TODO: decide for one strategy (secant, find_root, old) and its error handling
-    k = _beta_find_root(delta)
+    k = BKZ._beta_find_root(delta)
     return k
 
-
-# BKZ Estimates
 
-def bkz_svp_repeat(beta, d):
-    """Return number of SVP calls in BKZ-β
-
-    :param beta: block size
-    :param d: dimension
-
-    .. note :: loosely based on experiments in [PhD:Chen13]
-
-    """
-    return 8*d
-
-
-def bkz_runtime_LinPei11(beta, d):
-    """
-    Runtime estimation assuming the Lindner-Peikert model in elementary operations.
-
-    ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for LWE-based
-    encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
-
-    :param beta: block size
-    :param d: lattice dimension
-    """
-    delta_0 = delta_0f(beta)
-    return RR(1.8/log(delta_0, 2) - 110 + log(2.3*10**9, 2))
-
-
-def _bkz_runtime_BDGL16_small(beta, d):
-    u"""
-     Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle for small dimensions.
-
-     :param beta: block size
-     :param d: lattice dimension
-
-    ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
-    nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
-    10–24).
-     """
-    return RR(0.387*beta + 16.4 + log(bkz_svp_repeat(beta, d), 2))
-
-
-def _bkz_runtime_BDGL16_asymptotic(beta, d):
-    u"""
-     Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle.
-
-     :param beta: block size
-     :param d: lattice dimension
-
-    ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
-    nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
-    10–24).
-    """
-    # TODO we simply pick the same additive constant 16.4 as for the experimental result in [BDGL16]
-    return RR(0.292*beta + 16.4 + log(bkz_svp_repeat(beta, d), 2))
-
-
-def bkz_runtime_BDGL16(beta, d):
-    u"""
-     Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle.
-
-     :param beta: block size
-     :param n: lattice dimension
-
-    ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
-    nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
-    10–24).
-    """
-    # TODO this is somewhat arbitrary
-    if beta <= 90:
-        return _bkz_runtime_BDGL16_small(beta, d)
-    else:
-        return _bkz_runtime_BDGL16_asymptotic(beta, d)
-
-
-def bkz_runtime_LaaMosPol14(beta, n):
-    u"""
-    Runtime estimation for quantum sieving.
-
-     :param beta: block size
-     :param n: lattice dimension
-
-     ..  [LaaMosPol14] Thijs Laarhoven, Michele Mosca, & Joop van de Pol.  Finding shortest lattice
-         vectors faster using quantum search.  Cryptology ePrint Archive, Report 2014/907, 2014.
-         https://eprint.iacr.org/2014/907.
-    """
-    return RR((0.265*beta + 16.4 + log(bkz_svp_repeat(beta, n), 2)))
-
-
-def bkz_runtime_CheNgu12(beta, d):
-    """
-    Runtime estimation given `β` and assuming [CheNgu12]_ estimates are correct.
-
-    The constants in this function were derived as follows based on Table 4 in [CheNgu12]_::
-
-        sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250]
-        sage: nodes = [39.0, 44.0, 49.0, 54.0, 60.0, 66.0, 72.0, 78.0, 84.0, 96.0, 99.0, 105.0, 111.0, 120.0, 127.0, 134.0]  # noqa
-        sage: times = [c + log(200,2).n() for c in nodes]
-        sage: T = zip(dim, nodes)
-        sage: var("a,b,c,k")
-        (a, b, c, k)
-        sage: f = a*k*log(k, 2.0) + b*k + c
-        sage: f = f.function(k)
-        sage: f.subs(find_fit(T, f, solution_dict=True))
-        k |--> 0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765
-
-    .. [CheNgu12] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates (Full Version).
-                  2012. http://www.di.ens.fr/~ychen/research/Full_BKZ.pdf
-
-    """
-    # TODO replace these by fplll timings
-    repeat = log(bkz_svp_repeat(beta, d), 2)
-    return RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765 + repeat)
-
-
-reduction_cost_models = {"bkz-sieve":  bkz_runtime_BDGL16,
-                         "bkz-qsieve": bkz_runtime_LaaMosPol14,
-                         "bkz-lp":     bkz_runtime_LinPei11,
-                         "bkz-enum":   bkz_runtime_CheNgu12}
-
-reduction_default_cost_model = "bkz-enum"
+reduction_default_cost = BKZ.enum
 
 
 def lattice_reduction_cost(cost_model, delta_0, d):
@@ -1085,10 +1115,6 @@ def lattice_reduction_cost(cost_model, delta_0, d):
     :param d:
 
     """
-    try:
-        cost_model = reduction_cost_models[cost_model]
-    except KeyError:
-        pass
     beta = betaf(delta_0)
     cost = ZZ(2)**cost_model(beta, d)
     return Cost([("red", cost), ("delta_0", delta_0), ("beta", beta)])
@@ -1098,8 +1124,8 @@ def lattice_reduction_opt_m(n, q, delta):
     """
     Return the (heuristically) optimal lattice dimension `m`
 
-    :param n:     dimension
-    :param q:     modulus
+    :param n: LWE dimension `n > 0`
+    :param q: modulus `0 < q`
     :param delta: root Hermite factor `δ_0`
 
     """
@@ -1116,8 +1142,8 @@ def sieve_or_enum(func):
         from copy import copy
         kwds = copy(kwds)
 
-        a = func(*args, reduction_cost_model="bkz-sieve", **kwds)
-        b = func(*args, reduction_cost_model="bkz-enum", **kwds)
+        a = func(*args, reduction_cost_model=BKZ.sieve, **kwds)
+        b = func(*args, reduction_cost_model=BKZ.enum, **kwds)
         if a["red"] <= b["red"]:
             return a
         else:
@@ -1131,11 +1157,11 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
     """Guess components of the secret.
 
     :param f:
-    :param n:
-    :param alpha:
-    :param q:
-    :param secret_distribution:
-    :param success_probability:
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param success_probability: targeted success probability < 1
 
     EXAMPLE:
 
@@ -1211,14 +1237,14 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
 
 def success_probability_drop(n, h, k, fail=0):
     """
-    Probability ``k`` randomly sampled components have at most
-    ``fail`` non-zero components amongst them.
+    Probability that `k` randomly sampled components have at most ``fail`` non-zero components amongst
+    them.
 
-    :param n: dimension of LWE samples
+    :param n: LWE dimension `n > 0`
     :param h: number of non-zero components
     :param k: number of components to ignore
-    :param fail: we tolerate ``fail`` number of non-zero components
-        amongst the ``k`` ignored components
+    :param fail: we tolerate ``fail`` number of non-zero components amongst the `k` ignored
+        components
     """
 
     N = n         # population size
@@ -1229,18 +1255,18 @@ def success_probability_drop(n, h, k, fail=0):
 
 
 def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability=0.99,
-                   postprocess=False, **kwds):
+                   postprocess=True, **kwds):
     """
     Solve instances of dimension ``n-k`` with increasing ``k`` using ``f`` and pick parameters such
-    that cost is reduced.
+    that cost is minimised.
 
     :param f: attack estimate function
-    :param n: lattice dimension
-    :param alpha: noise parameter
-    :param q: modulus q
-    :param secret_distribution: distribution of the secret
-    :param success_probability: target success probability
-    :param postprocess:
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param success_probability: targeted success probability < 1
+    :param postprocess: check against shifted distributions
 
     EXAMPLE:
 
@@ -1250,16 +1276,16 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         sage: duald = partial(drop_and_solve, dual_scale)
 
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
-                      rop:   2^58.6
-                      red:   2^58.6
-                  delta_0: 1.009703
-                     beta:       91
-                   repeat:   2^11.2
-                     Ldis:   2^21.4
-                        d:     1104
-                        c:    9.027
-                        k:        0
-               postprocess:        0
+                             rop:   2^50.5
+                             red:   2^50.1
+                         delta_0: 1.010433
+                            beta:       77
+                          repeat:  570.456
+                            Ldis:   2^19.1
+                               d:      995
+                               c:    8.444
+                               k:       64
+                      postprocess:        8
 
         sage: kwds = {"use_lll":True, "postprocess":True}
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
@@ -1274,8 +1300,10 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                         k:       55
                postprocess:        7
 
+    This function is based on:
+
     ..  [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
-        parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
+        parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT 2017, Part II
         (pp.  103–129).
 
 
@@ -1364,24 +1392,23 @@ tau_prob_default = 0.1  # probability of success for given τ
 def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
                 tau=tau_default, tau_prob=tau_prob_default,
                 success_probability=0.99,
-                reduction_cost_model=reduction_default_cost_model):
+                reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using primal attack (uSVP version)
 
-    :param n:
-    :param alpha:
-    :param q:
-    :param secret_distribution:
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
     :param m:
     :param tau:
     :param tau_prob:
-    :param success_probability:
-    :param reduction_cost_model:
+ c
 
     EXAMPLES::
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import primal_usvp, Param
+        sage: from estimator import primal_usvp, Param, BKZ
         sage: n, alpha, q = Param.tuple(Regev(256))
 
         sage: primal_usvp(n, alpha, q)
@@ -1405,7 +1432,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
                   d:      513
              repeat:       44
 
-        sage: primal_usvp(n, alpha, q, reduction_cost_model="bkz-sieve")
+        sage: primal_usvp(n, alpha, q, reduction_cost_model=BKZ.sieve)
                 red:  2^114.4
             delta_0: 1.005147
                beta:      274
@@ -1462,18 +1489,18 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
 def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
                       tau=tau_default, tau_prob=tau_prob_default,
                       success_probability=0.99,
-                      reduction_cost_model=reduction_default_cost_model):
+                      reduction_cost_model=reduction_default_cost):
 
     """Scaled-version of primal attack.
 
-    :param n:
-    :param alpha:
-    :param q:
-    :param secret_distribution:
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
     :param m:
     :param tau:
     :param tau_prob:
-    :param success_probability:
+    :param success_probability: targeted success probability < 1
     :param reduction_cost_model:
 
     EXAMPLE::
@@ -1555,38 +1582,13 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
 
 # Primal Attack (Enumeration)
 
-@cached_function
-def gsa(n, q, delta, m):
-    """
-    Compute the Gram-Schmidt lengths based on the GSA.
-
-    :param n: determinant is q^n
-    :param q:  determinant is q^n
-    :param delta: root-Hermite factor
-    :param m: lattice dimension
-
-    .. [RSA:LinPei11] Richard Lindner and Chris Peikert. Better key sizes (and attacks) for LWE-based encryption.
-                      In Aggelos Kiayias, editor, CT-RSA 2011, volume 6558 of LNCS, pages 319–339. Springer,
-                      February 2011.
-    """
-    log_delta = RDF(log(delta))
-    log_q = RDF(log(q))
-    qnm = log_q*(n/m)
-    qnm_p_log_delta_m = qnm + log_delta*m
-    tmm1 = RDF(2*m/(m-1))
-    b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in xrange(m)]
-    b = [log_q - b[-1-i] for i in xrange(m)]
-    b = map(lambda x: x.exp(), b)
-    return b
-
-
 def enumeration_cost(n, alpha, q, eps, delta_0, m, clocks_per_enum=2**15.1):
     """
     Estimates the runtime for performing enumeration.
 
-    :param n:                    dimension > 0
-    :param alpha:                fraction of the noise α < 1.0
-    :param q:                    modulus > 0
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
     :param eps:
     :param delta_0:
     :param m:
@@ -1598,7 +1600,7 @@ def enumeration_cost(n, alpha, q, eps, delta_0, m, clocks_per_enum=2**15.1):
     RR = alpha.parent()
     step = RDF(1)
 
-    B = gsa(n, q, delta_0, m)
+B = BKZ.GSA(n, q, delta_0, m)
 
     d = [RDF(1)]*m
     bd = [d[i] * B[i] for i in xrange(m)]
@@ -1653,15 +1655,15 @@ def enumeration_cost(n, alpha, q, eps, delta_0, m, clocks_per_enum=2**15.1):
 
 
 def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
-                   reduction_cost_model=reduction_default_cost_model, clocks_per_enum=2**15.1):
+                   reduction_cost_model=reduction_default_cost, clocks_per_enum=2**15.1):
     """
     Decoding attack
 
-    :param n: dimension > 0
-    :param alpha: fraction of the noise α < 1.0
-    :param q: modulus > 0
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
     :param m: the number of available samples
-    :param success_probability: probability of success < 1.0
+    :param success_probability: targeted success probability < 1
     :param clocks_per_enum: the number of enumerations computed per clock cycle
 
     EXAMPLE:
@@ -1769,16 +1771,16 @@ primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat
 # Dual Attack
 
 def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
-          reduction_cost_model=reduction_default_cost_model):
+          reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using dual attack.
 
-    :param n: LWE dimension > 0
-    :param alpha: noise rate α < 1.0
-    :param q: integer modulus > 0
-    :param secret_distribution: distribution of the secret
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of available samples
-    :param success_probability: target success probability < 1.0
+    :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
 
     ..  [MicReg09] Micciancio, D., & Regev, O.  (2009).  Lattice-based cryptography.  In D.  J.
@@ -1788,7 +1790,7 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
     EXAMPLE::
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import Param, dual
+        sage: from estimator import Param, BKZ, dual
         sage: n, alpha, q = Param.tuple(Regev(256))
 
         sage: dual(n, alpha, q)
@@ -1821,7 +1823,7 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
              repeat:   2^67.0
             epsilon:  2^-32.0
 
-        sage: dual(n, alpha, q, reduction_cost_model="bkz-sieve")
+        sage: dual(n, alpha, q, reduction_cost_model=BKZ.sieve)
                 red:  2^142.9
             delta_0: 1.004595
                beta:      325
@@ -1872,17 +1874,17 @@ dual = partial(rinse_and_repeat, _dual, repeat_select={"Ldis": False})
 
 def dual_scale(n, alpha, q, secret_distribution,
                m=oo, success_probability=0.99,
-               reduction_cost_model=reduction_default_cost_model,
+               reduction_cost_model=reduction_default_cost,
                c=None, use_lll=False):
     """
     Estimate cost of solving LWE by finding small `(y,x/c)` such that `y ⋅ A ≡ c ⋅ x \bmod q`.
 
-    :param n: LWE dimension > 0
-    :param alpha: noise rate α < 1.0
-    :param q: integer modulus > 0
-    :param secret_distribution: distribution of the secret
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of available samples
-    :param success_probability: target success probability < 1.0
+    :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
     :param c: explicit constant `c`
     :param use_lll: use LLL calls to produce more small vectors
@@ -1989,12 +1991,12 @@ def dual_scale(n, alpha, q, secret_distribution,
 def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     """
 
-    :param n:
-    :param alpha:
-    :param q:
-    :param secret_distribution:
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
     :param m:
-    :param success_probability:
+    :param success_probability: targeted success probability < 1
 
     """
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
@@ -2041,12 +2043,12 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     """
     Coded-BKW.
 
-    :param n:                    dimension > 0
-    :param alpha:                fraction of the noise α < 1.0
-    :param q:                    modulus > 0
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
     :param t2:                   number of coded BKW steps (≥ 0)
     :param b:                    table size (≥ 1)
-    :param success_probability:  probability of success < 1.0, IGNORED
+    :param success_probability: targeted success probability < 1
     :param ntest:                optional parameter ntest
 
     """
@@ -2087,7 +2089,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
         """
         If the parameter `ntest` is not provided, we use this function to estimate it.
 
-        :param n:  dimension > 0
+        :param n: LWE dimension `n > 0`
         :param l:  table size for hypothesis testing
         :param t1: number of normal BKW steps
         :param t2: number of coded BKW steps
@@ -2212,10 +2214,10 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
     Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
     by optimising parameters.
 
-    :param n:                    dimension > 0
-    :param alpha:                fraction of the noise α < 1.0
-    :param q:                    modulus > 0
-    :param success_probability:  probability of success < 1.0, IGNORED
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param success_probability: targeted success probability < 1
     :param samples:              the number of available samples
 
     EXAMPLE::
@@ -2281,7 +2283,7 @@ def gb_cost(m, n, d, omega=2, d2=None):
     would evaluate to zero on it for any `x_i`.
 
     :param m: number of polynomials (integer > 0)
-    :param n: number of variables (integer > 0)
+    :param n: LWE dimension `n > 0`
     :param d: degree of all input polynomials
     :param omega: linear algebra exponent, i.e. matrix-multiplication costs `O(n^ω)` operations.
     :param d2: secondary degree (integer > 0 or ``None``)
@@ -2322,12 +2324,12 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
     """
     Arora-GB
 
-    :param n:
-    :param alpha:
-    :param q:
-    :param secret_distribution:
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
     :param m:
-    :param success_probability:
+    :param success_probability: targeted success probability < 1
     :param omega:
     :returns:
     :rtype:
@@ -2405,16 +2407,16 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
 # Toplevel function
 
 def estimate_lwe(n, alpha=None, q=None, secret_distribution=None, m=oo, # noqa
-                 reduction_cost_model=reduction_default_cost_model,
+                 reduction_cost_model=reduction_default_cost,
                  skip=("mitm", "arora-gb", "bkw")):
     """
     Highlevel-function for estimating security of LWE parameter sets
 
-    :param n: dimension
-    :param alpha: noise rate
-    :param q: modulus
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
     :param m: available number of samples
-    :param secret_distribution: distribution of the secret, see module level documentation.
+    :param secret_distribution: distribution of secret, see module level documentation for details
     :param reduction_cost_model: use this cost model for lattice reduction
     :param skip: skip these algorithms
 
