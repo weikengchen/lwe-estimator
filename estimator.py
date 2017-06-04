@@ -148,8 +148,31 @@ class Param:
     Namespace for processing LWE parameter sets.
     """
 
-    Regev = sage.crypto.lwe.Regev
-    LindnerPeikert = sage.crypto.lwe.LindnerPeikert
+    @staticmethod
+    def Regev(n, m=None, dict=False):
+        """
+        :param n: LWE dimension `n > 0`
+        :param m: number of LWE samples `m > 0`
+        :param dict: return a dictionary
+
+        """
+        if dict:
+            return Param.dict(sage.crypto.lwe.Regev(n=n, m=m))
+        else:
+            return Param.tuple(sage.crypto.lwe.Regev(n=n, m=m))
+
+    @staticmethod
+    def LindnerPeikert(n, m=None, dict=False):
+        """
+        :param n: LWE dimension `n > 0`
+        :param m: number of LWE samples `m > 0`
+        :param dict: return a dictionary
+
+        """
+        if dict:
+            return Param.dict(sage.crypto.lwe.LindnerPeikert(n=n, m=m))
+        else:
+            return Param.tuple(sage.crypto.lwe.LindnerPeikert(n=n, m=m))
 
     @staticmethod
     def tuple(lwe):
@@ -415,9 +438,8 @@ class Cost:
 
         EXAMPLE::
 
-            sage: from sage.crypto.lwe import Regev
             sage: from estimator import Param, dual
-            sage: n, alpha, q = Param.tuple(Regev(128))
+            sage: n, alpha, q = Param.Regev(128)
 
             sage: dual(n, alpha, q).repeat(2^10)
                 rop:   2^84.7
@@ -1409,9 +1431,8 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
 
     EXAMPLES::
 
-        sage: from sage.crypto.lwe import Regev
         sage: from estimator import primal_usvp, Param, BKZ
-        sage: n, alpha, q = Param.tuple(Regev(256))
+        sage: n, alpha, q = Param.Regev(256)
 
         sage: primal_usvp(n, alpha, q)
                         rop:  2^170.4
@@ -1521,9 +1542,8 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
 
     EXAMPLE::
 
-        sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, primal_usvp_scale
-        sage: n, alpha, q = Param.tuple(Regev(256))
+        sage: n, alpha, q = Param.Regev(256)
 
         sage: primal_usvp_scale(n, alpha, q)
              rop:  2^170.4
@@ -1697,9 +1717,8 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
 
     EXAMPLE:
 
-        sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, primal_decode
-        sage: n, alpha, q = Param.tuple(Regev(256))
+        sage: n, alpha, q = Param.Regev(256)
 
         sage: primal_decode(n, alpha, q)
                        rop:  2^159.8
@@ -1818,9 +1837,8 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
 
     EXAMPLE::
 
-        sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, BKZ, dual
-        sage: n, alpha, q = Param.tuple(Regev(256))
+        sage: n, alpha, q = Param.Regev(256)
 
         sage: dual(n, alpha, q)
                     rop:  2^206.1
@@ -1925,10 +1943,9 @@ def dual_scale(n, alpha, q, secret_distribution,
 
     EXAMPLES:
 
-        sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, dual_scale
 
-        sage: dual_scale(*Param.tuple(Regev(256)), secret_distribution=(-1,1))
+        sage: dual_scale(*Param.Regev(256), secret_distribution=(-1,1))
                             rop:  2^135.5
                            LDis:      767
                             red:  2^135.5
@@ -1938,7 +1955,7 @@ def dual_scale(n, alpha, q, secret_distribution,
                               d:      767
                               c:   31.241
 
-        sage: dual_scale(*Param.tuple(Regev(256)), secret_distribution=((-1,1), 64))
+        sage: dual_scale(*Param.Regev(256), secret_distribution=((-1,1), 64))
                             rop:  2^128.4
                            LDis:      765
                             red:  2^128.4
@@ -2269,9 +2286,8 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
 
     EXAMPLE::
 
-        sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, bkw_coded
-        sage: n, alpha, q = Param.tuple(Regev(64))
+        sage: n, alpha, q = Param.Regev(64)
         sage: bkw_coded(n, alpha, q)
              rop:   2^50.7
             LDis:   2^39.6
@@ -2476,22 +2492,22 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
     EXAMPLE::
 
         sage: from estimator import estimate_lwe, Param, BKZ
-        sage: d = estimate_lwe(Param.Regev(128))
+        sage: d = estimate_lwe(*Param.Regev(128))
         usvp: rop:  ≈2^48.9,  LDis:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
          dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2, ...
         dual: rop:  ≈2^74.7,  LDis:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^19.0,  d:  376,...
 
-        sage: d = estimate_lwe(Param.LindnerPeikert(256))
+        sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
         usvp: rop: ≈2^145.4,  LDis:      362,  red: ≈2^145.4,  δ_0: 1.005598,  β:  241,  d:  619,  repeat:       44
          dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
         dual: rop: ≈2^179.8,  LDis:      619,  red: ≈2^179.8,  δ_0: 1.005579,  β:  242,  repeat:  ≈2^39.2,  d:  619, ...
 
-        sage: d = estimate_lwe(Param.LindnerPeikert(256), secret_distribution=(-1,1))
+        sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop: ≈2^135.8,  LDis:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
          dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
         dual: rop: ≈2^142.2,  LDis:      633,  red: ≈2^142.2,  δ_0: 1.006229,  β:  203,  repeat:  ≈2^29.3,  d:  633, ...
 
-        sage: d = estimate_lwe(Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
+        sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop: ≈2^100.6,  LDis:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
          dec: rop: ≈2^111.8,  LDis:      625,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
         dual: rop: ≈2^114.8,  LDis:      657,  red: ≈2^114.8,  δ_0: 1.005785,  β:  229,  repeat:  ≈2^19.2,  d:  657, ...
@@ -2504,13 +2520,6 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
          bkw: rop:  ≈2^63.1,  LDis:  ≈2^49.6,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ...
 
     """
-
-    if alpha is None and q is None and m is oo:
-        lwe = Param.dict(n)
-        n = lwe["n"]
-        q = lwe["q"]
-        alpha = lwe["alpha"]
-        m  = lwe["m"]
 
     algorithms = OrderedDict()
 
