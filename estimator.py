@@ -31,20 +31,28 @@ from sage.rings.infinity import PlusInfinity
 from sage.structure.element import parent
 from sage.symbolic.all import pi, e
 from scipy.optimize import newton
+import logging
+import sage.crypto.lwe
 
 oo = PlusInfinity()
 
-from sage.crypto.lwe import LWE, Regev, LindnerPeikert  # noqa
-
 
-# Global Config
+# Logging
 
-terminal_width = 128
+plain_logger = logging.StreamHandler()
+plain_logger.setFormatter(logging.Formatter('%(message)s',))
 
-verbosity = {"binary-search": False,
-             "rinse-repeat": False,
-             "guess": False,
-             "estimator": True}
+detail_logger = logging.StreamHandler()
+detail_logger.setFormatter(logging.Formatter('%(levelname)s:%(name)s: %(message)s',))
+
+logging.getLogger("estimator").handlers = [plain_logger]
+logging.getLogger("estimator").setLevel(logging.INFO)
+
+loggers = ("binsearch", "repeat", "guess")
+
+for logger in loggers:
+    logging.getLogger(logger).handlers = [detail_logger]
+    logging.getLogger(logger).setLevel(logging.INFO)
 
 
 # Utility Classes #
@@ -112,8 +120,7 @@ def binary_search(f, start, stop, param, predicate=lambda x, best: x<=best, *arg
                 b = floor((start+b)/2)
         else:
             best = D[b]
-            if verbosity["binary-search"]:
-                print u"bs: %4d, %s…"%(b, cost_str(best)[:terminal_width-10])
+            logging.getLogger("binsearch").debug(u"%4d, %s"%(b, best))
             if b-1 not in D:
                 kwds[param] = b-1
                 D[b-1] = f(*arg, **kwds)
@@ -134,68 +141,75 @@ def binary_search(f, start, stop, param, predicate=lambda x, best: x<=best, *arg
     return best
 
 
-# Parameter Conversions
-
-def preprocess_params(n, alpha, q, success_probability=None, prec=None, m=oo):
+class Param:
     """
-    Check if parameters n, α, q are sound and return correct types.
-    Also, if given, the soundness of the success probability and the
-    number of samples is ensured.
+    Namespace for processing LWE parameter sets.
     """
-    if n < 1:
-        raise ValueError("LWE dimension must be greater than 0.")
-    if alpha <= 0:
-        raise ValueError("Fraction of noise must be > 0.")
-    if q < 1:
-        raise ValueError("LWE modulus must be greater than 0.")
-    if m is not None and m < 1:
-        raise InsufficientSamplesError("Given number of samples must be greater than 0.")
-    if prec is None:
-        prec = 128
-    RR = RealField(prec)
-    n, alpha, q =  ZZ(n), RR(alpha), ZZ(q),
 
-    if m is not oo:
-        m = ZZ(m)
+    Regev = sage.crypto.lwe.Regev
+    LindnerPeikert = sage.crypto.lwe.LindnerPeikert
 
-    if success_probability is not None:
-        if success_probability >= 1 or success_probability <= 0:
-            raise ValueError("success_probability must be between 0 and 1.")
-        return n, alpha, q, RR(success_probability)
-    else:
+    @staticmethod
+    def tuple(lwe):
+        """
+        Return (n, α, q) given an LWE instance object.
+
+        :param lwe: LWE object
+        :returns: (n, α, q)
+
+        """
+        n = lwe.n
+        q = lwe.K.order()
+        try:
+            alpha = alphaf(sigmaf(lwe.D.sigma), q)
+        except AttributeError:
+            # older versions of Sage use stddev, not sigma
+            alpha = alphaf(sigmaf(lwe.D.stddev), q)
         return n, alpha, q
 
+    @staticmethod
+    def dict(lwe):
+        """
+        Return dictionary consisting of n, α, q and samples given an LWE instance object.
 
-def lwe_tuple(lwe):
-    """
-    Return (n, α, q) given an LWE instance object.
+        :param lwe: LWE object
+        :returns: "n": n, "alpha": α, "q": q, "samples": samples
+        :rtype: dictionary
 
-    :param lwe: LWE object
-    :returns: (n, α, q)
+        """
+        n, alpha, q = Param.tuple(lwe)
+        m = lwe.m if lwe.m else oo
+        return {"n": n, "alpha": alpha, "q": q, "m": m}
 
-    """
-    n = lwe.n
-    q = lwe.K.order()
-    try:
-        alpha = alphaf(sigmaf(lwe.D.sigma), q)
-    except AttributeError:
-        # older versions of Sage use stddev, not sigma
-        alpha = alphaf(sigmaf(lwe.D.stddev), q)
-    return n, alpha, q
+    @staticmethod
+    def preprocess(n, alpha, q, success_probability=None, prec=None, m=oo):
+        """
+        Check if parameters n, α, q are sound and return correct types.
+        Also, if given, the soundness of the success probability and the
+        number of samples is ensured.
+        """
+        if n < 1:
+            raise ValueError("LWE dimension must be greater than 0.")
+        if alpha <= 0:
+            raise ValueError("Fraction of noise must be > 0.")
+        if q < 1:
+            raise ValueError("LWE modulus must be greater than 0.")
+        if m is not None and m < 1:
+            raise InsufficientSamplesError("Given number of samples must be greater than 0.")
+        if prec is None:
+            prec = 128
+        RR = RealField(prec)
+        n, alpha, q =  ZZ(n), RR(alpha), ZZ(q),
 
+        if m is not oo:
+            m = ZZ(m)
 
-def lwe_dict(lwe):
-    """
-    Return dictionary consisting of n, α, q and samples given an LWE instance object.
-
-    :param lwe: LWE object
-    :returns: "n": n, "alpha": α, "q": q, "samples": samples
-    :rtype: dictionary
-
-    """
-    n, alpha, q = lwe_tuple(lwe)
-    m = lwe.m
-    return {"n": n, "alpha": alpha, "q": q, "m": m}
+        if success_probability is not None:
+            if success_probability >= 1 or success_probability <= 0:
+                raise ValueError("success_probability must be between 0 and 1.")
+            return n, alpha, q, RR(success_probability)
+        else:
+            return n, alpha, q
 
 
 # Error Parameter Conversions
@@ -251,200 +265,244 @@ def alphaf(sigma, q, sigma_is_stddev=False):
         return RR(sigmaf(sigma)/q)
 
 
-# Cost Utility Functions
-
-def cost_str(d, keyword_width=None, newline=None, round_bound=2048, compact=True):
+class Cost:
     """
-    Return string of ``key,value`` pairs as a string ``"key0: value0, key1: value1"``
-
-    :param d:        report dictionary
-    :keyword_width:  keys are printed with this width
-
-    EXAMPLE:
-
-    By default dicts are unordered, hence the order of the output of this function is undefined::
-
-        sage: from estimator import cost_str
-        sage: s = {"delta":5, "bar":2}
-        sage: print cost_str(s)
-        bar:         2,  delta:         5
-
-    Use ``OrderedDict`` if you require ordered output::
-
-        sage: from collections import OrderedDict
-        sage: s = OrderedDict([(u"delta", 5), ("bar",2)])
-        sage: print cost_str(s)
-        delta:         5,  bar:         2
-
+    Holding and processing costs of algorithms.
     """
-    unicode_replacements = {"delta_0": u"δ_0", "beta": u"β"}
 
-    if d is None:
-        return
-    s = []
-    for k in d:
-        v = d[k]
-        k = unicode_replacements.get(k, k)
-        if keyword_width:
-            fmt = u"%%%ds" % keyword_width
-            k = fmt % k
-        if ZZ(1)/round_bound < v < round_bound or v == 0 or ZZ(-1)/round_bound > v > -round_bound:
-            try:
+    def __init__(self, data=None, **kwds):
+        """
+
+        :param data:
+
+        """
+        if data is None:
+            self.data = OrderedDict()
+        else:
+            self.data = OrderedDict(data)
+
+        for k, v in kwds.iteritems():
+            self.data[k] = v
+
+    def __repr__(self):
+        return self.str(unicode=False, compact=True)
+
+    def __str__(self):
+        return self.str(unicode=False)
+
+    def __unicode__(self):
+        return self.str(unicode=True)
+
+    def str(self, keyword_width=None, newline=None, round_bound=2048, compact=False, unicode=True):
+        """
+
+        :param keyword_width:  keys are printed with this width
+        :param newline:
+        :param round_bound:
+        :param compact:
+        :param unicode:
+
+        EXAMPLE::
+
+            sage: from estimator import Cost
+            sage: s = Cost({"delta_0":5, "bar":2})
+            sage: print s
+            bar:        2,  delta_0:        5
+
+            sage: s = OrderedDict([(u"delta_0", 5), ("bar",2)])
+            sage: print Cost(s)
+            delta:         5,  bar:         2
+
+        """
+        if unicode:
+            unicode_replacements = {"delta_0": u"δ_0", "beta": u"β", "epsilon": u"ε"}
+        else:
+            unicode_replacements = {}
+
+        format_strings = {u"beta": u"%s: %4d", u"d": u"%s: %4d",
+                          "b": "%s: %3d", "t1": "%s: %3d", "t2": "%s: %3d",
+                          "l": "%s: %3d", "ncod": "%s: %3d", "ntop": "%s: %3d", "ntest": "%s: %3d"}
+
+        d = self.data
+        s = []
+        for k in d:
+            v = d[k]
+            kk = unicode_replacements.get(k, k)
+            if keyword_width:
+                fmt = u"%%%ds" % keyword_width
+                k = fmt % k
+            if k in format_strings:
+                s.append(format_strings[k]%(kk, v))
+            elif ZZ(1)/round_bound < v < round_bound or v == 0 or ZZ(-1)/round_bound > v > -round_bound:
+                try:
+                    if compact:
+                        s.append(u"%s: %d" % (kk, ZZ(v)))
+                    else:
+                        s.append(u"%s: %8d" % (kk, ZZ(v)))
+                except TypeError:
+                    if v < 2.0 and v >= 0.0:
+                        if compact:
+                            s.append(u"%s: %.6f" % (kk, v))
+                        else:
+                            s.append(u"%s: %8.6f" % (kk, v))
+                    else:
+                        if compact:
+                            s.append(u"%s: %.3f" % (kk, v))
+                        else:
+                            s.append(u"%s: %8.3f" % (kk, v))
+            else:
+                t = u"%s"%(u"≈" if unicode else "") + u"%s2^%.1f" % ("-" if v < 0 else "", log(abs(v), 2).n())
                 if compact:
-                    s.append(u"%s: %d" % (k, ZZ(v)))
+                    s.append(u"%s: %s" % (kk, t))
                 else:
-                    s.append(u"%s: %9d" % (k, ZZ(v)))
-            except TypeError:
-                if v < 2.0 and v >= 0.0:
-                    if compact:
-                        s.append(u"%s: %.7f" % (k, v))
-                    else:
-                        s.append(u"%s: %9.7f" % (k, v))
-                else:
-                    if compact:
-                        s.append(u"%s: %.4f" % (k, v))
-                    else:
-                        s.append(u"%s: %9.4f" % (k, v))
-        else:
-            t = u"≈%s2^%.1f" % ("-" if v < 0 else "", log(abs(v), 2).n())
+                    s.append(u"%s: %8s" % (kk, t))
+        if not newline:
             if compact:
-                s.append(u"%s: %s" % (k, t))
+                return u", ".join(s)
             else:
-                s.append(u"%s: %9s" % (k, t))
-    if not newline:
-        if compact:
-            return u", ".join(s)
+                return u",  ".join(s)
         else:
-            return u",  ".join(s)
-    else:
-        return u"\n".join(s)
+            return u"\n".join(s)
 
+    def reorder(self, first):
+        """
+        Return a new ordered dict from the key:value pairs in dictinonary but reordered such that the
+        ``first`` keys come first.
 
-def cost_reorder(dictionary, first):
-    """
-    Return a new ordered dict from the key:value pairs in dictinonary but reordered such that the
-    ``first`` keys come first.
+        :param dictionary: input dictionary
+        :param first: keys which should come first (in order)
 
-    :param dictionary: input dictionary
-    :param first: keys which should come first (in order)
+        EXAMPLE::
 
-    EXAMPLE::
+            sage: from estimator import Cost
+            sage: d = Cost([("a",1),("b",2),("c",3)]); d
+            a: 1, b:   2, c: 3
 
-        sage: from collections import OrderedDict
-        sage: d = OrderedDict([("a",1),("b",2),("c",3)]); d
-        OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+            sage: d.reorder( ["b","c","a"])
+            b:   2, c: 3, a: 1
+        """
+        keys = list(self.data)
+        for key in first:
+            keys.pop(keys.index(key))
+        keys = list(first) + keys
+        r = OrderedDict()
+        for key in keys:
+            r[key] = self.data[key]
+        return Cost(r)
 
-        sage: from estimator import cost_reorder
-        sage: cost_reorder(d, ["b","c","a"])
-        OrderedDict([('b', 2), ('c', 3), ('a', 1)])
-    """
-    keys = list(dictionary)
-    for key in first:
-        keys.pop(keys.index(key))
-    keys = list(first) + keys
-    r = OrderedDict()
-    for key in keys:
-        r[key] = dictionary[key]
-    return r
+    def filter(self, keys):
+        """
+        Return new ordered dictinonary from dictionary restricted to the keys.
 
+        :param dictionary: input dictionary
+        :param keys: keys which should be copied (ordered)
+        """
+        r = OrderedDict()
+        for key in keys:
+            r[key] = self.data[key]
+        return Cost(r)
 
-def cost_filter(dictionary, keys):
-    """
-    Return new ordered dictinonary from dictionary restricted to the keys.
+    def repeat(self, times, select=None):
+        u"""
+        Return a report with all costs multiplied by `times`.
 
-    :param dictionary: input dictionary
-    :param keys: keys which should be copied (ordered)
-    """
-    r = OrderedDict()
-    for key in keys:
-        r[key] = dictionary[key]
-    return r
+        :param d:      a cost estimate
+        :param times:  the number of times it should be run
+        :param select: toggle which fields ought to be repeated and which shouldn't
+        :returns:      a new cost estimate
 
+        We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
+        For example, δ would not be multiplied but "\#bop" would be. This check is strict such that
+        unknown entries raise an error. This is to enforce a decision on whether an entry should be
+        multiplied by `times` if the function `report` reports on is called `times` often.
 
-def cost_repeat(d, times, select=None):
-    u"""
-    Return a report with all costs multiplied by `times`.
+        EXAMPLE::
 
-    :param d:      a cost estimate
-    :param times:  the number of times it should be run
-    :param select: toggle which fields ought to be repeated and which shouldn't
-    :returns:      a new cost estimate
+            sage: from sage.crypto.lwe import Regev
+            sage: from estimator import Param, dual
+            sage: n, alpha, q = Param.tuple(Regev(128))
+            sage: print dual(n, alpha, q).repeat(2^10)
+            red:   2^84.7,  delta_0: 1.008810,  beta:  111,  Ldis:   2^18.6,  |v|:  736.521,  d:  376,  repeat:   2^29.0,  epsilon: 0.003906
+            sage: print dual(n, alpha, q).repeat(1)
+            red:   2^74.7,  delta_0: 1.008810,  beta:  111,  Ldis:      376,  |v|:  736.521,  d:  376,  repeat:   2^19.0,  epsilon: 0.003906
 
-    We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
-    For example, δ would not be multiplied but "\#bop" would be. This check is strict such that
-    unknown entries raise an error. This is to enforce a decision on whether an entry should be
-    multiplied by `times` if the function `report` reports on is called `times` often.
+        """
+        # TODO review this list
+        do_repeat = {
+            u"bop": True,
+            u"rop": True,
+            u"Ldis": True,
+            u"red": True,
+            u"babai": True,
+            u"babai_op": True,
+            u"epsilon": False,
 
-    EXAMPLE::
+            u"mem": False,
+            u"delta_0": False,
+            u"beta": False,
+            u"k": False,
+            u"ε": False,
+            u"D_reg": False,
+            u"t": False,
+            u"m": False,
+            u"d": False,
+            u"|v|": False,
+            u"amplify": False,
+            u"repeat": False,  # we deal with it below
+            u"c": False,
+        }
 
-        sage: from sage.crypto.lwe import Regev
-        sage: from estimator import lwe_tuple, cost_str, cost_repeat, dual
-        sage: n, alpha, q = lwe_tuple(Regev(128))
-        sage: print cost_str(cost_repeat(dual(n, alpha, q), 2^10), compact=True)
-        red: ≈2^84.7, δ_0: 1.0088095, β: 111, Ldis: ≈2^18.6, |v|: 736.5210, d: 376, repeat: ≈2^29.0, log(eps): -8
-        sage: print cost_str(cost_repeat(dual(n, alpha, q), 1), compact=True)
-        red: ≈2^74.7, δ_0: 1.0088095, β: 111, Ldis: 376, |v|: 736.5210, d: 376, repeat: ≈2^19.0, log(eps): -8
+        if select is not None:
+            for key in select:
+                do_repeat[key] = select[key]
 
-    """
-    # TODO review this list
-    do_repeat = {
-        u"bop": True,
-        u"rop": True,
-        u"Ldis": True,
-        u"red": True,
-        u"babai": True,
-        u"babai_op": True,
-        u"log(eps)": False,
+        ret = OrderedDict()
+        for key in self.data:
+            try:
+                if do_repeat[key]:
+                    ret[key] = times * self.data[key]
+                else:
+                    ret[key] = self.data[key]
+            except KeyError:
+                raise NotImplementedError(u"You found a bug, this function does not know about '%s' but should."%key)
+        ret[u"repeat"] = times * ret.get("repeat", 1)
+        return Cost(ret)
 
-        u"mem": False,
-        u"delta_0": False,
-        u"beta": False,
-        u"k": False,
-        u"ε": False,
-        u"D_reg": False,
-        u"t": False,
-        u"m": False,
-        u"d": False,
-        u"|v|": False,
-        u"amplify": False,
-        u"repeat": False,  # we deal with it below
-        u"c": False,
-    }
+    def __rmul__(self, times):
+        return self.repeat(times)
 
-    if select is not None:
-        for key in select:
-            do_repeat[key] = select[key]
+    def combine(self, right, base=None):
+        """Combine ``left`` and ``right``.
 
-    ret = OrderedDict()
-    for key in d:
-        try:
-            if do_repeat[key]:
-                ret[key] = times * d[key]
-            else:
-                ret[key] = d[key]
-        except KeyError:
-            raise NotImplementedError(u"You found a bug, this function does not know about '%s' but should."%key)
-    ret[u"repeat"] = times * ret.get("repeat", 1)
-    return ret
+        :param left: cost dictionary
+        :param right: cost dictionary
+        :param base: add entries to ``base``
 
+        """
+        if base is None:
+            cost = Cost()
+        else:
+            cost = base
+        for key in self.data:
+            cost[key] = self.data[key]
+        for key in right:
+            cost[key] = right.data[key]
+        return Cost(cost)
 
-def cost_combine(left, right, base=None):
-    """Combine ``left`` and ``right``.
+    def __add__(self, other):
+        return self.combine(self, other)
 
-    :param left: cost dictionary
-    :param right: cost dictionary
-    :param base: add entries to ``base``
+    def __getitem__(self, key):
+        return self.data[key]
 
-    """
-    if base is None:
-        cost = OrderedDict()
-    else:
-        cost = base
-    for key in left:
-        cost[key] = left[key]
-    for key in right:
-        cost[key] = right[key]
-    return cost
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def values(self):
+        return self.data.values()
 
 
 # Secret Distributions
@@ -590,6 +648,7 @@ def amplify(target_success_probability, success_probability, majority=False):
                2*ceil(abs(log(1-success_probability, 2))),
                2*ceil(abs(log(target_success_probability, 2))),
                2*ceil(abs(log(1-target_success_probability, 2))))
+    prec = min(prec, 2048)
     RR = RealField(prec)
 
     if target_success_probability < success_probability:
@@ -598,14 +657,15 @@ def amplify(target_success_probability, success_probability, majority=False):
     success_probability = RR(success_probability)
     target_success_probability = RR(target_success_probability)
 
-    if majority:
-        eps = success_probability/2
-        repeat = ceil(2*log(2 - 2*target_success_probability)/log(1 - 4*eps**2))
-    else:
-        # target_success_probability = 1 - (1-success_probability)^trials
-        repeat = ceil(log(1-target_success_probability)/log(1 -success_probability))
-
-    return repeat
+    try:
+        if majority:
+            eps = success_probability/2
+            return ceil(2*log(2 - 2*target_success_probability)/log(1 - 4*eps**2))
+        else:
+            # target_success_probability = 1 - (1-success_probability)^trials
+            return ceil(log(1-target_success_probability)/log(1 -success_probability))
+    except ValueError:
+        return oo
 
 
 def amplify_sigma(target_advantage, sigma, q):
@@ -644,7 +704,7 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
     :param samples:              the number of available samples
 
     """
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
     RR = parent(alpha)
 
     best = None
@@ -657,16 +717,15 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
             current = f(n, alpha, q, success_probability=prob, m=m, *args, **kwds)
             repeat = amplify(success_probability, prob, majority=decision)
             # TODO does the following hold for all algorithms?
-            current = cost_repeat(current, repeat, select=repeat_select)
+            current = current.repeat(repeat, select=repeat_select)
             has_solution = True
         except (OutOfBoundsError, InsufficientSamplesError):
             key = list(best)[0] if best is not None else optimisation_target
-            current = OrderedDict()
+            current = Cost()
             current[key] = PlusInfinity()
-        current["log(eps)"] = -i
+        current["epsilon"] = ZZ(2)**-i
 
-        if verbosity["rinse-repeat"]:
-            print "rr: %3d, %s"%(i, cost_str(current)[:terminal_width-9])
+        logging.getLogger("repeat").debug(current)
 
         key = list(current)[0]
         if best is None:
@@ -679,7 +738,7 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
             i += step_size
         else:
             # we go back
-            i = -best["log(eps)"] - step_size
+            i = -log(best["epsilon"], 2) - step_size
             i += step_size/2
             if i <= 0:
                 i = step_size/2
@@ -1006,7 +1065,7 @@ def lattice_reduction_cost(cost_model, delta_0, d):
         pass
     beta = betaf(delta_0)
     cost = ZZ(2)**cost_model(beta, d)
-    return OrderedDict([("red", cost), ("delta_0", delta_0), ("beta", beta)])
+    return Cost([("red", cost), ("delta_0", delta_0), ("beta", beta)])
 
 
 def lattice_reduction_opt_m(n, q, delta):
@@ -1054,16 +1113,16 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
 
     EXAMPLE:
 
-        sage: from estimator import guess_and_solve, dual_scale, lwe_tuple, cost_str, partial
+        sage: from estimator import guess_and_solve, dual_scale, partial
         sage: q = next_prime(2^30)
         sage: n, alpha = 512, 8/q
         sage: dualg = partial(guess_and_solve, dual_scale)
-        sage: print cost_str(dualg(n, alpha, q, secret_distribution=((-1,1), 64)))
-        red: ≈2^58.6, δ_0: 1.0097030, β: 91, repeat: ≈2^11.2, Ldis: ≈2^21.4, d: 1104, c: 9.0270, k: 0
+        sage: print dualg(n, alpha, q, secret_distribution=((-1,1), 64))
+        red:   2^58.6,  delta_0: 1.009703,  beta:   91,  repeat:   2^11.2,  Ldis:   2^21.4,  d: 1104,  c:    9.027,  k:        0
 
     """
 
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
     RR = parent(alpha)
 
     a, b = secret_distribution_bounds(secret_distribution)
@@ -1094,10 +1153,9 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
             # TODO: this is too pessimistic
             repeat = (size)**h * binomial(i, h)
         current["k"] = i
-        current = cost_repeat(current, repeat, select={"Ldis": False})
+        current = current.repeat(repeat, select={"Ldis": False})
 
-        if verbosity["guess"]:
-            print cost_str(current)
+        logging.getLogger("binsearch").debug(current)
 
         key = list(current)[0]
         if best is None:
@@ -1153,15 +1211,15 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     EXAMPLE:
 
-        sage: from estimator import drop_and_solve, dual_scale, lwe_tuple, cost_str, partial
+        sage: from estimator import drop_and_solve, dual_scale, partial
         sage: q = next_prime(2^30)
         sage: n, alpha = 512, 8/q
         sage: duald = partial(drop_and_solve, dual_scale)
-        sage: print cost_str(duald(n, alpha, q, secret_distribution=((-1,1), 64)), compact=True)
-        rop: ≈2^58.6, red: ≈2^58.6, δ_0: 1.0097030, β: 91, repeat: ≈2^11.2, Ldis: ≈2^21.4, d: 1104, c: 9.0270, ...
+        sage: print duald(n, alpha, q, secret_distribution=((-1,1), 64))
+        rop:   2^58.6,  red:   2^58.6,  delta_0: 1.009703,  beta:   91,  repeat:   2^11.2,  Ldis:   2^21.4,  d: 1104,  c:    9.027,  k:        0,  postprocess:        0
         sage: kwds = {"use_lll":True, "postprocess":True}
-        sage: print cost_str(duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds), compact=True)
-        rop: ≈2^48.2, red: ≈2^48.0, δ_0: 1.0099029, β: 87, Ldis: ≈2^19.9, repeat: ≈2^11.1, d: 1031, c: 8.5284, ...
+        sage: print duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
+        rop:   2^48.2,  red:   2^48.0,  delta_0: 1.009903,  beta:   87,  Ldis:   2^19.9,  repeat:   2^11.1,  d: 1031,  c:    8.528,  k:       55,  postprocess:        7
 
     ..  [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
         parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
@@ -1169,7 +1227,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
 
     """
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
     RR = parent(alpha)
 
@@ -1213,13 +1271,12 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                 probability += success_probability_drop(n, h, k, i)
 
         current["rop"] = cost_lat + cost_post
-        current = cost_repeat(current, 1/probability, select={"Ldis": False})
+        current = current.repeat(1/probability, select={"Ldis": False})
         current["k"] = k
         current["postprocess"] = postprocess
-        current = cost_reorder(current, ["rop"])
+        current = current.reorder(["rop"])
 
-        if verbosity["guess"]:
-            print cost_str(current)
+        logging.getLogger("guess").debug(current)
 
         key = list(current)[0]
         if best is None:
@@ -1271,20 +1328,20 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     EXAMPLES::
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import lwe_tuple, primal_usvp, cost_str
-        sage: n, alpha, q = lwe_tuple(Regev(256))
+        sage: from estimator import primal_usvp, Param
+        sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print cost_str(primal_usvp(n, alpha, q), compact=True)
-        red: ≈2^170.4, δ_0: 1.0051468, β: 274, d: 745, repeat: 44
+        sage: print primal_usvp(n, alpha, q)
+        red:  2^170.4,  delta_0: 1.005147,  beta:  274,  d:  745,  repeat:       44
 
-        sage: print cost_str(primal_usvp(n, alpha, q, secret_distribution=True, m=n), compact=True)
-        red: ≈2^260.4, δ_0: 1.0040909, β: 385, d: 513, repeat: 44
+        sage: print primal_usvp(n, alpha, q, secret_distribution=True, m=n)
+        red:  2^260.4,  delta_0: 1.004091,  beta:  385,  d:  513,  repeat:       44
 
-        sage: print cost_str(primal_usvp(n, alpha, q, secret_distribution=False, m=2*n), compact=True)
-        red: ≈2^260.4, δ_0: 1.0040909, β: 385, d: 513, repeat: 44
+        sage: print primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
+        red:  2^260.4,  delta_0: 1.004091,  beta:  385,  d:  513,  repeat:       44
 
-        sage: print cost_str(primal_usvp(n, alpha, q, reduction_cost_model="bkz-sieve"), compact=True)
-        red: ≈2^114.4, δ_0: 1.0051468, β: 274, d: 745, repeat: 44
+        sage: print primal_usvp(n, alpha, q, reduction_cost_model="bkz-sieve")
+        red:  2^114.4,  delta_0: 1.005147,  beta:  274,  d:  745,  repeat:       44
 
     ..  [AlbFitGöp14] Albrecht, M.  R., Fitzpatrick, R., & Florian Göpfert (2014).  On the
     efficacy of solving LWE by reduction to unique-SVP.  In H.  Lee, & D.  Han, ICISC 13 (pp.
@@ -1301,7 +1358,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     if m <= 0:
         raise InsufficientSamplesError("Number of samples: %d" % m)
 
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
     RR = parent(alpha)
 
     if is_small(secret_distribution):
@@ -1329,7 +1386,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     d = m + 1
     cost = lattice_reduction_cost(reduction_cost_model, delta_0, d)
     cost[u"d"] = d
-    cost = cost_repeat(cost, repeat, select={"Ldis": False})
+    cost = cost.repeat(repeat, select={"Ldis": False})
     return cost
 
 
@@ -1353,25 +1410,25 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
     EXAMPLE::
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import lwe_tuple, primal_usvp_scale, cost_str
-        sage: n, alpha, q = lwe_tuple(Regev(256))
+        sage: from estimator import Param, primal_usvp_scale
+        sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print cost_str(primal_usvp_scale(n, alpha, q), compact=True)
+        sage: print primal_usvp_scale(n, alpha, q)
         Traceback (most recent call last):
         ...
         ValueError: Cannot extract bounds for secret.
 
-        sage: print cost_str(primal_usvp_scale(n, alpha, q, secret_distribution=(-1,1), m=n), compact=True)
-        red: ≈2^110.6, δ_0: 1.0064489, β: 192, d: 513, repeat: 44
+        sage: print primal_usvp_scale(n, alpha, q, secret_distribution=(-1,1), m=n)
+        red:  2^110.6,  delta_0: 1.006449,  beta:  192,  d:  513,  repeat:       44
 
-        sage: print cost_str(primal_usvp_scale(n, alpha, q, secret_distribution=((-1,1), 64)), compact=True)
-        red: ≈2^96.3, δ_0: 1.0069345, β: 170, d: 541, repeat: 44
+        sage: print primal_usvp_scale(n, alpha, q, secret_distribution=((-1,1), 64))
+        red:   2^96.3,  delta_0: 1.006935,  beta:  170,  d:  541,  repeat:       44
 
     ..  [BaiGal14] Bai, S., & Galbraith, S.  D.  (2014).  Lattice decoding attacks on binary
         LWE.  In W.  Susilo, & Y.  Mu, ACISP 14 (pp.  322–337).  : Springer, Heidelberg.
     """
 
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
     RR = parent(alpha)
 
     stddev = stddevf(alpha*q)
@@ -1414,7 +1471,7 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
     cost["d"] = d
 
     repeat = amplify(success_probability, tau_prob)
-    cost = cost_repeat(cost, repeat, select={"Ldis": False})
+    cost = cost.repeat(repeat, select={"Ldis": False})
 
     return cost
 
@@ -1533,25 +1590,25 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
     EXAMPLE:
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import lwe_tuple, primal_decode, cost_str
-        sage: n, alpha, q = lwe_tuple(Regev(256))
+        sage: from estimator import Param, primal_decode
+        sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print cost_str(primal_decode(n, alpha, q), compact=True)
-        rop: ≈2^160.9, red: ≈2^159.8, δ_0: 1.0055606, β: 243, d: 715, babai: ≈2^144.8, babai_op: ≈2^159.9, Ldis: 715...
+        sage: print primal_decode(n, alpha, q)
+        rop:  2^160.9,  red:  2^159.8,  delta_0: 1.005561,  beta:  243,  d:  715,  babai:  2^144.8,  babai_op:  2^159.9,  Ldis:      715,  repeat:   2^18.2,  epsilon:  2^-16.0
 
-        sage: print cost_str(primal_decode(n, alpha, q, secret_distribution=(-1,1), m=n), compact=True)
+        sage: print primal_decode(n, alpha, q, secret_distribution=(-1,1), m=n)
         Traceback (most recent call last):
         ...
         RuntimeError: No solution found for chosen parameters.
 
-        sage: print cost_str(primal_decode(n, alpha, q, secret_distribution=((-1,1), 64)), compact=True)
-        rop: ≈2^160.9, red: ≈2^159.8, δ_0: 1.0055606, β: 243, d: 715, babai: ≈2^144.8, babai_op: ≈2^159.9, Ldis: 715...
+        sage: print primal_decode(n, alpha, q, secret_distribution=((-1,1), 64))
+        rop:  2^160.9,  red:  2^159.8,  delta_0: 1.005561,  beta:  243,  d:  715,  babai:  2^144.8,  babai_op:  2^159.9,  Ldis:      715,  repeat:   2^18.2,  epsilon:  2^-16.0
 
     ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for
     LWE-based encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
     """
 
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
     if m < 1:
         raise InsufficientSamplesError("Number of samples: %d"%m)
 
@@ -1563,7 +1620,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
     direction = -1
 
     def combine(enum, bkz):
-        current = OrderedDict()
+        current = Cost()
         current["rop"] = enum["babai_op"] + bkz["red"]
 
         for key in bkz:
@@ -1636,27 +1693,27 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
     EXAMPLE::
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import lwe_tuple, dual, cost_str
-        sage: n, alpha, q = lwe_tuple(Regev(256))
+        sage: from estimator import Param, dual
+        sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print cost_str(dual(n, alpha, q), compact=True)
-        red: ≈2^206.1, δ_0: 1.0050482, β: 282, Ldis: 751, |v|: 1923.9677, d: 751, repeat: ≈2^35.0, log(eps): -16
+        sage: print dual(n, alpha, q)
+        red:  2^206.1,  delta_0: 1.005048,  beta:  282,  Ldis:      751,  |v|: 1923.968,  d:  751,  repeat:   2^35.0,  epsilon:  2^-16.0
 
-        sage: print cost_str(dual(n, alpha, q, secret_distribution=True, m=n), compact=True)
-        red: ≈2^269.3, δ_0: 1.0046269, β: 322, Ldis: 512, |v|: ≈2^11.4, d: 512, repeat: ≈2^67.0, log(eps): -32
+        sage: print dual(n, alpha, q, secret_distribution=True, m=n)
+        red:  2^269.3,  delta_0: 1.004627,  beta:  322,  Ldis:      512,  |v|:   2^11.4,  d:  512,  repeat:   2^67.0,  epsilon:  2^-32.0
 
-        sage: print cost_str(dual(n, alpha, q, secret_distribution=False, m=2*n), compact=True)
-        red: ≈2^269.3, δ_0: 1.0046269, β: 322, Ldis: 512, |v|: ≈2^11.4, d: 512, repeat: ≈2^67.0, log(eps): -32
+        sage: print dual(n, alpha, q, secret_distribution=False, m=2*n)
+        red:  2^269.3,  delta_0: 1.004627,  beta:  322,  Ldis:      512,  |v|:   2^11.4,  d:  512,  repeat:   2^67.0,  epsilon:  2^-32.0
 
-        sage: print cost_str(dual(n, alpha, q, reduction_cost_model="bkz-sieve"), compact=True)
-        red: ≈2^142.9, δ_0: 1.0045951, β: 325, Ldis: 787, |v|: 1360.4505, d: 787, repeat: ≈2^19.0, log(eps): -8
+        sage: print dual(n, alpha, q, reduction_cost_model="bkz-sieve")
+        red:  2^142.9,  delta_0: 1.004595,  beta:  325,  Ldis:      787,  |v|: 1360.451,  d:  787,  repeat:   2^19.0,  epsilon: 0.003906
 
     ..  note :: this is the standard dual attack, for the small secret variant see
     ``dual_scale``
 
     """
 
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
     if m <= 0:
         raise InsufficientSamplesError("Number of samples %d too small."%m)
@@ -1711,20 +1768,20 @@ def dual_scale(n, alpha, q, secret_distribution,
     EXAMPLES:
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import lwe_tuple, dual_scale, cost_str
+        sage: from estimator import Param, dual_scale
 
-        sage: print cost_str(dual_scale(*lwe_tuple(Regev(256)), secret_distribution=(-1,1)))
-        red: ≈2^94.0, δ_0: 1.0075482, β: 147, repeat: ≈2^17.1, Ldis: ≈2^26.5, d: 703, c: 31.2405
+        sage: print dual_scale(*Param.tuple(Regev(256)), secret_distribution=(-1,1))
+        red:   2^94.0,  delta_0: 1.007548,  beta:  147,  repeat:   2^17.1,  Ldis:   2^26.5,  d:  703,  c:   31.241
 
-        sage: print cost_str(dual_scale(*lwe_tuple(Regev(256)), secret_distribution=((-1,1), 64)))
-        red: ≈2^90.8, δ_0: 1.0075482, β: 147, repeat: ≈2^13.8, Ldis: ≈2^23.3, d: 715, c: 51.0654
+        sage: print dual_scale(*Param.tuple(Regev(256)), secret_distribution=((-1,1), 64))
+        red:   2^90.8,  delta_0: 1.007548,  beta:  147,  repeat:   2^13.8,  Ldis:   2^23.3,  d:  715,  c:   51.065
 
     .. [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
     parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
     (pp.  103–129).  : .
     """
 
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
     RR = parent(alpha)
 
@@ -1771,15 +1828,14 @@ def dual_scale(n, alpha, q, secret_distribution,
         if use_lll:
             ret["red"] += (n**3 * log(q, 2)**2) * repeat
         else:
-            ret = cost_repeat(ret, repeat)
+            ret = repeat * ret
 
         ret[u"Ldis"] = m_ * repeat
         ret[u"repeat"] = repeat
         ret[u"d"] = m_
         ret[u"c"] = c
 
-        if verbosity["rinse-repeat"]:
-            print cost_str(ret)
+        logging.getLogger("repeat").debug(ret)
 
         if best is None:
             best = ret
@@ -1806,12 +1862,12 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     :param success_probability:
 
     """
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
-    ret = OrderedDict()
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
+    ret = Cost()
     RR = alpha.parent()
 
     if not is_small(secret_distribution):
-        m =- n
+        m = m - n
         secret_distribution = True
         ret["Ldis"] = n
     else:
@@ -1840,7 +1896,7 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     ret["mem"] = RR(size**(n/2) * m)
     ret["Ldis"] += m
 
-    return cost_reorder(ret, ["rop", "Ldis", "mem"])
+    return ret.reorder(["rop", "Ldis", "mem"])
 
 
 cfft = 1  # convolutions mod q
@@ -1859,11 +1915,11 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     :param ntest:                optional parameter ntest
 
     """
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
     sigma = stddevf(alpha*q)  # [C:GuoJohSta15] use σ = standard deviation
     RR = alpha.parent()
 
-    cost = OrderedDict()
+    cost = Cost()
 
     # Our cost is mainly determined by q**b, on the other hand there are
     # expressions in q**(l+1) below, hence, we set l = b - 1. This allows to
@@ -1967,6 +2023,10 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     # cost[u"σ_final"] = RR(sigma_final)
 
     M = amplify_sigma(success_probability, sigmaf(sigma_final), q)
+    if M is oo:
+        cost["rop"] = oo
+        cost["Ldis"] = oo
+        return cost
     cost["m"] = M
     m = (t1+t2)*(q**b-1)/2 + M
     cost["Ldis"] = RR(m)
@@ -2006,7 +2066,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     # cost["bop"] = RR(C)*log(RR(q), RR(2))
     cost["mem"] = (t1+t2)*q**b
 
-    cost = cost_reorder(cost, ["rop", "Ldis", "m", "mem", "b", "t1", "t2"])
+    cost = cost.reorder(["rop", "Ldis", "m", "mem", "b", "t1", "t2"])
 
     return cost
 
@@ -2027,10 +2087,10 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
 
 
         sage: from sage.crypto.lwe import Regev
-        sage: from estimator import lwe_tuple, bkw_coded, cost_str
-        sage: n, alpha, q = lwe_tuple(Regev(64))
-        sage: print cost_str(bkw_coded(n, alpha, q), compact=True)
-        rop: ≈2^50.7, Ldis: ≈2^39.6, m: ≈2^38.7, mem: ≈2^39.6, b: 3, t1: 2, t2: 10, l: 2, ncod: 53, ntop: 0, ntest: 6
+        sage: from estimator import Param, bkw_coded
+        sage: n, alpha, q = Param.tuple(Regev(64))
+        sage: print bkw_coded(n, alpha, q)
+        rop:   2^50.7,  Ldis:   2^39.6,  m:   2^38.7,  mem:   2^39.6,  b:   3,  t1:   2,  t2:  10,  l:   2,  ncod:  53,  ntop:   0,  ntest:   6
 
     """
     bstart = ceil(log(q, 2))
@@ -2129,8 +2189,8 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
 
     """
 
-    n, alpha, q, success_probability = preprocess_params(n, alpha, q, success_probability,
-                                                         prec=2*log(n, 2)*n)
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability,
+                                                           prec=2*log(n, 2)*n)
 
     RR = alpha.parent()
     stddev = RR(stddevf(RR(alpha)*q))
@@ -2156,7 +2216,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
     pred = gb_cost(m_req, n, d, omega, d2=d2)
     pred["t"] = t
     pred["Ldis"] = m_req
-    pred = cost_reorder(pred, ["rop", "Dreg", "Ldis", "t"])
+    pred = pred.reorder(["rop", "Dreg", "Ldis", "t"])
 
     t = ceil(t/3)
     best = None
@@ -2180,10 +2240,9 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
         current["t"] = t
         current["Ldis"] = m_req
 
-        current = cost_reorder(current, ["rop", "Dreg", "Ldis", "t"])
+        current = current.reorder(["rop", "Dreg", "Ldis", "t"])
 
-        if verbosity["rinse-repeat"]:
-            print cost_str(current)
+        logging.getLogger("repeat").debug(current)
 
         if best is None:
             best = current
@@ -2200,7 +2259,8 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
 
 # Toplevel function
 
-def estimate_lwe(n, alpha, q, secret_distribution=None, m=oo, # noqa
+def estimate_lwe(n, alpha=None, q=None, secret_distribution=None, m=oo, # noqa
+                 reduction_cost_model=reduction_default_cost_model,
                  skip=("mitm", "arora-gb", "bkw")):
     """
     Highlevel-function for estimating security of LWE parameter sets
@@ -2216,21 +2276,26 @@ def estimate_lwe(n, alpha, q, secret_distribution=None, m=oo, # noqa
 
     EXAMPLE::
 
-        sage: from sage.crypto.lwe import Regev, LindnerPeikert
-        sage: from estimator import lwe_tuple, lwe_dict, estimate_lwe
-        sage: n, alpha, q = lwe_tuple(Regev(128))
-        sage: d = estimate_lwe(n,alpha,q)
-        usvp red: ≈2^48.9, δ_0: 1.0099714, β: 86, d: 355, repeat: 44
-         dec rop: ≈2^58.1, red: ≈2^56.8, δ_0: 1.0093107, β: 99, d: 363, babai: ≈2^42.2, babai_op: ≈2^57.3, Ldis: 363...
-        dual red: ≈2^74.7, δ_0: 1.0088095, β: 111, Ldis: 376, |v|: 736.5210, d: 376, repeat: ≈2^19.0, log(eps): -8
+        sage: from estimator import estimate_lwe, Param
+        sage: d = estimate_lwe(Param.Regev(128))
+        usvp: red: ≈2^48.9, δ_0: 1.009971, β:   86, d:  355, repeat: 44
+         dec: rop: ≈2^58.1, red: ≈2^56.8, δ_0: 1.009311, β:   99, d:  363, babai: ≈2^42.2, babai_op: ≈2^57.3, Ldis: 363, repeat: 146, ε: 0.031250
+        dual: red: ≈2^74.7, δ_0: 1.008810, β:  111, Ldis: 376, |v|: 736.521, d:  376, repeat: ≈2^19.0, ε: 0.003906
 
-        sage: d = estimate_lwe(**lwe_dict(LindnerPeikert(256)))
-        usvp red: ≈2^104.5, δ_0: 1.0055976, β: 241, d: 619, repeat: 44
-         dec rop: ≈2^112.9, red: ≈2^111.8, δ_0: 1.0054232, β: 253, d: 625, babai: ≈2^97.0, babai_op: ≈2^112.1, ...
-        dual red: ≈2^133.0, δ_0: 1.0049312, β: 292, Ldis: 640, |v|: 649.1243, d: 640, repeat: ≈2^19.0, log(eps): -8
+        sage: d = estimate_lwe(Param.LindnerPeikert(256))
+        usvp: red: ≈2^145.4, δ_0: 1.005598, β:  241, d:  619, repeat: 44
+         dec: rop: ≈2^139.4, red: ≈2^138.4, δ_0: 1.006009, β:  215, d:  590, babai: ≈2^123.3, babai_op: ≈2^138.4, Ldis: 590, repeat: ≈2^17.2, ε: ≈2^-15.0
+        dual: red: ≈2^180.8, δ_0: 1.005479, β:  249, Ldis: 624, |v|: 918.001, d:  624, repeat: ≈2^35.0, ε: ≈2^-16.0
 
     """
-    catch_exceptions = True
+
+    if alpha is None and q is None and m is oo:
+        lwe = Param.dict(n)
+        n = lwe["n"]
+        q = lwe["q"]
+        alpha = lwe["alpha"]
+        m  = lwe["m"]
+
     algorithms = OrderedDict()
 
     if skip is None:
@@ -2279,24 +2344,14 @@ def estimate_lwe(n, alpha, q, secret_distribution=None, m=oo, # noqa
 
     alg_width = max(len(key) for key in set(algorithms).difference(skip))
     cost_kwds = {"compact": True}
-    import traceback
-    import logging
+
+    logger = logging.getLogger("estimator")
 
     results = OrderedDict()
     for alg in algorithms:
         algf = algorithms[alg]
-        if alg in ("dual", "dec", "usvp"):
-            algf = sieve_or_enum(algf)
-        try:
-            tmp = algf(n, alpha, q, secret_distribution=secret_distribution, m=m)
-            results[alg] = tmp
-            if verbosity["estimator"]:
-                print ("%%%ds" % alg_width) % alg,
-                print cost_str(results[alg], **cost_kwds)
-        except Exception as e:
-            if catch_exceptions:
-                logging.error("Algorithm %s report:\n %s"%(alg, traceback.format_exc()))
-            else:
-                raise e
+        tmp = algf(n, alpha, q, secret_distribution=secret_distribution, m=m)
+        results[alg] = tmp
+        logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, results[alg].str(**cost_kwds)))
 
     return results
