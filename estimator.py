@@ -1111,7 +1111,7 @@ def lattice_reduction_cost(cost_model, delta_0, d):
     reduction algorithm.
 
     :param lattice_reduction_estimate:
-    :param delta_0:
+    :param delta_0: root-Hermite factor `δ_0 > 1`
     :param d:
 
     """
@@ -1400,7 +1400,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param m:
+    :param m: number of LWE samples `m > 0`
     :param tau:
     :param tau_prob:
  c
@@ -1497,7 +1497,7 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param m:
+    :param m: number of LWE samples `m > 0`
     :param tau:
     :param tau_prob:
     :param success_probability: targeted success probability < 1
@@ -1582,25 +1582,24 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
 
 # Primal Attack (Enumeration)
 
-def enumeration_cost(n, alpha, q, eps, delta_0, m, clocks_per_enum=2**15.1):
+def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_enum=2**15.1):
     """
-    Estimates the runtime for performing enumeration.
+    Estimates the cost of performing enumeration.
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
-    :param eps:
-    :param delta_0:
-    :param m:
+    :param success_probability: target success probability
+    :param delta_0: root-Hermite factor `δ_0 > 1`
+    :param m: number of LWE samples `m > 0`
     :param clocks_per_enum:      the log of the number of clock cycles needed per enumeration
-    :returns: a cost estimate
-    :rtype: OrderedDict
     """
+    target_success_probability = success_probability
 
     RR = alpha.parent()
     step = RDF(1)
 
-B = BKZ.GSA(n, q, delta_0, m)
+    B = BKZ.GSA(n, q, delta_0, m)
 
     d = [RDF(1)]*m
     bd = [d[i] * B[i] for i in xrange(m)]
@@ -1632,7 +1631,7 @@ B = BKZ.GSA(n, q, delta_0, m)
 
     last_success_probability = success_probability
 
-    while success_probability < RDF(eps):
+    while success_probability < RDF(target_success_probability):
         v, i = bd.pop(0)
         d[i] += step
         v += B[i]*step
@@ -1643,13 +1642,11 @@ B = BKZ.GSA(n, q, delta_0, m)
         bisect.insort_left(bd, [v, i])
 
         if success_probability == 0 or last_success_probability >= success_probability:
-            return OrderedDict([(u"delta_0", delta_0),
-                                ("babai", oo),
-                                ("babai_op", oo)])
+            return Cost([(u"delta_0", delta_0), ("babai", oo), ("babai_op", oo)])
 
-    r = OrderedDict([(u"delta_0", delta_0),
-                     ("babai", RR(prod(d))),
-                     ("babai_op", RR(prod(d)) * clocks_per_enum)])
+    r = Cost([(u"delta_0", delta_0),
+              ("babai", RR(prod(d))),
+              ("babai_op", RR(prod(d)) * clocks_per_enum)])
 
     return r
 
@@ -1657,12 +1654,12 @@ B = BKZ.GSA(n, q, delta_0, m)
 def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
                    reduction_cost_model=reduction_default_cost, clocks_per_enum=2**15.1):
     """
-    Decoding attack
+    Decoding attack as described in [LinPei11]_.
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
-    :param m: the number of available samples
+    :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
     :param clocks_per_enum: the number of enumerations computed per clock cycle
 
@@ -1773,13 +1770,13 @@ primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat
 def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
           reduction_cost_model=reduction_default_cost):
     """
-    Estimate cost of solving LWE using dual attack.
+    Estimate cost of solving LWE using dual attack as described in [MicReg09]_
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param m: number of available samples
+    :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
 
@@ -1877,18 +1874,18 @@ def dual_scale(n, alpha, q, secret_distribution,
                reduction_cost_model=reduction_default_cost,
                c=None, use_lll=False):
     """
-    Estimate cost of solving LWE by finding small `(y,x/c)` such that `y ⋅ A ≡ c ⋅ x \bmod q`.
+    Estimate cost of solving LWE by finding small `(y,x/c)` such that `y ⋅ A ≡ c ⋅ x \bmod q` as
+    described in [EC:Abrecht17]_
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param m: number of available samples
+    :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
     :param c: explicit constant `c`
     :param use_lll: use LLL calls to produce more small vectors
-
 
     EXAMPLES:
 
@@ -1995,7 +1992,7 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param m:
+    :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
 
     """
@@ -2211,17 +2208,15 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
 def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
               cost_include=("rop", "Ldis", "m", "mem", "b", "t1", "t2")):
     """
-    Estimate complexity of Coded-BKW as described in [C:GuoJohSta15]
-    by optimising parameters.
+    Coded-BKW as described in [C:GuoJohSta15]
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
     :param success_probability: targeted success probability < 1
-    :param samples:              the number of available samples
+    :param samples: the number of available samples
 
     EXAMPLE::
-
 
         sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, bkw_coded
@@ -2238,6 +2233,10 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
             ncod:       53
             ntop:        0
            ntest:        6
+
+    .. [GuoJohSta15] Guo, Q., Johansson, T., & Stankovski, P.  (2015).  Coded-BKW: solving LWE using lattice
+         codes.  In R.  Gennaro, & M.  J.  B.  Robshaw, CRYPTO~2015, Part~I (pp.  23–42).  :
+         Springer, Heidelberg.
 
     """
     bstart = ceil(log(q, 2))
@@ -2272,22 +2271,21 @@ def have_magma():
 
 
 def gb_cost(m, n, d, omega=2, d2=None):
-    """Estimate the complexity of computing a Gröbner basis.
+    """
+    Estimate the complexity of computing a Gröbner basis.
 
-    Estimation is done for `m` polynomials of degree `d` in `n`
-    variables under the assumption that the system is semi-regular.
-
-    If `d2` is not ``None`` then `n` polynomials of degree are added to
-    the system. This is to encode restrictions on the solution. For
-    example, if the solution is either `0` or `1`, then `(x_i)⋅(x_i+1)`
-    would evaluate to zero on it for any `x_i`.
-
-    :param m: number of polynomials (integer > 0)
-    :param n: LWE dimension `n > 0`
+    :param m: number polynomials `m > 0`
+    :param n: number of variables `n > 0`
     :param d: degree of all input polynomials
     :param omega: linear algebra exponent, i.e. matrix-multiplication costs `O(n^ω)` operations.
     :param d2: secondary degree (integer > 0 or ``None``)
 
+    Estimation is done for `m` polynomials of degree `d` in `n` variables under the assumption
+    that the system is semi-regular.
+
+    If `d2` is not ``None`` then `n` polynomials of degree are added to the system.  This is to
+    encode restrictions on the solution.  For example, if the solution is either `0` or `1`,
+    then `(x_i)⋅(x_i+1)` would evaluate to zero on it for any `x_i`.
     """
     if m > n**d:
         m = n**d
@@ -2328,12 +2326,16 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param m:
+    :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
-    :param omega:
-    :returns:
-    :rtype:
+    :param omega: linear algebra constant
 
+    ..  [ACFP14] Albrecht, M.  R., Cid, C., Jean-Charles Faug\`ere, & Perret, L.  (2014).
+        Algebraic algorithms for LWE.
+
+    ..  [AroGe11] Arora, S., & Ge, R.  (2011).  New algorithms for learning in presence of
+        errors.  In L.  Aceto, M.  Henzinger, & J.  Sgall, ICALP 2011, Part~I (pp.  403–415).  :
+        Springer, Heidelberg.
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability,
@@ -2415,7 +2417,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=None, m=oo, # noqa
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
-    :param m: available number of samples
+    :param m: number of LWE samples `m > 0`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param reduction_cost_model: use this cost model for lattice reduction
     :param skip: skip these algorithms
