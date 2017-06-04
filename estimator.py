@@ -995,7 +995,7 @@ class BKZ:
         return RR(1.8/log(delta_0, 2) - 110 + log(2.3*10**9, 2))
 
     @staticmethod
-    def __BDGL16_small(beta, d):
+    def _BDGL16_small(beta, d):
         u"""
          Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle for small dimensions.
 
@@ -1172,15 +1172,15 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
         sage: n, alpha = 512, 8/q
         sage: dualg = partial(guess_and_solve, dual_scale)
         sage: dualg(n, alpha, q, secret_distribution=((-1,1), 64))
-                        rop:   2^58.6
-                       LDis:     1104
-                        red:   2^58.6
-                    delta_0: 1.009703
-                       beta:       91
-                     repeat:   2^11.2
-                          d:     1104
-                          c:    9.027
-                          k:        0
+                            rop:   2^68.7
+                           LDis:     1156
+                            red:   2^68.7
+                        delta_0: 1.008853
+                           beta:      110
+                         repeat:   2^11.8
+                              d:     1156
+                              c:    9.027
+                              k:        0
 
     """
 
@@ -1279,29 +1279,29 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         sage: duald = partial(drop_and_solve, dual_scale)
 
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
-                rop:   2^50.5
-               LDis:      995
-                red:   2^50.1
-            delta_0: 1.010433
-               beta:       77
-             repeat:  570.456
-                  d:      995
-                  c:    8.444
-                  k:       64
-        postprocess:        8
+                        rop:   2^55.6
+                       LDis:      960
+                        red:   2^55.3
+                    delta_0: 1.010435
+                       beta:       77
+                     repeat:   2^14.4
+                          d:      960
+                          c:    8.156
+                          k:       94
+                postprocess:        7
 
         sage: kwds = {"use_lll":True, "postprocess":True}
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
-                rop:   2^47.2
-               LDis:     1044
-                red:   2^48.3
-            delta_0: 1.009816
-               beta:       89
-             repeat:   2^11.1
-                  d:     1044
-                  c:    8.593
-                  k:       48
-        postprocess:        7
+                        rop:   2^51.8
+                       LDis:     1054
+                        red:   2^52.6
+                    delta_0: 1.009414
+                       beta:       97
+                     repeat:   2^15.4
+                          d:     1054
+                          c:    8.500
+                          k:       58
+                postprocess:        7
 
     This function is based on:
 
@@ -1414,22 +1414,22 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
         sage: n, alpha, q = Param.tuple(Regev(256))
 
         sage: primal_usvp(n, alpha, q)
-                    rop:  2^170.4
-                   LDis:      744
-                    red:  2^170.4
-                delta_0: 1.005147
-                   beta:      274
-                      d:      745
-                 repeat:       44
+                        rop:  2^170.4
+                       LDis:      488
+                        red:  2^170.4
+                    delta_0: 1.005147
+                       beta:      274
+                          d:      745
+                     repeat:       44
 
         sage: primal_usvp(n, alpha, q, secret_distribution=True, m=n)
-                    rop:  2^260.4
-                   LDis:      512
-                    red:  2^260.4
-                delta_0: 1.004091
-                   beta:      385
-                      d:      513
-                 repeat:       44
+                        rop:  2^260.4
+                       LDis:      256
+                        red:  2^260.4
+                    delta_0: 1.004091
+                       beta:      385
+                          d:      513
+                     repeat:       44
 
         sage: primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
                     rop:  2^260.4
@@ -1441,13 +1441,13 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
                  repeat:       44
 
         sage: primal_usvp(n, alpha, q, reduction_cost_model=BKZ.sieve)
-                    rop:  2^114.4
-                   LDis:      744
-                    red:  2^114.4
-                delta_0: 1.005147
-                   beta:      274
-                      d:      745
-                 repeat:       44
+                        rop:  2^114.4
+                       LDis:      488
+                        red:  2^114.4
+                    delta_0: 1.005147
+                       beta:      274
+                          d:      745
+                     repeat:       44
 
     ..  [AlbFitGöp14] Albrecht, M.  R., Fitzpatrick, R., & Florian Göpfert (2014).  On the
     efficacy of solving LWE by reduction to unique-SVP.  In H.  Lee, & D.  Han, ICISC 13 (pp.
@@ -1492,7 +1492,11 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     d = m + 1
     cost = lattice_reduction_cost(reduction_cost_model, delta_0, d)
     cost[u"d"] = d
-    cost[u"LDis"] = m
+
+    if SDis.is_small(secret_distribution):
+        cost[u"LDis"] = m - n
+    else:
+        cost[u"LDis"] = m
     cost = cost.repeat(repeat, select={"LDis": False})
     return cost.reorder(["rop", "LDis"])
 
@@ -1522,9 +1526,13 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
         sage: n, alpha, q = Param.tuple(Regev(256))
 
         sage: primal_usvp_scale(n, alpha, q)
-        Traceback (most recent call last):
-        ...
-        ValueError: Cannot extract bounds for secret.
+             rop:  2^170.4
+            LDis:      488
+             red:  2^170.4
+         delta_0: 1.005147
+            beta:      274
+               d:      745
+          repeat:       44
 
         sage: primal_usvp_scale(n, alpha, q, secret_distribution=(-1,1), m=n)
                     rop:  2^110.6
@@ -1552,7 +1560,14 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
     RR = parent(alpha)
 
     stddev = stddevf(alpha*q)
-    a, b = SDis.bounds(secret_distribution)
+    try:
+        a, b = SDis.bounds(secret_distribution)
+    except ValueError:
+        # fall back to standard primal attack
+        return primal_usvp(n=n, alpha=alpha, q=q, secret_distribution=secret_distribution, m=m,
+                           tau=tau, tau_prob=tau_prob,
+                           success_probability=success_probability,
+                           reduction_cost_model=reduction_cost_model)
 
     if -a != b:
         raise NotImplementedError
@@ -1914,24 +1929,24 @@ def dual_scale(n, alpha, q, secret_distribution,
         sage: from estimator import Param, dual_scale
 
         sage: dual_scale(*Param.tuple(Regev(256)), secret_distribution=(-1,1))
-                        rop:   2^94.0
-                       LDis:      703
-                        red:   2^94.0
-                    delta_0: 1.007548
-                       beta:      147
-                     repeat:   2^17.1
-                          d:      703
-                          c:   31.241
+                            rop:  2^135.5
+                           LDis:      767
+                            red:  2^135.5
+                        delta_0: 1.006348
+                           beta:      197
+                         repeat:   2^26.4
+                              d:      767
+                              c:   31.241
 
         sage: dual_scale(*Param.tuple(Regev(256)), secret_distribution=((-1,1), 64))
-                        rop:   2^90.8
-                       LDis:      715
-                        red:   2^90.8
-                    delta_0: 1.007548
-                       beta:      147
-                     repeat:   2^13.8
-                          d:      715
-                          c:   51.065
+                            rop:  2^128.4
+                           LDis:      765
+                            red:  2^128.4
+                        delta_0: 1.006598
+                           beta:      185
+                         repeat:   2^27.3
+                              d:      765
+                              c:   51.065
 
     .. [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
     parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
@@ -1942,22 +1957,31 @@ def dual_scale(n, alpha, q, secret_distribution,
 
     RR = parent(alpha)
 
-    a, b = SDis.bounds(secret_distribution)
-
-    if a != -1 or b != 1:
-        raise NotImplementedError("only ternary secrets are currently supported.")
-
-    h = SDis.nonzero(secret_distribution, n)
-
     # stddev of the error
-    e = stddevf(alpha*q).n()
+    e = RR(stddevf(alpha*q))
+
+    try:
+        a, b = SDis.bounds(secret_distribution)
+
+        if a != -1 or b != 1:
+            raise NotImplementedError("only ternary secrets are currently supported.")
+
+        h = SDis.nonzero(secret_distribution, n)
+        e_ = RR(1)
+        if c is None:
+            c = RR(e*sqrt(2*n - n)/sqrt(h))
+
+    except ValueError:
+        if not SDis.is_small(secret_distribution):
+            m = m - n
+        c = RR(1)
+        e_ = e
+        h = n
 
     delta_0 = dual(n, alpha, q, m=m, success_probability=success_probability,
                    reduction_cost_model=reduction_cost_model)["delta_0"]
 
     best = None
-    if c is None:
-        c = RR(e*sqrt(2*n - n)/sqrt(h))
 
     # TODO this should be in rinse_and_repeat
     if use_lll:
@@ -1967,7 +1991,7 @@ def dual_scale(n, alpha, q, secret_distribution,
 
     while True:
         m_optimal = lattice_reduction_opt_m(n, c*q, delta_0)
-        m_ = ZZ(min(m_optimal, m))
+        m_ = ZZ(min(m_optimal, m+n))
 
         # the vector found will have norm
         v = scale * delta_0**m_ * (q/c)**(n/m_)
@@ -1976,12 +2000,12 @@ def dual_scale(n, alpha, q, secret_distribution,
         v_ = v/RR(sqrt(m_))
 
         # we split our vector in two parts.
-        v_r = RR(e*sqrt(m_-n)*v_)  # 1. v_r is multiplied with the error e (dimension m-n)
-        v_l = RR(c*sqrt(h)*v_)  # 2. v_l is the rounding noise (dimension n)
+        v_r = sigmaf(RR(e*sqrt(m_-n)*v_))  # 1. v_r is multiplied with the error e (dimension m-n)
+        v_l = sigmaf(RR(c*e_*sqrt(h)*v_))  # 2. v_l is the rounding noise (dimension n)
 
         ret = lattice_reduction_cost(reduction_cost_model, delta_0, m_)
 
-        repeat = max(amplify_sigma(success_probability, (v_r, v_l), q,), RR(1))
+        repeat = max(amplify_sigma(success_probability, (v_r, v_l), q), RR(1))
         if use_lll:
             ret["red"] += (n**3 * log(q, 2)**2) * repeat
         else:
@@ -2435,7 +2459,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
 
 # Toplevel function
 
-def estimate_lwe(n, alpha=None, q=None, secret_distribution=None, m=oo, # noqa
+def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
                  reduction_cost_model=reduction_default_cost,
                  skip=("mitm", "arora-gb", "bkw")):
     """
@@ -2453,31 +2477,31 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=None, m=oo, # noqa
 
         sage: from estimator import estimate_lwe, Param, BKZ
         sage: d = estimate_lwe(Param.Regev(128))
-        usvp: rop:  ≈2^48.9,  LDis:      354,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
-         dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2...
-        dual: rop:  ≈2^74.7,  LDis:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521...
+        usvp: rop:  ≈2^48.9,  LDis:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
+         dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2, ...
+        dual: rop:  ≈2^74.7,  LDis:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^19.0,  d:  376,...
 
         sage: d = estimate_lwe(Param.LindnerPeikert(256))
-        usvp: rop: ≈2^145.4,  LDis:      618,  red: ≈2^145.4,  δ_0: 1.005598,  β:  241,  d:  619,  repeat:       44
-         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3...
-        dual: rop: ≈2^180.8,  LDis:      624,  red: ≈2^180.8,  δ_0: 1.005479,  β:  249,  d:  624,  |v|:  918.001...
+        usvp: rop: ≈2^145.4,  LDis:      362,  red: ≈2^145.4,  δ_0: 1.005598,  β:  241,  d:  619,  repeat:       44
+         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^179.8,  LDis:      619,  red: ≈2^179.8,  δ_0: 1.005579,  β:  242,  repeat:  ≈2^39.2,  d:  619, ...
 
         sage: d = estimate_lwe(Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop: ≈2^135.8,  LDis:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3...
-        dual: rop:  ≈2^96.5,  LDis:      580,  red:  ≈2^96.5,  δ_0: 1.007429,  β:  151,  repeat:  ≈2^17.4,  d:  580...
+         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^142.2,  LDis:      633,  red: ≈2^142.2,  δ_0: 1.006229,  β:  203,  repeat:  ≈2^29.3,  d:  633, ...
 
         sage: d = estimate_lwe(Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop: ≈2^100.6,  LDis:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^111.8,  LDis:      625,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0...
-        dual: rop:  ≈2^89.6,  LDis:      590,  red:  ≈2^89.6,  δ_0: 1.007185,  β:  160,  repeat:  ≈2^14.3,  d:  590...
+         dec: rop: ≈2^111.8,  LDis:      625,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
+        dual: rop: ≈2^114.8,  LDis:      657,  red: ≈2^114.8,  δ_0: 1.005785,  β:  229,  repeat:  ≈2^19.2,  d:  657, ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
-        mitm: rop: ≈2^161.1,  LDis:      111,  mem: ≈2^153.5
-        usvp: rop:  ≈2^31.5,  LDis:      222,  red:  ≈2^31.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
-         dec: rop:  ≈2^26.2,  LDis:      256,  red:  ≈2^26.2,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1...
-        dual: rop:  ≈2^27.5,  LDis:      311,  red:  ≈2^27.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9...
-         bkw: rop: ≈2^108.0,  LDis:  ≈2^83.6,  m:  ≈2^13.7,  mem:  ≈2^84.6,  b:   4,  t1:  17,  t2:   8,  l:   3...
+        mitm: rop: ≈2^161.1,  LDis:       11,  mem: ≈2^153.5
+        usvp: rop:  ≈2^31.5,  LDis:      122,  red:  ≈2^31.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
+         dec: rop:  ≈2^26.2,  LDis:      256,  red:  ≈2^26.2,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
+        dual: rop:  ≈2^27.5,  LDis:      311,  red:  ≈2^27.5,  δ_0: 1.014423,  β:   40,  repeat:        2,  d:  311, ...
+         bkw: rop:  ≈2^63.1,  LDis:  ≈2^49.6,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ...
 
     """
 
