@@ -2494,30 +2494,30 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         sage: from estimator import estimate_lwe, Param, BKZ
         sage: d = estimate_lwe(*Param.Regev(128))
         usvp: rop:  ≈2^48.9,  LDis:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
-         dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  repeat:      146,  ε: 0.031250
-        dual: rop:  ≈2^55.8,  LDis:      376,  red:  ≈2^95.6,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^67.0,  d:  376,  c:        1
+         dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  ...
+        dual: rop:  ≈2^55.8,  LDis:      376,  red:  ≈2^95.6,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^67.0,  d:  376, ...
 
         sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
         usvp: rop: ≈2^145.4,  LDis:      362,  red: ≈2^145.4,  δ_0: 1.005598,  β:  241,  d:  619,  repeat:       44
-         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  babai_op: ≈2^138.4,  repeat:  ≈2^17.2,  ε: ≈2^-15.0
-        dual: rop: ≈2^145.8,  LDis:      624,  red: ≈2^162.1,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624,  c:        1
+         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^145.8,  LDis:      624,  red: ≈2^162.1,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop: ≈2^135.8,  LDis:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  babai_op: ≈2^138.4,  repeat:  ≈2^17.2,  ε: ≈2^-15.0
-        dual: rop: ≈2^120.6,  LDis:      644,  red: ≈2^121.0,  δ_0: 1.006029,  β:  214,  repeat:  ≈2^88.0,  d:  644,  c:    4.095
+         dec: rop: ≈2^138.4,  LDis:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^120.6,  LDis:      644,  red: ≈2^121.0,  δ_0: 1.006029,  β:  214,  repeat:  ≈2^88.0,  d:  644, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop: ≈2^100.6,  LDis:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^111.8,  LDis:      625,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  babai_op: ≈2^112.1,  repeat:      588,  ε: 0.007812
-        dual: rop:  ≈2^96.5,  LDis:      660,  red:  ≈2^97.0,  δ_0: 1.005735,  β:  232,  repeat:  ≈2^64.0,  d:  660,  c:    4.095
+         dec: rop: ≈2^111.8,  LDis:      625,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
+        dual: rop:  ≈2^96.5,  LDis:      660,  red:  ≈2^97.0,  δ_0: 1.005735,  β:  232,  repeat:  ≈2^64.0,  d:  660, ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  LDis:       11,  mem: ≈2^153.5
         usvp: rop:  ≈2^31.5,  LDis:      122,  red:  ≈2^31.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
-         dec: rop:  ≈2^26.2,  LDis:      256,  red:  ≈2^26.2,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  babai_op:  ≈2^15.1,  repeat:        1,  ε:        1
-        dual: rop:  ≈2^26.4,  LDis:      300,  red:  ≈2^30.7,  δ_0: 1.015473,  β:   40,  repeat:        4,  d:  300,  c:        1
-         bkw: rop:  ≈2^63.1,  LDis:  ≈2^49.6,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,  ntop:   2,  ntest:   6
+         dec: rop:  ≈2^26.2,  LDis:      256,  red:  ≈2^26.2,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
+        dual: rop:  ≈2^26.4,  LDis:      300,  red:  ≈2^30.7,  δ_0: 1.015473,  β:   40,  repeat:        4,  d:  300, ...
+         bkw: rop:  ≈2^63.1,  LDis:  ≈2^49.6,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ...
 
     """
 

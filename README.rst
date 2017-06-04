@@ -1,5 +1,5 @@
-Estimator for the Bit Security of LWE Instances
-===============================================
+Security Estimates for the Learning with Errors Problem
+=======================================================
 
 This `Sage <http://sagemath.org>`__ module provides functions for estimating the concrete security
 of `Learning with Errors <https://en.wikipedia.org/wiki/Learning_with_errors>`__ instances.
@@ -20,8 +20,8 @@ Usage Examples
      dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  repeat:      146,  ε: 0.031250
     dual: rop:  ≈2^74.7,  LDis:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^19.0,  d:  376,  c:        1
 
-Try it online
--------------
+Online
+------
 
 You can `try the estimator
 online <http://aleph.sagemath.org/?z=eJxNjcEKwjAQBe-F_kPoqYXYjZWkKHgQFPyLkOhii6mJyWrx782hiO84MPOcN9e6GohC2gHYkezrckdqfbzBZJwFN-MKE42TIR8hmhnOp8MRfqgNn6opiwdnxoXBcPZke9ZJxZlohRDbXknVSbGMMyXlpi-LhKTfGK1PWK-zr7O1NFHnz_ov2HwBPwsyhw==&lang=sage>`__
@@ -57,10 +57,9 @@ corresponds to this `ePrint entry <https://ia.cr/2017/047>`__.
 Contributions
 -------------
 
-Our intend is for this estimator to be maintained by the research
-community. For example, we encourage algorithm designers to add their
-own algorithms to this estimator and we are happy to help with that
-process.
+Our intent is for this estimator to be maintained by the research community. For example, we
+encourage algorithm designers to add their own algorithms to this estimator and we are happy to help
+with that process.
 
 More generally, all contributions such as bugfixes, documentation and tests are welcome. Please go
 ahead and submit your pull requests. Also, don’t forget to add yourself to the list of contributors
@@ -111,6 +110,7 @@ A pre-print is available as
 
 A high-level overview of that work is given, for instance, in this
 `talk <https://martinralbrecht.files.wordpress.com/2015/05/20150507-lwe-survey-london.pdf>`__.
+
 
 Parameters from the Literature
 ------------------------------
