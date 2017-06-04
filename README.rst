@@ -13,17 +13,17 @@ Usage Examples
 
 ::
 
-    sage: load("https://bitbucket.org/malb/lwe-estimator/raw/HEAD/estimator.py")
+    sage: load("estimator.py")
     sage: n, alpha, q = Param.Regev(128)
     sage: costs = estimate_lwe(n, alpha, q)
     usvp: rop:  ≈2^48.9,  LDis:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
      dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  repeat:      146,  ε: 0.031250
-    dual: rop:  ≈2^74.7,  LDis:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^19.0,  d:  376,  c:        1
+    dual: rop:  ≈2^55.8,  LDis:      376,  red:  ≈2^95.6,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^67.0,  d:  376,  c:        1
 
 Online
 ------
 
-You can `try the estimator
+You can `run the estimator
 online <http://aleph.sagemath.org/?z=eJxNjcEKwjAQBe-F_kPoqYXYjZWkKHgQFPyLkOhii6mJyWrx782hiO84MPOcN9e6GohC2gHYkezrckdqfbzBZJwFN-MKE42TIR8hmhnOp8MRfqgNn6opiwdnxoXBcPZke9ZJxZlohRDbXknVSbGMMyXlpi-LhKTfGK1PWK-zr7O1NFHnz_ov2HwBPwsyhw==&lang=sage>`__
 using the `Sage Math Cell <http://aleph.sagemath.org/>`__ server.
 
