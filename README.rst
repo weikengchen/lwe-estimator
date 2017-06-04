@@ -122,7 +122,7 @@ Parameters from the Literature
     sage: _ = estimate_lwe(n, alpha, q, reduction_cost_model=BKZ.sieve)
     usvp: rop: ≈2^413.9,  LDis:     1374,  red: ≈2^413.9,  δ_0: 1.001678,  β: 1294,  d: 2399,  repeat:       44
      dec: rop: ≈2^424.0,  LDis:  ≈2^11.2,  red: ≈2^424.0,  δ_0: 1.001711,  β: 1261,  d: 2366,  babai: ≈2^409.5,  babai_op: ≈2^424.6,  repeat:  ≈2^25.2,  ε: ≈2^-23.0
-    dual: rop: ≈2^443.5,  LDis:  ≈2^11.2,  red: ≈2^443.5,  δ_0: 1.001765,  β: 1212,  repeat:  ≈2^59.0,  d: 2338,  c:        1
+    dual: rop: ≈2^371.6,  LDis:  ≈2^11.2,  red: ≈2^371.6,  δ_0: 1.001815,  β: 1168,  repeat: ≈2^285.4,  d: 2306,  c:        1
     
 `Frodo <http://ia.cr/2016/659>`__ ::
 
@@ -131,7 +131,7 @@ Parameters from the Literature
     sage: _ = estimate_lwe(n, alpha, q, reduction_cost_model=BKZ.sieve)
     usvp: rop: ≈2^198.7,  LDis:      826,  red: ≈2^198.7,  δ_0: 1.003143,  β:  559,  d: 1579,  repeat:       44
      dec: rop: ≈2^208.1,  LDis:     1589,  red: ≈2^208.1,  δ_0: 1.003082,  β:  575,  d: 1589,  babai: ≈2^193.5,  babai_op: ≈2^208.6,  repeat:     1177,  ε: 0.003906
-    dual: rop: ≈2^230.8,  LDis:     1614,  red: ≈2^230.8,  δ_0: 1.003007,  β:  595,  repeat:  ≈2^27.0,  d: 1614,  c:        1    
+    dual: rop: ≈2^192.4,  LDis:     1575,  red: ≈2^194.3,  δ_0: 1.003157,  β:  556,  repeat: ≈2^157.4,  d: 1575,  c:        1
 
 `TESLA <http://ia.cr/2015/755>`__ ::
 
@@ -140,7 +140,7 @@ Parameters from the Literature
     sage: _ = estimate_lwe(n, alpha, q, m=m, reduction_cost_model=BKZ.sieve)
     usvp: rop: ≈2^140.4,  LDis:     1201,  red: ≈2^140.4,  δ_0: 1.004305,  β:  358,  d: 2006,  repeat:       44
      dec: rop: ≈2^144.9,  LDis:     2041,  red: ≈2^144.9,  δ_0: 1.004148,  β:  378,  d: 2041,  babai: ≈2^130.9,  babai_op: ≈2^146.0,  repeat:       17,  ε: 0.250000
-    dual: rop: ≈2^160.3,  LDis:  ≈2^11.0,  red: ≈2^160.3,  δ_0: 1.003980,  β:  401,  repeat:  ≈2^12.8,  d: 2086,  c:        1    
+    dual: rop: ≈2^139.3,  LDis:     2035,  red: ≈2^139.3,  δ_0: 1.004180,  β:  373,  repeat:  ≈2^93.0,  d: 2035,  c:        1
 
 `SEAL v2.1 <http://ia.cr/2017/224>`__ ::
 
@@ -148,5 +148,5 @@ Parameters from the Literature
     sage: n = 1024; q = 2^35 - 2^14 + 2^11 + 1; alpha = 8/q; m = 2*n
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
     usvp: rop: ≈2^111.2,  LDis:     1082,  red: ≈2^111.2,  δ_0: 1.005350,  β:  258,  d: 2107,  repeat:       44
-     dec: rop: ≈2^114.8,  LDis:  ≈2^11.1,  red: ≈2^114.8,  δ_0: 1.005092,  β:  279,  d: 2208,  babai: ≈2^100.3,  babai_op: ≈2^115.4,  repeat:        7,  ε: 0.500000
-    dual: rop: ≈2^119.5,  LDis:  ≈2^11.1,  red: ≈2^119.5,  δ_0: 1.005121,  β:  276,  repeat:      328,  d: 2266,  c:    3.908    
+     dec: rop: ≈2^115.3,  LDis:  ≈2^11.0,  red: ≈2^115.3,  δ_0: 1.005060,  β:  281,  d: 2048,  babai: ≈2^100.9,  babai_op: ≈2^116.0,  repeat:        7,  ε: 0.500000
+    dual: rop: ≈2^105.6,  LDis:  ≈2^11.1,  red: ≈2^106.4,  δ_0: 1.005371,  β:  257,  repeat:  ≈2^65.0,  d: 2213,  c:    3.908
