@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Complexity estimates for solving LWE.
+Cost estimates for solving LWE.
 
 .. moduleauthor:: Martin R. Albrecht <martinralbrecht@googlemail.com>
 
 # Supported Secret Distributions #
+
+The following distributions for the secret are supported:
 
 - ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
 - ``"uniform"`` : uniform mod q (alias: ``False``)
@@ -273,7 +275,7 @@ class Cost:
     def __init__(self, data=None, **kwds):
         """
 
-        :param data:
+        :param data: we call ``OrderedDict(data)``
 
         """
         if data is None:
@@ -288,21 +290,21 @@ class Cost:
         """
 
         :param keyword_width:  keys are printed with this width
-        :param newline:
-        :param round_bound:
-        :param compact:
-        :param unicode:
+        :param newline:        insert a newline
+        :param round_bound:    values beyond this bound are represented as powers of two
+        :param compact:        do not add extra whitespace to align entries
+        :param unicode:        use unicode to shorten representation
 
         EXAMPLE::
 
             sage: from estimator import Cost
             sage: s = Cost({"delta_0":5, "bar":2})
             sage: print s
-            bar:        2,  delta_0:        5
+                bar: 2, delta_0: 5
 
             sage: s = Cost([(u"delta_0", 5), ("bar",2)])
             sage: print s
-            delta_0:         5,  bar:         2
+            delta_0: 5, bar: 2
 
         """
         if unicode:
@@ -321,8 +323,8 @@ class Cost:
             kk = unicode_replacements.get(k, k)
             if keyword_width:
                 fmt = u"%%%ds" % keyword_width
-                k = fmt % k
-            if k in format_strings:
+                kk = fmt % kk
+            if not newline and k in format_strings:
                 s.append(format_strings[k]%(kk, v))
             elif ZZ(1)/round_bound < v < round_bound or v == 0 or ZZ(-1)/round_bound > v > -round_bound:
                 try:
@@ -367,10 +369,14 @@ class Cost:
 
             sage: from estimator import Cost
             sage: d = Cost([("a",1),("b",2),("c",3)]); d
-            a: 1, b:   2, c: 3
+             a:        1
+             b:        2
+             c:        3
 
             sage: d.reorder( ["b","c","a"])
-            b:   2, c: 3, a: 1
+             b:        2
+             c:        3
+             a:        1
         """
         keys = list(self.data)
         for key in first:
@@ -412,10 +418,26 @@ class Cost:
             sage: from sage.crypto.lwe import Regev
             sage: from estimator import Param, dual
             sage: n, alpha, q = Param.tuple(Regev(128))
-            sage: print dual(n, alpha, q).repeat(2^10)
-            red:   2^84.7,  delta_0: 1.008810,  beta:  111,  Ldis:   2^18.6,  |v|:  736.521,  d:  376,  repeat:   ...
-            sage: print dual(n, alpha, q).repeat(1)
-            red:   2^74.7,  delta_0: 1.008810,  beta:  111,  Ldis:      376,  |v|:  736.521,  d:  376,  repeat:   ...
+
+            sage: dual(n, alpha, q).repeat(2^10)
+                    red:   2^84.7
+                delta_0: 1.008810
+                   beta:      111
+                   Ldis:   2^18.6
+                    |v|:  736.521
+                      d:      376
+                 repeat:   2^29.0
+                epsilon: 0.003906
+
+            sage: dual(n, alpha, q).repeat(1)
+                    red:   2^74.7
+                delta_0: 1.008810
+                   beta:      111
+                   Ldis:      376
+                    |v|:  736.521
+                      d:      376
+                 repeat:   2^19.0
+                epsilon: 0.003906
 
         """
         # TODO review this list
@@ -495,11 +517,11 @@ class Cost:
     def values(self):
         return self.data.values()
 
-    def __repr__(self):
+    def __str__(self):
         return self.str(unicode=False, compact=True)
 
-    def __str__(self):
-        return self.str(unicode=False)
+    def __repr__(self):
+        return self.str(unicode=False, newline=True, keyword_width=10)
 
     def __unicode__(self):
         return self.str(unicode=True)
@@ -1121,8 +1143,15 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
         sage: q = next_prime(2^30)
         sage: n, alpha = 512, 8/q
         sage: dualg = partial(guess_and_solve, dual_scale)
-        sage: print dualg(n, alpha, q, secret_distribution=((-1,1), 64))
-        red:   2^58.6,  delta_0: 1.009703,  beta:   91,  repeat:   2^11.2,  Ldis:   2^21.4,  d: 1104,  c:    9.027...
+        sage: dualg(n, alpha, q, secret_distribution=((-1,1), 64))
+                red:   2^58.6
+            delta_0: 1.009703
+               beta:       91
+             repeat:   2^11.2
+               Ldis:   2^21.4
+                  d:     1104
+                  c:    9.027
+                  k:        0
 
     """
 
@@ -1219,11 +1248,31 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         sage: q = next_prime(2^30)
         sage: n, alpha = 512, 8/q
         sage: duald = partial(drop_and_solve, dual_scale)
-        sage: print duald(n, alpha, q, secret_distribution=((-1,1), 64))
-        rop:   2^58.6,  red:   2^58.6,  delta_0: 1.009703,  beta:   91,  repeat:   2^11.2,  Ldis:   2^21.4,  d: 1104...
+
+        sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
+                      rop:   2^58.6
+                      red:   2^58.6
+                  delta_0: 1.009703
+                     beta:       91
+                   repeat:   2^11.2
+                     Ldis:   2^21.4
+                        d:     1104
+                        c:    9.027
+                        k:        0
+               postprocess:        0
+
         sage: kwds = {"use_lll":True, "postprocess":True}
-        sage: print duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
-        rop:   2^48.2,  red:   2^48.0,  delta_0: 1.009903,  beta:   87,  Ldis:   2^21.1,  repeat:   2^11.1,  d: 1031...
+        sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
+                      rop:   2^48.2
+                      red:   2^48.0
+                  delta_0: 1.009903
+                     beta:       87
+                     Ldis:   2^21.1
+                   repeat:   2^11.1
+                        d:     1031
+                        c:    8.528
+                        k:       55
+               postprocess:        7
 
     ..  [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
         parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
@@ -1335,17 +1384,33 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
         sage: from estimator import primal_usvp, Param
         sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print primal_usvp(n, alpha, q)
-        red:  2^170.4,  delta_0: 1.005147,  beta:  274,  d:  745,  repeat:       44
+        sage: primal_usvp(n, alpha, q)
+                red:  2^170.4
+            delta_0: 1.005147
+               beta:      274
+                  d:      745
+             repeat:       44
 
-        sage: print primal_usvp(n, alpha, q, secret_distribution=True, m=n)
-        red:  2^260.4,  delta_0: 1.004091,  beta:  385,  d:  513,  repeat:       44
+        sage: primal_usvp(n, alpha, q, secret_distribution=True, m=n)
+                red:  2^260.4
+            delta_0: 1.004091
+               beta:      385
+                  d:      513
+             repeat:       44
 
-        sage: print primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
-        red:  2^260.4,  delta_0: 1.004091,  beta:  385,  d:  513,  repeat:       44
+        sage: primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
+                red:  2^260.4
+            delta_0: 1.004091
+               beta:      385
+                  d:      513
+             repeat:       44
 
-        sage: print primal_usvp(n, alpha, q, reduction_cost_model="bkz-sieve")
-        red:  2^114.4,  delta_0: 1.005147,  beta:  274,  d:  745,  repeat:       44
+        sage: primal_usvp(n, alpha, q, reduction_cost_model="bkz-sieve")
+                red:  2^114.4
+            delta_0: 1.005147
+               beta:      274
+                  d:      745
+             repeat:       44
 
     ..  [AlbFitGöp14] Albrecht, M.  R., Fitzpatrick, R., & Florian Göpfert (2014).  On the
     efficacy of solving LWE by reduction to unique-SVP.  In H.  Lee, & D.  Han, ICISC 13 (pp.
@@ -1417,16 +1482,24 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
         sage: from estimator import Param, primal_usvp_scale
         sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print primal_usvp_scale(n, alpha, q)
+        sage: primal_usvp_scale(n, alpha, q)
         Traceback (most recent call last):
         ...
         ValueError: Cannot extract bounds for secret.
 
-        sage: print primal_usvp_scale(n, alpha, q, secret_distribution=(-1,1), m=n)
-        red:  2^110.6,  delta_0: 1.006449,  beta:  192,  d:  513,  repeat:       44
+        sage: primal_usvp_scale(n, alpha, q, secret_distribution=(-1,1), m=n)
+                red:  2^110.6
+            delta_0: 1.006449
+               beta:      192
+                  d:      513
+             repeat:       44
 
-        sage: print primal_usvp_scale(n, alpha, q, secret_distribution=((-1,1), 64))
-        red:   2^96.3,  delta_0: 1.006935,  beta:  170,  d:  541,  repeat:       44
+        sage: primal_usvp_scale(n, alpha, q, secret_distribution=((-1,1), 64))
+                red:   2^96.3
+            delta_0: 1.006935
+               beta:      170
+                  d:      541
+             repeat:       44
 
     ..  [BaiGal14] Bai, S., & Galbraith, S.  D.  (2014).  Lattice decoding attacks on binary
         LWE.  In W.  Susilo, & Y.  Mu, ACISP 14 (pp.  322–337).  : Springer, Heidelberg.
@@ -1597,16 +1670,34 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
         sage: from estimator import Param, primal_decode
         sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print primal_decode(n, alpha, q)
-        rop:  2^160.9,  red:  2^159.8,  delta_0: 1.005561,  beta:  243,  d:  715,  babai:  2^144.8,  babai_op:  ...
+        sage: primal_decode(n, alpha, q)
+                  rop:  2^160.9
+                  red:  2^159.8
+              delta_0: 1.005561
+                 beta:      243
+                    d:      715
+                babai:  2^144.8
+             babai_op:  2^159.9
+                 Ldis:      715
+               repeat:   2^18.2
+              epsilon:  2^-16.0
 
-        sage: print primal_decode(n, alpha, q, secret_distribution=(-1,1), m=n)
+        sage: primal_decode(n, alpha, q, secret_distribution=(-1,1), m=n)
         Traceback (most recent call last):
         ...
         RuntimeError: No solution found for chosen parameters.
 
-        sage: print primal_decode(n, alpha, q, secret_distribution=((-1,1), 64))
-        rop:  2^160.9,  red:  2^159.8,  delta_0: 1.005561,  beta:  243,  d:  715,  babai:  2^144.8,  babai_op:  ...
+        sage: primal_decode(n, alpha, q, secret_distribution=((-1,1), 64))
+                  rop:  2^160.9
+                  red:  2^159.8
+              delta_0: 1.005561
+                 beta:      243
+                    d:      715
+                babai:  2^144.8
+             babai_op:  2^159.9
+                 Ldis:      715
+               repeat:   2^18.2
+              epsilon:  2^-16.0
 
     ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for
     LWE-based encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
@@ -1700,17 +1791,45 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
         sage: from estimator import Param, dual
         sage: n, alpha, q = Param.tuple(Regev(256))
 
-        sage: print dual(n, alpha, q)
-        red:  2^206.1,  delta_0: 1.005048,  beta:  282,  Ldis:      751,  |v|: 1923.968,  d:  751,  repeat:   2^35.0...
+        sage: dual(n, alpha, q)
+                red:  2^206.1
+            delta_0: 1.005048
+               beta:      282
+               Ldis:      751
+                |v|: 1923.968
+                  d:      751
+             repeat:   2^35.0
+            epsilon:  2^-16.0
 
-        sage: print dual(n, alpha, q, secret_distribution=True, m=n)
-        red:  2^269.3,  delta_0: 1.004627,  beta:  322,  Ldis:      512,  |v|:   2^11.4,  d:  512,  repeat:   2^67.0...
+        sage: dual(n, alpha, q, secret_distribution=True, m=n)
+                red:  2^269.3
+            delta_0: 1.004627
+               beta:      322
+               Ldis:      512
+                |v|:   2^11.4
+                  d:      512
+             repeat:   2^67.0
+            epsilon:  2^-32.0
 
-        sage: print dual(n, alpha, q, secret_distribution=False, m=2*n)
-        red:  2^269.3,  delta_0: 1.004627,  beta:  322,  Ldis:      512,  |v|:   2^11.4,  d:  512,  repeat:   2^67.0...
+        sage: dual(n, alpha, q, secret_distribution=False, m=2*n)
+                red:  2^269.3
+            delta_0: 1.004627
+               beta:      322
+               Ldis:      512
+                |v|:   2^11.4
+                  d:      512
+             repeat:   2^67.0
+            epsilon:  2^-32.0
 
-        sage: print dual(n, alpha, q, reduction_cost_model="bkz-sieve")
-        red:  2^142.9,  delta_0: 1.004595,  beta:  325,  Ldis:      787,  |v|: 1360.451,  d:  787,  repeat:   2^19.0...
+        sage: dual(n, alpha, q, reduction_cost_model="bkz-sieve")
+                red:  2^142.9
+            delta_0: 1.004595
+               beta:      325
+               Ldis:      787
+                |v|: 1360.451
+                  d:      787
+             repeat:   2^19.0
+            epsilon: 0.003906
 
     ..  note :: this is the standard dual attack, for the small secret variant see
     ``dual_scale``
@@ -1774,11 +1893,23 @@ def dual_scale(n, alpha, q, secret_distribution,
         sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, dual_scale
 
-        sage: print dual_scale(*Param.tuple(Regev(256)), secret_distribution=(-1,1))
-        red:   2^94.0,  delta_0: 1.007548,  beta:  147,  repeat:   2^17.1,  Ldis:   2^26.5,  d:  703,  c:   31.241
+        sage: dual_scale(*Param.tuple(Regev(256)), secret_distribution=(-1,1))
+                red:   2^94.0
+            delta_0: 1.007548
+               beta:      147
+             repeat:   2^17.1
+               Ldis:   2^26.5
+                  d:      703
+                  c:   31.241
 
-        sage: print dual_scale(*Param.tuple(Regev(256)), secret_distribution=((-1,1), 64))
-        red:   2^90.8,  delta_0: 1.007548,  beta:  147,  repeat:   2^13.8,  Ldis:   2^23.3,  d:  715,  c:   51.065
+        sage: dual_scale(*Param.tuple(Regev(256)), secret_distribution=((-1,1), 64))
+                red:   2^90.8
+            delta_0: 1.007548
+               beta:      147
+             repeat:   2^13.8
+               Ldis:   2^23.3
+                  d:      715
+                  c:   51.065
 
     .. [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
     parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
@@ -2093,8 +2224,18 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
         sage: from sage.crypto.lwe import Regev
         sage: from estimator import Param, bkw_coded
         sage: n, alpha, q = Param.tuple(Regev(64))
-        sage: print bkw_coded(n, alpha, q)
-        rop:   2^50.7,  Ldis:   2^39.6,  m:   2^38.7,  mem:   2^39.6,  b:   3,  t1:   2,  t2:  10,  l:   2,  ...
+        sage: bkw_coded(n, alpha, q)
+             rop:   2^50.7
+            Ldis:   2^39.6
+               m:   2^38.7
+             mem:   2^39.6
+               b:        3
+              t1:        2
+              t2:       10
+               l:        2
+            ncod:       53
+            ntop:        0
+           ntest:        6
 
     """
     bstart = ceil(log(q, 2))
