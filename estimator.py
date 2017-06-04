@@ -1403,7 +1403,6 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     :param m: number of LWE samples `m > 0`
     :param tau:
     :param tau_prob:
- c
 
     EXAMPLES::
 
@@ -1491,7 +1490,8 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
                       success_probability=0.99,
                       reduction_cost_model=reduction_default_cost):
 
-    """Scaled-version of primal attack.
+    """
+    Scaled-version of primal attack as described in [BaiGal14]_.
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
@@ -1987,6 +1987,7 @@ def dual_scale(n, alpha, q, secret_distribution,
 
 def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     """
+    Meet-in-the-Middle attack as described in [AlbPlaSco15]_
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
@@ -1994,6 +1995,9 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
+
+    .. [AlbPlaSco15] Albrecht, M. R., Player, R., & Scott, S. (2015). On the concrete hardness of
+       Learning with Errors. Journal of Mathematical Cryptology, 9(3), 169–203.
 
     """
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
@@ -2235,8 +2239,8 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
            ntest:        6
 
     .. [GuoJohSta15] Guo, Q., Johansson, T., & Stankovski, P.  (2015).  Coded-BKW: solving LWE using lattice
-         codes.  In R.  Gennaro, & M.  J.  B.  Robshaw, CRYPTO~2015, Part~I (pp.  23–42).  :
-         Springer, Heidelberg.
+       codes.  In R.  Gennaro, & M.  J.  B.  Robshaw, CRYPTO~2015, Part~I (pp.  23–42).  :
+       Springer, Heidelberg.
 
     """
     bstart = ceil(log(q, 2))
@@ -2320,7 +2324,7 @@ def gb_cost(m, n, d, omega=2, d2=None):
 
 def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99, omega=2):
     """
-    Arora-GB
+    Arora-GB as described in [AroGe11,ACFP14]_
 
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
@@ -2421,7 +2425,6 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=None, m=oo, # noqa
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param reduction_cost_model: use this cost model for lattice reduction
     :param skip: skip these algorithms
-
 
     EXAMPLE::
 
