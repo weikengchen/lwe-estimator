@@ -16,9 +16,9 @@ Usage Examples
     sage: load("estimator.py")
     sage: n, alpha, q = Param.Regev(128)
     sage: costs = estimate_lwe(n, alpha, q)
-    usvp: rop:  ≈2^48.9,  LDis:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
-     dec: rop:  ≈2^56.8,  LDis:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  repeat:      146,  ε: 0.031250
-    dual: rop:  ≈2^55.8,  LDis:      376,  red:  ≈2^95.6,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^67.0,  d:  376,  c:        1
+    usvp: rop:  ≈2^48.9,  m:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
+     dec: rop:  ≈2^56.8,  m:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  repeat:      146,  ε: 0.031250
+    dual: rop:  ≈2^55.8,  m:      376,  red:  ≈2^95.6,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^67.0,  d:  376,  c:        1
 
 Online
 ------
@@ -117,33 +117,33 @@ Parameters from the Literature
     sage: load("estimator.py")
     sage: n = 1024; q = 12289; alpha = 8/q
     sage: _ = estimate_lwe(n, alpha, q, reduction_cost_model=BKZ.sieve)
-    usvp: rop: ≈2^413.9,  LDis:     1374,  red: ≈2^413.9,  δ_0: 1.001678,  β: 1294,  d: 2399,  repeat:       44
-     dec: rop: ≈2^424.0,  LDis:  ≈2^11.2,  red: ≈2^424.0,  δ_0: 1.001711,  β: 1261,  d: 2366,  babai: ≈2^409.5,  babai_op: ≈2^424.6,  repeat:  ≈2^25.2,  ε: ≈2^-23.0
-    dual: rop: ≈2^371.6,  LDis:  ≈2^11.2,  red: ≈2^371.6,  δ_0: 1.001815,  β: 1168,  repeat: ≈2^285.4,  d: 2306,  c:        1
+    usvp: rop: ≈2^413.9,  m:     1374,  red: ≈2^413.9,  δ_0: 1.001678,  β: 1294,  d: 2399,  repeat:       44
+     dec: rop: ≈2^424.0,  m:  ≈2^11.2,  red: ≈2^424.0,  δ_0: 1.001711,  β: 1261,  d: 2366,  babai: ≈2^409.5,  babai_op: ≈2^424.6,  repeat:  ≈2^25.2,  ε: ≈2^-23.0
+    dual: rop: ≈2^371.6,  m:  ≈2^11.2,  red: ≈2^371.6,  δ_0: 1.001815,  β: 1168,  repeat: ≈2^285.4,  d: 2306,  c:        1
     
 `Frodo <http://ia.cr/2016/659>`__ ::
 
     sage: load("estimator.py")
     sage: n = 752; q = 2^15; alpha = 3.3/q
     sage: _ = estimate_lwe(n, alpha, q, reduction_cost_model=BKZ.sieve)
-    usvp: rop: ≈2^198.7,  LDis:      826,  red: ≈2^198.7,  δ_0: 1.003143,  β:  559,  d: 1579,  repeat:       44
-     dec: rop: ≈2^208.1,  LDis:     1589,  red: ≈2^208.1,  δ_0: 1.003082,  β:  575,  d: 1589,  babai: ≈2^193.5,  babai_op: ≈2^208.6,  repeat:     1177,  ε: 0.003906
-    dual: rop: ≈2^192.4,  LDis:     1575,  red: ≈2^194.3,  δ_0: 1.003157,  β:  556,  repeat: ≈2^157.4,  d: 1575,  c:        1
+    usvp: rop: ≈2^198.7,  m:      826,  red: ≈2^198.7,  δ_0: 1.003143,  β:  559,  d: 1579,  repeat:       44
+     dec: rop: ≈2^208.1,  m:     1589,  red: ≈2^208.1,  δ_0: 1.003082,  β:  575,  d: 1589,  babai: ≈2^193.5,  babai_op: ≈2^208.6,  repeat:     1177,  ε: 0.003906
+    dual: rop: ≈2^192.4,  m:     1575,  red: ≈2^194.3,  δ_0: 1.003157,  β:  556,  repeat: ≈2^157.4,  d: 1575,  c:        1
 
 `TESLA <http://ia.cr/2015/755>`__ ::
 
     sage: load("estimator.py")
     sage: n = 804;  q = 2^31 - 19; alpha = sqrt(2*pi)*57/q; m = 4972
     sage: _ = estimate_lwe(n, alpha, q, m=m, reduction_cost_model=BKZ.sieve)
-    usvp: rop: ≈2^140.4,  LDis:     1201,  red: ≈2^140.4,  δ_0: 1.004305,  β:  358,  d: 2006,  repeat:       44
-     dec: rop: ≈2^144.9,  LDis:     2041,  red: ≈2^144.9,  δ_0: 1.004148,  β:  378,  d: 2041,  babai: ≈2^130.9,  babai_op: ≈2^146.0,  repeat:       17,  ε: 0.250000
-    dual: rop: ≈2^139.3,  LDis:     2035,  red: ≈2^139.3,  δ_0: 1.004180,  β:  373,  repeat:  ≈2^93.0,  d: 2035,  c:        1
+    usvp: rop: ≈2^140.4,  m:     1201,  red: ≈2^140.4,  δ_0: 1.004305,  β:  358,  d: 2006,  repeat:       44
+     dec: rop: ≈2^144.9,  m:     2041,  red: ≈2^144.9,  δ_0: 1.004148,  β:  378,  d: 2041,  babai: ≈2^130.9,  babai_op: ≈2^146.0,  repeat:       17,  ε: 0.250000
+    dual: rop: ≈2^139.3,  m:     2035,  red: ≈2^139.3,  δ_0: 1.004180,  β:  373,  repeat:  ≈2^93.0,  d: 2035,  c:        1
 
 `SEAL v2.2 <https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/sealmanual.pdf>`__ ::
 
     sage: load("estimator.py")
     sage: n = 2048; q = 2^60 - 2^14 + 1; alpha = 8/q; m = 2*n
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
-    usvp: rop: ≈2^125.9,  LDis:  ≈2^11.0,  red: ≈2^125.9,  δ_0: 1.004793,  β:  305,  d: 4163,  repeat:       44
-     dec: rop: ≈2^127.4,  LDis:  ≈2^12.0,  red: ≈2^127.4,  δ_0: 1.004652,  β:  319,  d: 4096,  babai: ≈2^113.3,  babai_op: ≈2^128.4,  repeat:        7,  ε: 0.500000
-    dual: rop: ≈2^118.8,  LDis:  ≈2^12.0,  red: ≈2^118.8,  δ_0: 1.004855,  β:  299,  repeat:  ≈2^61.9,  d: 4234,  c:    3.909,  k:       26,  postprocess:       12
+    usvp: rop: ≈2^125.9,  m:  ≈2^11.0,  red: ≈2^125.9,  δ_0: 1.004793,  β:  305,  d: 4163,  repeat:       44
+     dec: rop: ≈2^127.4,  m:  ≈2^12.0,  red: ≈2^127.4,  δ_0: 1.004652,  β:  319,  d: 4096,  babai: ≈2^113.3,  babai_op: ≈2^128.4,  repeat:        7,  ε: 0.500000
+    dual: rop: ≈2^118.8,  m:  ≈2^12.0,  red: ≈2^118.8,  δ_0: 1.004855,  β:  299,  repeat:  ≈2^61.9,  d: 4234,  c:    3.909,  k:       26,  postprocess:       12
