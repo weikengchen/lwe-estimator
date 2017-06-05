@@ -139,11 +139,11 @@ Parameters from the Literature
      dec: rop: ≈2^144.9,  LDis:     2041,  red: ≈2^144.9,  δ_0: 1.004148,  β:  378,  d: 2041,  babai: ≈2^130.9,  babai_op: ≈2^146.0,  repeat:       17,  ε: 0.250000
     dual: rop: ≈2^139.3,  LDis:     2035,  red: ≈2^139.3,  δ_0: 1.004180,  β:  373,  repeat:  ≈2^93.0,  d: 2035,  c:        1
 
-`SEAL v2.1 <http://ia.cr/2017/224>`__ ::
+`SEAL v2.2 <https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/sealmanual.pdf>`__ ::
 
     sage: load("estimator.py")
-    sage: n = 1024; q = 2^35 - 2^14 + 2^11 + 1; alpha = 8/q; m = 2*n
+    sage: n = 2048; q = 2^60 - 2^14 + 1; alpha = 8/q; m = 2*n
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
-    usvp: rop: ≈2^111.2,  LDis:     1082,  red: ≈2^111.2,  δ_0: 1.005350,  β:  258,  d: 2107,  repeat:       44
-     dec: rop: ≈2^115.3,  LDis:  ≈2^11.0,  red: ≈2^115.3,  δ_0: 1.005060,  β:  281,  d: 2048,  babai: ≈2^100.9,  babai_op: ≈2^116.0,  repeat:        7,  ε: 0.500000
-    dual: rop: ≈2^105.6,  LDis:  ≈2^11.1,  red: ≈2^106.4,  δ_0: 1.005371,  β:  257,  repeat:  ≈2^65.0,  d: 2213,  c:    3.908
+    usvp: rop: ≈2^125.9,  LDis:  ≈2^11.0,  red: ≈2^125.9,  δ_0: 1.004793,  β:  305,  d: 4163,  repeat:       44
+     dec: rop: ≈2^127.4,  LDis:  ≈2^12.0,  red: ≈2^127.4,  δ_0: 1.004652,  β:  319,  d: 4096,  babai: ≈2^113.3,  babai_op: ≈2^128.4,  repeat:        7,  ε: 0.500000
+    dual: rop: ≈2^118.8,  LDis:  ≈2^12.0,  red: ≈2^118.8,  δ_0: 1.004855,  β:  299,  repeat:  ≈2^61.9,  d: 4234,  c:    3.909,  k:       26,  postprocess:       12
