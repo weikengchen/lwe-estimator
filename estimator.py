@@ -591,6 +591,30 @@ class SDis:
                 return False
 
     @staticmethod
+    def is_ternary(secret_distribution):
+        """Return true if the secret is ternary (sparse or not)
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+
+        """
+
+        try:
+            a, b = secret_distribution
+            if a == -1 and b == 1:
+                return True
+        except (TypeError, ValueError):
+            pass
+
+        try:
+            (a, b), h = secret_distribution
+            if a == -1 and b == 1:
+                return True
+        except (TypeError, ValueError):
+            pass
+
+        return False
+
+    @staticmethod
     def bounds(secret_distribution):
         """Return bounds of secret distribution
 
@@ -1343,11 +1367,10 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     # size means stepping over target
     step_size = int(n/32)
 
-    a, b = SDis.bounds(secret_distribution)
-
-    if a != -1 or b != 1:
+    if not SDis.is_ternary(secret_distribution):
         raise NotImplementedError("only ternary secrets are currently supported.")
 
+    a, b = SDis.bounds(secret_distribution)
     h = SDis.nonzero(secret_distribution, n)
 
     k = 0
@@ -2549,8 +2572,10 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
 
     if "dual" not in skip:
-        if SDis.is_small(secret_distribution):
+        if SDis.is_ternary(secret_distribution):
             algorithms["dual"] = partial(drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model)
+        elif SDis.is_small(secret_distribution):
+            algorithms["dual"] = partial(dual_scale, reduction_cost_model=reduction_cost_model)
         else:
             algorithms["dual"] = partial(dual, reduction_cost_model=reduction_cost_model)
 
