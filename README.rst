@@ -18,7 +18,7 @@ Usage Examples
     sage: costs = estimate_lwe(n, alpha, q)
     usvp: rop:  ≈2^48.9,  m:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
      dec: rop:  ≈2^56.8,  m:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  repeat:      146,  ε: 0.031250
-    dual: rop:  ≈2^55.8,  m:      376,  red:  ≈2^95.6,  δ_0: 1.008810,  β:  111,  repeat:  ≈2^67.0,  d:  376,  c:        1
+    dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  repeat:  ≈2^19.0,  ε: 0.003906
 
 Online
 ------
@@ -128,7 +128,7 @@ Parameters from the Literature
     sage: _ = estimate_lwe(n, alpha, q, reduction_cost_model=BKZ.sieve)
     usvp: rop: ≈2^198.7,  m:      826,  red: ≈2^198.7,  δ_0: 1.003143,  β:  559,  d: 1579,  repeat:       44
      dec: rop: ≈2^208.1,  m:     1589,  red: ≈2^208.1,  δ_0: 1.003082,  β:  575,  d: 1589,  babai: ≈2^193.5,  babai_op: ≈2^208.6,  repeat:     1177,  ε: 0.003906
-    dual: rop: ≈2^192.4,  m:     1575,  red: ≈2^194.3,  δ_0: 1.003157,  β:  556,  repeat: ≈2^157.4,  d: 1575,  c:        1
+    dual: rop: ≈2^195.9,  m:     1588,  red: ≈2^195.9,  δ_0: 1.003107,  β:  568,  repeat: ≈2^135.0,  d: 1588,  c:        1
 
 `TESLA <http://ia.cr/2015/755>`__ ::
 
@@ -137,7 +137,7 @@ Parameters from the Literature
     sage: _ = estimate_lwe(n, alpha, q, m=m, reduction_cost_model=BKZ.sieve)
     usvp: rop: ≈2^140.4,  m:     1201,  red: ≈2^140.4,  δ_0: 1.004305,  β:  358,  d: 2006,  repeat:       44
      dec: rop: ≈2^144.9,  m:     2041,  red: ≈2^144.9,  δ_0: 1.004148,  β:  378,  d: 2041,  babai: ≈2^130.9,  babai_op: ≈2^146.0,  repeat:       17,  ε: 0.250000
-    dual: rop: ≈2^139.3,  m:     2035,  red: ≈2^139.3,  δ_0: 1.004180,  β:  373,  repeat:  ≈2^93.0,  d: 2035,  c:        1
+    dual: rop: ≈2^139.4,  m:     2035,  red: ≈2^139.4,  δ_0: 1.004180,  β:  373,  repeat:  ≈2^93.0,  d: 2035,  c:        1
 
 `SEAL v2.2 <https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/sealmanual.pdf>`__ ::
 
