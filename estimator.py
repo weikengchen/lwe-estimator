@@ -2549,10 +2549,8 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
 
     if "dual" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
+        if SDis.is_small(secret_distribution):
             algorithms["dual"] = partial(drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model)
-        elif SDis.is_small(secret_distribution):
-            algorithms["dual"] = partial(dual_scale, reduction_cost_model=reduction_cost_model)
         else:
             algorithms["dual"] = partial(dual, reduction_cost_model=reduction_cost_model)
 
