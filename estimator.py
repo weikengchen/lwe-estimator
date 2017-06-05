@@ -1917,14 +1917,13 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
     if m <= 0:
         raise InsufficientSamplesError("Number of samples %d too small."%m)
 
-    f = lambda eps: RR(sqrt(log(1/eps)/pi))  # noqa
     RR = parent(alpha)
+    f = lambda eps: RR(sqrt(log(1/eps)/pi))  # noqa
 
     if SDis.is_small(secret_distribution):
         m = m + n
-
     log_delta_0 = log(f(success_probability)/alpha, 2)**2 / (4*n*log(q, 2))
-    delta_0 = RR(2**log_delta_0)
+    delta_0 = RR(2)**log_delta_0
     m_optimal = lattice_reduction_opt_m(n, q, delta_0)
     if m > m_optimal:
         m = m_optimal
@@ -2018,8 +2017,7 @@ def dual_scale(n, alpha, q, secret_distribution,
         e_ = e
         h = n
 
-    delta_0 = dual(n, alpha, q, m=m, success_probability=success_probability,
-                   reduction_cost_model=reduction_cost_model)["delta_0"]
+    delta_0 = dual(n=n, alpha=alpha, q=q, m=m, reduction_cost_model=reduction_cost_model)["delta_0"]
 
     best = None
 
