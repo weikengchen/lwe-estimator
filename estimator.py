@@ -1730,8 +1730,7 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
         success_probability = prod(probs_bd)
 
         if success_probability.is_NaN():
-            return OrderedDict([(u"delta_0", delta_0),
-                                ("babai", oo),
+            return OrderedDict([("babai", oo),
                                 ("babai_op", oo)])
 
     if not success_probability > 0:
@@ -1755,11 +1754,9 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
         bisect.insort_left(bd, [v, i])
 
         if success_probability == 0 or last_success_probability >= success_probability:
-            return Cost([(u"delta_0", delta_0), ("babai", oo), ("babai_op", oo)])
+            return Cost([("babai", oo), ("babai_op", oo)])
 
-    r = Cost([(u"delta_0", delta_0),
-              ("babai", RR(prod(d))),
-              ("babai_op", RR(prod(d)) * clocks_per_enum)])
+    r = Cost([("babai", RR(prod(d))), ("babai_op", RR(prod(d)) * clocks_per_enum)])
 
     return r
 
@@ -1782,45 +1779,59 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
         sage: n, alpha, q = Param.Regev(256)
 
         sage: primal_decode(n, alpha, q)
-                            rop:  2^159.8
-                              m:      715
-                            red:  2^159.8
-                        delta_0: 1.005561
-                           beta:      243
-                              d:      715
-                          babai:  2^144.8
-                       babai_op:  2^159.9
-                         repeat:   2^18.2
-                        epsilon:  2^-16.0
+             rop:  2^159.8
+               m:      459
+             red:  2^159.8
+         delta_0: 1.005561
+            beta:      243
+               d:      715
+           babai:  2^144.8
+        babai_op:  2^159.9
+          repeat:   2^18.2
+         epsilon:  2^-16.0
 
         sage: primal_decode(n, alpha, q, secret_distribution=(-1,1), m=n)
-        Traceback (most recent call last):
-        ...
-        RuntimeError: No solution found for chosen parameters.
+             rop:  2^199.4
+               m:      256
+             red:  2^199.4
+         delta_0: 1.005131
+            beta:      275
+               d:      512
+           babai:  2^184.6
+        babai_op:  2^199.7
+          repeat:   2^34.2
+         epsilon:  2^-32.0
 
         sage: primal_decode(n, alpha, q, secret_distribution=((-1,1), 64))
-                            rop:  2^159.8
-                              m:      715
-                            red:  2^159.8
-                        delta_0: 1.005561
-                           beta:      243
-                              d:      715
-                          babai:  2^144.8
-                       babai_op:  2^159.9
-                         repeat:   2^18.2
-                        epsilon:  2^-16.0
+             rop:  2^159.8
+               m:      459
+             red:  2^159.8
+         delta_0: 1.005561
+            beta:      243
+               d:      715
+           babai:  2^144.8
+        babai_op:  2^159.9
+          repeat:   2^18.2
+         epsilon:  2^-16.0
 
     ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for
     LWE-based encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
+
     if m < 1:
         raise InsufficientSamplesError("Number of samples: %d"%m)
 
+    if SDis.is_small(secret_distribution):
+        m_ = m + n
+    else:
+        m_ = m
+
     RR = alpha.parent()
 
-    delta_0m1 = _dual(n, alpha, q, success_probability=success_probability)["delta_0"] - 1
+    delta_0m1 = _dual(n, alpha, q, success_probability=success_probability,
+                      secret_distribution=secret_distribution, m=m)["delta_0"] - 1
 
     step = RR(1.05)
     direction = -1
@@ -1833,7 +1844,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
             current[key] = bkz[key]
         for key in enum:
             current[key] = enum[key]
-        current[u"m"]  = m
+        current[u"m"]  = m_-n if SDis.is_small(secret_distribution) else m_
         return current
 
     depth = 6
@@ -1845,12 +1856,12 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
             break
 
         m_optimal = lattice_reduction_opt_m(n, q, delta_0)
-        m = min(m_optimal, m)
-        bkz = lattice_reduction_cost(reduction_cost_model, delta_0, m)
-        bkz["d"] = m
+        m_ = min(m_optimal, m_)
+        bkz = lattice_reduction_cost(reduction_cost_model, delta_0, m_)
+        bkz["d"] = m_
 
-        enum = enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_enum=clocks_per_enum)
-        current = combine(enum, bkz)
+        enum = enumeration_cost(n, alpha, q, success_probability, delta_0, m_, clocks_per_enum=clocks_per_enum)
+        current = combine(enum, bkz).reorder(["rop", "m"])
 
         # if lattice reduction is cheaper than enumration, make it more expensive
         if current["red"] < current["babai_op"]:
@@ -1871,7 +1882,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
         if depth == 0:
             break
 
-    return current.reorder(["rop", "m"])
+    return current
 
 
 primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat_select={"m": False})
@@ -2552,30 +2563,30 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         sage: from estimator import estimate_lwe, Param, BKZ
         sage: d = estimate_lwe(*Param.Regev(128))
         usvp: rop:  ≈2^48.9,  m:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
-         dec: rop:  ≈2^56.8,  m:      363,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,...
-        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  ...
+         dec: rop:  ≈2^56.8,  m:      235,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  ...
+        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,    ...
 
         sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
         usvp: rop: ≈2^145.4,  m:      362,  red: ≈2^145.4,  δ_0: 1.005598,  β:  241,  d:  619,  repeat:       44
-         dec: rop: ≈2^138.4,  m:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,...
-        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624...
+         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop: ≈2^135.8,  m:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^138.4,  m:      590,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,...
-        dual: rop: ≈2^112.9,  m:      612,  red: ≈2^112.9,  δ_0: 1.006245,  β:  202,  repeat:  ≈2^76.6,  d:  612...
+         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^112.9,  m:      612,  red: ≈2^112.9,  δ_0: 1.006245,  β:  202,  repeat:  ≈2^76.6,  d:  612, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop: ≈2^100.6,  m:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^111.8,  m:      625,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0, ...
-        dual: rop:  ≈2^93.5,  m:      629,  red:  ≈2^93.5,  δ_0: 1.005915,  β:  221,  repeat:  ≈2^56.1,  d:  629,...
+         dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
+        dual: rop:  ≈2^93.5,  m:      629,  red:  ≈2^93.5,  δ_0: 1.005915,  β:  221,  repeat:  ≈2^56.1,  d:  629, ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
         usvp: rop:  ≈2^31.5,  m:      122,  red:  ≈2^31.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
-         dec: rop:  ≈2^26.2,  m:      256,  red:  ≈2^26.2,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
-        dual: rop:  ≈2^27.5,  m:      311,  red:  ≈2^27.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  ...
-         bkw: rop:  ≈2^63.1,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,  ...
+         dec: rop:  ≈2^26.2,  m:      156,  red:  ≈2^26.2,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
+        dual: rop:  ≈2^27.5,  m:      311,  red:  ≈2^27.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,    ...
+         bkw: rop:  ≈2^63.1,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,      ...
 
     """
 
