@@ -1057,21 +1057,24 @@ class BKZ:
     # BKZ Estimates
 
     @staticmethod
-    def LLL(d, B):
+    def LLL(d, B=None):
         """
         Runtime estimation for LLL algorithm
 
         :param d: lattice dimension
-        :param q: bit-size of entries
+        :param B: bit-size of entries
 
         ..  [CheNgu11] Chen, Y., & Nguyen, P.  Q.  (2011).  BKZ 2.0: better lattice security
             estimates.  In D.  H.  Lee, & X.  Wang, ASIACRYPT~2011 (pp.  1–20).  : Springer,
             Heidelberg.
         """
-        return 3*log(d, 2) + 2*log(B, 2)
+        if B:
+            return d**3 * B**2
+        else:
+            return d**3  # ignoring B for backward compatibility
 
     @staticmethod
-    def LinPei11(beta, d):
+    def LinPei11(beta, d, B=None):
         """
         Runtime estimation assuming the Lindner-Peikert model in elementary operations.
 
@@ -1080,46 +1083,51 @@ class BKZ:
 
         :param beta: block size
         :param d: lattice dimension
+        :param B: bit-size of entries
+
         """
         delta_0 = delta_0f(beta)
-        return RR(1.8/log(delta_0, 2) - 110 + log(2.3*10**9, 2))
+        return BKZ.LLL(d, B) + ZZ(2)**RR(1.8/log(delta_0, 2) - 110 + log(2.3*10**9, 2))
 
     @staticmethod
-    def _BDGL16_small(beta, d):
+    def _BDGL16_small(beta, d, B=None):
         u"""
          Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle for small dimensions.
 
          :param beta: block size
          :param d: lattice dimension
+         :param B: bit-size of entries
 
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
         10–24).
          """
-        return RR(0.387*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
+        return BKZ.LLL(d, B) + ZZ(2)**RR(0.387*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
 
     @staticmethod
-    def _BDGL16_asymptotic(beta, d):
+    def _BDGL16_asymptotic(beta, d, B=None):
         u"""
          Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle.
 
          :param beta: block size
          :param d: lattice dimension
+         :param B: bit-size of entries
 
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
         10–24).
         """
         # TODO we simply pick the same additive constant 16.4 as for the experimental result in [BDGL16]
-        return RR(0.292*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
+        return BKZ.LLL(d, B) + ZZ(2)**RR(0.292*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
 
     @staticmethod
-    def BDGL16(beta, d):
+    def BDGL16(beta, d, B=None):
         u"""
          Runtime estimation given `β` and assuming sieving is used to realise the SVP oracle.
 
          :param beta: block size
          :param n: LWE dimension `n > 0`
+         :param B: bit-size of entries
 
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
@@ -1127,28 +1135,33 @@ class BKZ:
         """
         # TODO this is somewhat arbitrary
         if beta <= 90:
-            return BKZ._BDGL16_small(beta, d)
+            return BKZ._BDGL16_small(beta, d, B)
         else:
-            return BKZ._BDGL16_asymptotic(beta, d)
+            return BKZ._BDGL16_asymptotic(beta, d, B)
 
     @staticmethod
-    def LaaMosPol14(beta, n):
+    def LaaMosPol14(beta, d, B=None):
         u"""
         Runtime estimation for quantum sieving.
 
          :param beta: block size
          :param n: LWE dimension `n > 0`
+         :param B: bit-size of entries
 
          ..  [LaaMosPol14] Thijs Laarhoven, Michele Mosca, & Joop van de Pol.  Finding shortest lattice
              vectors faster using quantum search.  Cryptology ePrint Archive, Report 2014/907, 2014.
              https://eprint.iacr.org/2014/907.
         """
-        return RR((0.265*beta + 16.4 + log(BKZ.svp_repeat(beta, n), 2)))
+        return BKZ.LLL(d, B) + ZZ(2)**RR((0.265*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2)))
 
     @staticmethod
-    def CheNgu12(beta, d):
+    def CheNgu12(beta, d, B=None):
         """
         Runtime estimation given `β` and assuming [CheNgu12]_ estimates are correct.
+
+        :param beta: block size
+        :param n: LWE dimension `n > 0`
+        :param B: bit-size of entries
 
         The constants in this function were derived as follows based on Table 4 in [CheNgu12]_::
 
@@ -1168,8 +1181,9 @@ class BKZ:
 
         """
         # TODO replace these by fplll timings
-        repeat = log(BKZ.svp_repeat(beta, d), 2)
-        return RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765 + repeat)
+        repeat = BKZ.svp_repeat(beta, d)
+        cost = RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765)
+        return BKZ.LLL(d, B) +  repeat * ZZ(2)**cost
 
     sieve = BDGL16
     qsieve = LaaMosPol14
@@ -1197,18 +1211,19 @@ def betaf(delta):
 reduction_default_cost = BKZ.enum
 
 
-def lattice_reduction_cost(cost_model, delta_0, d):
+def lattice_reduction_cost(cost_model, delta_0, d, B=None):
     """
     Return cost dictionary for returning vector of norm` δ_0^d Vol(Λ)^{1/d}` using provided lattice
     reduction algorithm.
 
     :param lattice_reduction_estimate:
     :param delta_0: root-Hermite factor `δ_0 > 1`
-    :param d:
+    :param d: lattice dimension
+    :param B: bit-size of entries
 
     """
     beta = betaf(delta_0)
-    cost = ZZ(2)**cost_model(beta, d)
+    cost = cost_model(beta, d, B)
     return Cost([("rop", cost), ("red", cost), ("delta_0", delta_0), ("beta", beta)])
 
 
@@ -1578,7 +1593,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     repeat = amplify(success_probability, tau_prob, majority=False)
 
     d = m + 1
-    cost = lattice_reduction_cost(reduction_cost_model, delta_0, d)
+    cost = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
     cost[u"d"] = d
 
     if SDis.is_small(secret_distribution):
@@ -1688,7 +1703,7 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
 
     d = m_prime + 1
 
-    cost = lattice_reduction_cost(reduction_cost_model, delta_0, d)
+    cost = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
 
     cost["m"] = m
     cost["d"] = d
@@ -1863,7 +1878,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
 
         m_optimal = lattice_reduction_opt_m(n, q, delta_0)
         m_ = min(m_optimal, m_)
-        bkz = lattice_reduction_cost(reduction_cost_model, delta_0, m_)
+        bkz = lattice_reduction_cost(reduction_cost_model, delta_0, m_, B=log(q, 2))
         bkz["d"] = m_
 
         enum = enumeration_cost(n, alpha, q, success_probability, delta_0, m_, clocks_per_enum=clocks_per_enum)
@@ -1990,7 +2005,7 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
     if delta_0 < 1:
         raise OutOfBoundsError(u"δ_0 = %f < 1" % delta_0)
 
-    ret = lattice_reduction_cost(reduction_cost_model, delta_0, m)
+    ret = lattice_reduction_cost(reduction_cost_model, delta_0, m, B=log(q, 2))
     ret[u"m"] = m
     ret[u"d"] = m
     ret[u"|v|"] = RR(delta_0**m * q**(n/m))
@@ -2090,11 +2105,11 @@ def dual_scale(n, alpha, q, secret_distribution,
         v_r = sigmaf(RR(e*sqrt(m_-n)*v_))  # 1. v_r is multiplied with the error e (dimension m-n)
         v_l = sigmaf(RR(c*e_*sqrt(h)*v_))  # 2. v_l is the rounding noise (dimension n)
 
-        ret = lattice_reduction_cost(reduction_cost_model, delta_0, m_)
+        ret = lattice_reduction_cost(reduction_cost_model, delta_0, m_, B=log(q, 2))
 
         repeat = max(amplify_sigma(success_probability, (v_r, v_l), q), RR(1))
         if use_lll:
-            lll=2**BKZ.LLL(m_, log(q, 2))
+            lll=BKZ.LLL(m_, log(q, 2))
         else:
             lll = None
         ret = ret.repeat(times=repeat, lll=lll)
@@ -2582,10 +2597,10 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
-        usvp: rop:  ≈2^31.5,  m:      122,  red:  ≈2^31.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
-         dec: rop:  ≈2^26.2,  m:      156,  red:  ≈2^26.2,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
-        dual: rop:  ≈2^27.5,  m:      311,  red:  ≈2^27.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,    ...
-         bkw: rop:  ≈2^63.1,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,      ...
+        usvp: rop:  ≈2^37.5,  m:      122,  red:  ≈2^37.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
+         dec: rop:  ≈2^32.7,  m:      156,  red:  ≈2^32.7,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  babai_op:  ≈2^15.1,  repeat:        1,  ε:        1
+        dual: rop:  ≈2^34.5,  m:      311,  red:  ≈2^34.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  repeat:        2,  ε:        1
+         bkw: rop:  ≈2^63.1,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,  ntop:   2,  ntest:   6
 
     """
 
