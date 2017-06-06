@@ -446,13 +446,14 @@ class Cost:
             r[key] = self.data[key]
         return Cost(r)
 
-    def repeat(self, times, select=None):
+    def repeat(self, times, select=None, lll=None):
         u"""
         Return a report with all costs multiplied by `times`.
 
         :param d:      a cost estimate
         :param times:  the number of times it should be run
         :param select: toggle which fields ought to be repeated and which shouldn't
+        :param lll:    if set amplify lattice reduction times assuming the LLL algorithm suffices and costs ``lll``
         :returns:      a new cost estimate
 
         We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
@@ -490,7 +491,6 @@ class Cost:
         """
         # TODO review this list
         do_repeat = {
-            u"bop": True,
             u"rop": True,
             u"red": True,
             u"babai": True,
@@ -511,6 +511,9 @@ class Cost:
             u"c": False,
         }
 
+        if lll and self["red"] != self["rop"]:
+            raise ValueError("Amplification via LLL was requested but 'red' != 'rop'")
+
         if select is not None:
             for key in select:
                 do_repeat[key] = select[key]
@@ -519,7 +522,10 @@ class Cost:
         for key in self.data:
             try:
                 if do_repeat[key]:
-                    ret[key] = times * self.data[key]
+                    if lll and key in ("red", "rop"):
+                        ret[key] = self[key] + times * lll
+                    else:
+                        ret[key] = times * self[key]
                 else:
                     ret[key] = self.data[key]
             except KeyError:
@@ -2065,7 +2071,6 @@ def dual_scale(n, alpha, q, secret_distribution,
                 reduction_cost_model=reduction_cost_model)
     delta_0 = best["delta_0"]
 
-    # TODO this should be in rinse_and_repeat
     if use_lll:
         scale = 2
     else:
@@ -2089,10 +2094,10 @@ def dual_scale(n, alpha, q, secret_distribution,
 
         repeat = max(amplify_sigma(success_probability, (v_r, v_l), q), RR(1))
         if use_lll:
-            ret["red"] += 2**BKZ.LLL(m_, log(q, 2)) * repeat
-            ret["rop"] = ret["red"]
+            lll=2**BKZ.LLL(m_, log(q, 2))
         else:
-            ret = repeat * ret
+            lll = None
+        ret = ret.repeat(times=repeat, lll=lll)
 
         ret[u"m"] = m_
         ret[u"repeat"] = repeat
@@ -2331,7 +2336,6 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
 
     C = (C0 + C1 + C2 + C3+ C4)/(erf(d/sqrt(2*sigma))**ntop)  # TODO don't ignore success probability
     cost["rop"] = RR(C)
-    # cost["bop"] = RR(C)*log(RR(q), RR(2))
     cost["mem"] = (t1+t2)*q**b
 
     cost = cost.reorder(["rop", "m", "mem", "b", "t1", "t2"])
