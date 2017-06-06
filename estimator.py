@@ -2048,18 +2048,13 @@ def dual_scale(n, alpha, q, secret_distribution,
     # stddev of the error
     e = RR(stddevf(alpha*q))
 
-    try:
+    if SDis.is_ternary(secret_distribution):
         a, b = SDis.bounds(secret_distribution)
-
-        if a != -1 or b != 1:
-            raise NotImplementedError("only ternary secrets are currently supported.")
-
         h = SDis.nonzero(secret_distribution, n)
         e_ = RR(1)
         if c is None:
             c = RR(e*sqrt(2*n - n)/sqrt(h))
-
-    except ValueError:
+    else:
         if not SDis.is_small(secret_distribution):
             m = m - n
         c = RR(1)
