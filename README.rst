@@ -112,6 +112,15 @@ A high-level overview of that work is given, for instance, in this
 Parameters from the Literature
 ------------------------------
 
+The following estimates for various schemes from the literature illustrate the behaviour of the
+``estimator``. These estimates do not necessarily correspond to the claimed security levels of the
+respective schemes: for several parameter sets below the claimed security level by the designers’ is
+lower than the complexity estimated by the ``estimator``. This is usually because the designers
+anticipate potential future improvements to lattice-reduction algorithms and strategies. We
+recommend to follow the designers’ decision. We intend to extend the estimator to cover these more
+optimistic (from an attacker’s point of view) estimates in the future … pull requests welcome, as
+always.
+
 `New Hope <http://ia.cr/2015/1092>`__ ::
 
     sage: load("estimator.py")
