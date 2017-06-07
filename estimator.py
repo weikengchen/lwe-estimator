@@ -60,11 +60,11 @@ class Logging:
         logging.getLogger(logger).setLevel(logging.INFO)
 
     CRITICAL = logging.CRITICAL
-    ERROR = logging.CRITICAL
-    WARNING = logging.CRITICAL
-    INFO = logging.CRITICAL
-    DEBUG = logging.CRITICAL
-    NOTSET = logging.CRITICAL
+    ERROR    = logging.ERROR
+    WARNING  = logging.WARNING
+    INFO     = logging.INFO
+    DEBUG    = logging.DEBUG
+    NOTSET   = logging.NOTSET
 
     @staticmethod
     def set_level(lvl, loggers=None):
