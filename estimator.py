@@ -92,8 +92,7 @@ class OutOfBoundsError(ValueError):
 
 class InsufficientSamplesError(ValueError):
     """
-    Used to indicate the number of samples given is too small, especially
-    useful for #samples <= 0.
+    Used to indicate the number of samples given is too small.
     """
     pass
 
@@ -244,7 +243,7 @@ class Param:
         if q < 1:
             raise ValueError("LWE modulus must be greater than 0.")
         if m is not None and m < 1:
-            raise InsufficientSamplesError("Given number of samples must be greater than 0.")
+            raise InsufficientSamplesError(u"m=%d < 1"%m)
         if prec is None:
             prec = 128
         RR = RealField(prec)
@@ -1564,8 +1563,8 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
 
     """
 
-    if m <= 0:
-        raise InsufficientSamplesError("Number of samples: %d" % m)
+    if m < 1:
+        raise InsufficientSamplesError("m=%d < 1" % m)
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
     RR = parent(alpha)
@@ -1754,8 +1753,9 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
             return OrderedDict([("babai", oo),
                                 ("babai_op", oo)])
 
-    if not success_probability > 0:
-        raise InsufficientSamplesError("success_probability == 0.")
+    if success_probability <= 0:
+        # TODO this seems like the wrong except to raise
+        raise InsufficientSamplesError("success probability <= 0.")
 
     bd = map(list, zip(bd, range(len(bd))))
     bd = sorted(bd)
@@ -1842,7 +1842,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
     if m < 1:
-        raise InsufficientSamplesError("Number of samples: %d"%m)
+        raise InsufficientSamplesError("m=%d < 1"%m)
 
     if SDis.is_small(secret_distribution):
         m_ = m + n
@@ -1984,8 +1984,8 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
-    if m <= 0:
-        raise InsufficientSamplesError("Number of samples %d too small."%m)
+    if m < 1:
+        raise InsufficientSamplesError("m=%d < 1"%m)
 
     RR = parent(alpha)
     f = lambda eps: RR(sqrt(log(1/eps)/pi))  # noqa
@@ -2172,8 +2172,8 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     else:
         ret["m"] = 0
 
-    if not m > 0:
-        raise InsufficientSamplesError("Number of samples: %d"%m)
+    if m < 1:
+        raise InsufficientSamplesError("m=%d < 1"%m)
 
     t = ceil(2*sqrt(log(n)))
     try:
@@ -2184,7 +2184,7 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
 
     m_required = ceil(log(2*n/(size**(n/2)))/log(2*t*alpha))
     if m is not None and m < m_required:
-        raise InsufficientSamplesError("Number of samples: %d < %d"%(m, m_required))
+        raise InsufficientSamplesError("m=%d < %d (required)"%(m, m_required))
     else:
         m = m_required
 
@@ -2415,7 +2415,7 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
                          predicate=lambda x, best: x["rop"]<=best["rop"] and (best["m"]>m or x["m"]<=m))
     # binary search cannot fail. It just outputs some X with X["oracle"]>m.
     if best["m"] > m:
-        raise InsufficientSamplesError("Number of samples to small (%d)."%m)
+        raise InsufficientSamplesError("m=%d < %d (required)"%(m, best["m"]))
     return best
 
 
@@ -2668,8 +2668,11 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
     results = OrderedDict()
     for alg in algorithms:
         algf = algorithms[alg]
-        tmp = algf(n, alpha, q, secret_distribution=secret_distribution, m=m)
-        results[alg] = tmp
-        logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, results[alg].str(**cost_kwds)))
+        try:
+            tmp = algf(n, alpha, q, secret_distribution=secret_distribution, m=m)
+            results[alg] = tmp
+            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, results[alg].str(**cost_kwds)))
+        except InsufficientSamplesError, msg:
+            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, "insufficient samples to run this algorithm: '%s'"%msg))
 
     return results
