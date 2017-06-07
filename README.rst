@@ -115,20 +115,20 @@ Parameters from the Literature
 `New Hope <http://ia.cr/2015/1092>`__ ::
 
     sage: load("estimator.py")
-    sage: n = 1024; q = 12289; alpha = 8/q
+    sage: n = 1024; q = 12289; stddev = sqrt(16/2); alpha = alphaf(sigmaf(stddev), q)
     sage: _ = estimate_lwe(n, alpha, q, reduction_cost_model=BKZ.sieve)
-    usvp: rop: ≈2^413.9,  m:     1374,  red: ≈2^413.9,  δ_0: 1.001678,  β: 1294,  d: 2399,  repeat:       44
-     dec: rop: ≈2^424.0,  m:     1342,  red: ≈2^424.0,  δ_0: 1.001711,  β: 1261,  d: 2366,  babai: ≈2^409.5,  babai_op: ≈2^424.6,  repeat:  ≈2^25.2,  ε: ≈2^-23.0
-    dual: rop: ≈2^371.6,  m:  ≈2^11.2,  red: ≈2^371.6,  δ_0: 1.001815,  β: 1168,  repeat: ≈2^285.4,  d: 2306,  c:        1
+    usvp: rop: ≈2^399.6,  m:     1339,  red: ≈2^399.6,  δ_0: 1.001729,  β: 1245,  d: 2364,  repeat:       44
+     dec: rop: ≈2^410.0,  m:     1308,  red: ≈2^410.0,  δ_0: 1.001763,  β: 1213,  d: 2332,  babai: ≈2^395.5,  babai_op: ≈2^410.6,  repeat:  ≈2^25.2,  ε: ≈2^-23.0
+    dual: rop: ≈2^355.5,  m:  ≈2^11.1,  red: ≈2^355.5,  δ_0: 1.001884,  β: 1113,  repeat: ≈2^307.0,  d: 2263,  c:        1
     
 `Frodo <http://ia.cr/2016/659>`__ ::
 
     sage: load("estimator.py")
-    sage: n = 752; q = 2^15; alpha = 3.3/q
+    sage: n = 752; q = 2^15; stddev = sqrt(1.75); alpha = alphaf(sigmaf(stddev), q)
     sage: _ = estimate_lwe(n, alpha, q, reduction_cost_model=BKZ.sieve)
-    usvp: rop: ≈2^198.7,  m:      826,  red: ≈2^198.7,  δ_0: 1.003143,  β:  559,  d: 1579,  repeat:       44
-     dec: rop: ≈2^208.1,  m:      837,  red: ≈2^208.1,  δ_0: 1.003082,  β:  575,  d: 1589,  babai: ≈2^193.5,  babai_op: ≈2^208.6,  repeat:     1177,  ε: 0.003906
-    dual: rop: ≈2^195.9,  m:     1588,  red: ≈2^195.9,  δ_0: 1.003107,  β:  568,  repeat: ≈2^135.0,  d: 1588,  c:        1
+    usvp: rop: ≈2^199.0,  m:      827,  red: ≈2^199.0,  δ_0: 1.003140,  β:  560,  d: 1580,  repeat:       44
+     dec: rop: ≈2^208.3,  m:      829,  red: ≈2^208.3,  δ_0: 1.003064,  β:  579,  d: 1581,  babai: ≈2^194.5,  babai_op: ≈2^209.6,  repeat:      588,  ε: 0.007812
+    dual: rop: ≈2^196.2,  m:     1588,  red: ≈2^196.2,  δ_0: 1.003104,  β:  569,  repeat: ≈2^135.0,  d: 1588,  c:        1
 
 `TESLA <http://ia.cr/2015/755>`__ ::
 
