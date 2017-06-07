@@ -1277,13 +1277,13 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
         sage: n, alpha = 512, 8/q
         sage: dualg = partial(guess_and_solve, dual_scale)
         sage: dualg(n, alpha, q, secret_distribution=((-1,1), 64))
-            rop:   2^60.7
-              m:     1172
-            red:   2^60.7
-        delta_0: 1.008603
-           beta:      116
-         repeat:   2^18.8
-              d:     1172
+            rop:   2^59.7
+              m:     1051
+            red:   2^59.7
+        delta_0: 1.008653
+           beta:      115
+         repeat:   2^17.7
+              d:     1051
               c:    9.027
               k:        0
 
@@ -1384,28 +1384,28 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         sage: duald = partial(drop_and_solve, dual_scale)
 
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
-                rop:   2^54.0
-                  m:     1068
-                red:   2^53.9
-            delta_0: 1.009215
-               beta:      101
-             repeat:   2^12.9
-                  d:     1068
+                rop:   2^53.3
+                  m:      960
+                red:   2^53.1
+            delta_0: 1.009265
+               beta:      100
+             repeat:   2^12.4
+                  d:      960
                   c:    8.519
                   k:       56
         postprocess:        8
 
         sage: kwds = {"use_lll":False, "postprocess":False}
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
-                rop:   2^68.1
-                  m:     1087
-                red:   2^68.1
-            delta_0: 1.009399
-               beta:       97
-             repeat:   2^17.9
-                  d:     1087
-                  c:    8.749
-                  k:       31
+                rop:   2^66.9
+                  m:     1018
+                red:   2^66.9
+            delta_0: 1.009084
+               beta:      104
+             repeat:   2^13.3
+                  d:     1018
+                  c:    8.956
+                  k:        8
         postprocess:        0
 
     This function is based on:
@@ -2038,23 +2038,33 @@ def dual_scale(n, alpha, q, secret_distribution,
         sage: from estimator import Param, dual_scale
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=(-1,1))
-            rop:  2^116.9
-              m:      779
-            red:  2^116.9
-        delta_0: 1.006148
-           beta:      208
-         repeat:   2^77.0
-              d:      779
+            rop:  2^100.7
+              m:      546
+            red:  2^100.7
+        delta_0: 1.006598
+           beta:      185
+         repeat:   2^62.0
+              d:      546
+              c:   31.241
+
+        sage: dual_scale(*Param.Regev(256), secret_distribution=(-1,1), m=200)
+            rop:  2^105.2
+              m:      456
+            red:  2^105.2
+        delta_0: 1.006443
+           beta:      192
+         repeat:   2^68.0
+              d:      456
               c:   31.241
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=((-1,1), 64))
-            rop:  2^111.4
-              m:      783
-            red:  2^111.4
-        delta_0: 1.006298
-           beta:      200
-         repeat:   2^72.0
-              d:      783
+            rop:   2^91.9
+              m:      514
+            red:   2^91.9
+        delta_0: 1.006948
+           beta:      170
+         repeat:   2^56.0
+              d:      514
               c:   51.065
 
     .. [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
@@ -2092,7 +2102,7 @@ def dual_scale(n, alpha, q, secret_distribution,
         scale = 1
 
     while True:
-        m_optimal = lattice_reduction_opt_m(n, c*q, delta_0)
+        m_optimal = lattice_reduction_opt_m(n, q/c, delta_0)
         m_ = ZZ(min(m_optimal, m+n))
 
         # the vector found will have norm
@@ -2588,12 +2598,12 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop: ≈2^135.8,  m:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
          dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
-        dual: rop: ≈2^112.9,  m:      612,  red: ≈2^112.9,  δ_0: 1.006245,  β:  202,  repeat:  ≈2^76.6,  d:  612, ...
+        dual: rop: ≈2^108.7,  m:      512,  red: ≈2^108.7,  δ_0: 1.006345,  β:  197,  repeat:  ≈2^70.9,  d:  512, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop: ≈2^100.6,  m:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
          dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
-        dual: rop:  ≈2^93.5,  m:      629,  red:  ≈2^93.5,  δ_0: 1.005915,  β:  221,  repeat:  ≈2^56.1,  d:  629, ...
+        dual: rop:  ≈2^90.9,  m:      524,  red:  ≈2^90.8,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^54.8,  d:  524, ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
