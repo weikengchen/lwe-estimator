@@ -1188,6 +1188,46 @@ class BKZ:
         cost = RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765)
         return BKZ.LLL(d, B) +  repeat * ZZ(2)**cost
 
+    @staticmethod
+    def ADPS16(beta, d, B=None, mode="classical"):
+        u"""
+         Runtime estimation from [ADPS16]_.
+
+         :param beta: block size
+         :param n: LWE dimension `n > 0`
+         :param B: bit-size of entries
+
+         EXAMPLE::
+
+             sage: from estimator import BKZ, Param, dual, partial
+             sage: cost_model = partial(BKZ.ADPS16, mode="paranoid")
+             sage: dual(*Param.LindnerPeikert(128), reduction_cost_model=cost_model)
+                 rop:   2^37.3
+                   m:      346
+                 red:   2^37.3
+             delta_0: 1.008209
+                beta:      127
+                   d:      346
+                 |v|:  284.363
+              repeat:     2000
+             epsilon: 0.062500
+
+         ..  [ADPS16] Edem Alkim, Léo Ducas, Thomas Pöppelmann, & Peter Schwabe (2016).
+             Post-quantum key exchange - A New Hope.  In T. Holz, & S. Savage, 25th USENIX
+             Security Symposium, USENIX Security 16 (pp. 327–343). USENIX Association.
+         """
+
+        if mode not in ("classical", "quantum", "paranoid"):
+            raise ValueError("Mode '%s' not understood"%mode)
+
+        c = {"classical": 0.2920,
+             "quantum":   0.2650,  # paper writes 0.262 but this isn't right, see above
+             "paranoid":  0.2075}
+
+        c = c[mode]
+
+        return ZZ(2)**RR(c*beta)
+
     sieve = BDGL16
     qsieve = LaaMosPol14
     lp =     LinPei11
