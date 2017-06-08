@@ -1159,28 +1159,28 @@ class BKZ:
 
     @staticmethod
     def CheNgu12(beta, d, B=None):
-        """
-        Runtime estimation given `β` and assuming [CheNgu12]_ estimates are correct.
+        u"""
+         Runtime estimation given `β` and assuming [CheNgu12]_ estimates are correct.
 
-        :param beta: block size
-        :param n: LWE dimension `n > 0`
-        :param B: bit-size of entries
+         :param beta: block size
+         :param n: LWE dimension `n > 0`
+         :param B: bit-size of entries
 
-        The constants in this function were derived as follows based on Table 4 in [CheNgu12]_::
+         The constants in this function were derived as follows based on Table 4 in [CheNgu12]_::
 
-            sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250]
-            sage: nodes = [39.0, 44.0, 49.0, 54.0, 60.0, 66.0, 72.0, 78.0, 84.0, 96.0, 99.0, 105.0, 111.0, 120.0, 127.0, 134.0]  # noqa
-            sage: times = [c + log(200,2).n() for c in nodes]
-            sage: T = zip(dim, nodes)
-            sage: var("a,b,c,k")
-            (a, b, c, k)
-            sage: f = a*k*log(k, 2.0) + b*k + c
-            sage: f = f.function(k)
-            sage: f.subs(find_fit(T, f, solution_dict=True))
-            k |--> 0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765
+             sage: dim = [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250]
+             sage: nodes = [39.0, 44.0, 49.0, 54.0, 60.0, 66.0, 72.0, 78.0, 84.0, 96.0, 99.0, 105.0, 111.0, 120.0, 127.0, 134.0]  # noqa
+             sage: times = [c + log(200,2).n() for c in nodes]
+             sage: T = zip(dim, nodes)
+             sage: var("a,b,c,k")
+             (a, b, c, k)
+             sage: f = a*k*log(k, 2.0) + b*k + c
+             sage: f = f.function(k)
+             sage: f.subs(find_fit(T, f, solution_dict=True))
+             k |--> 0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765
 
-        .. [CheNgu12] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates (Full Version).
-                      2012. http://www.di.ens.fr/~ychen/research/Full_BKZ.pdf
+         .. [CheNgu12] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates (Full Version).
+                       2012. http://www.di.ens.fr/~ychen/research/Full_BKZ.pdf
 
         """
         # TODO replace these by fplll timings
