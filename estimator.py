@@ -1141,16 +1141,20 @@ class BKZ:
     @staticmethod
     def LaaMosPol14(beta, d, B=None):
         u"""
-        Runtime estimation for quantum sieving.
+         Runtime estimation for quantum sieving.
 
          :param beta: block size
          :param n: LWE dimension `n > 0`
          :param B: bit-size of entries
 
-         ..  [LaaMosPol14] Thijs Laarhoven, Michele Mosca, & Joop van de Pol.  Finding shortest lattice
-             vectors faster using quantum search.  Cryptology ePrint Archive, Report 2014/907, 2014.
-             https://eprint.iacr.org/2014/907.
-        """
+         ..  [LaaMosPol14] Thijs Laarhoven, Michele Mosca, & Joop van de Pol.  Finding shortest
+             lattice vectors faster using quantum search.  Cryptology ePrint Archive, Report
+             2014/907, 2014.  https://eprint.iacr.org/2014/907.
+
+         ..  [Laarhoven15] Laarhoven, T.  (2015).  Search problems in cryptography: from
+             fingerprinting to lattice sieving (Doctoral dissertation).  Eindhoven University of
+             Technology. http://repository.tue.nl/837539
+         """
         return BKZ.LLL(d, B) + ZZ(2)**RR((0.265*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2)))
 
     @staticmethod
