@@ -744,6 +744,11 @@ def amplify(target_success_probability, success_probability, majority=False):
 
     :returns: number of required trials to amplify
     """
+    if target_success_probability < success_probability:
+        return ZZ(1)
+    if success_probability == 0.0:
+        return oo
+
     prec = max(53,
                2*ceil(abs(log(success_probability, 2))),
                2*ceil(abs(log(1-success_probability, 2))),
@@ -751,9 +756,6 @@ def amplify(target_success_probability, success_probability, majority=False):
                2*ceil(abs(log(1-target_success_probability, 2))))
     prec = min(prec, 2048)
     RR = RealField(prec)
-
-    if target_success_probability < success_probability:
-        return RR(1)
 
     success_probability = RR(success_probability)
     target_success_probability = RR(target_success_probability)
