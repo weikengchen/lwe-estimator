@@ -155,4 +155,4 @@ always.
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
     usvp: rop: ≈2^125.9,  m:  ≈2^11.0,  red: ≈2^125.9,  δ_0: 1.004793,  β:  305,  d: 4163,  repeat:       44
      dec: rop: ≈2^127.1,  m:  ≈2^11.1,  red: ≈2^127.1,  δ_0: 1.004663,  β:  318,  d: 4237,  babai: ≈2^114.8,  babai_op: ≈2^129.9,  repeat:        7,  ε: 0.500000
-    dual: rop: ≈2^118.4,  m:  ≈2^12.0,  red: ≈2^118.4,  δ_0: 1.004864,  β:  298,  repeat:  ≈2^59.3,  d: 4090,  c:    3.908,  k:       30,  postprocess:       13
+    dual: rop: ≈2^118.4,  m:  ≈2^12.0,  red: ≈2^118.4,  δ_0: 1.004864,  β:  298,  repeat:  ≈2^58.8,  d: 4090,  c:    3.908,  k:       30,  postprocess:       13

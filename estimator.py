@@ -1408,7 +1408,7 @@ def success_probability_drop(n, h, k, fail=0):
 
 
 def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability=0.99,
-                   postprocess=True, **kwds):
+                   postprocess=True, decision=True, **kwds):
     """
     Solve instances of dimension ``n-k`` with increasing ``k`` using ``f`` and pick parameters such
     that cost is minimised.
@@ -1420,6 +1420,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param success_probability: targeted success probability < 1
     :param postprocess: check against shifted distributions
+    :param decision: the underlying algorithm solves the decision version or not
 
     EXAMPLE:
 
@@ -1429,28 +1430,28 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         sage: duald = partial(drop_and_solve, dual_scale)
 
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
-                rop:   2^53.3
-                  m:      960
-                red:   2^53.1
-            delta_0: 1.009265
-               beta:      100
-             repeat:   2^12.4
-                  d:      960
-                  c:    8.519
-                  k:       56
+                rop:   2^52.1
+                  m:      957
+                red:   2^52.0
+            delta_0: 1.009353
+               beta:       98
+             repeat:   2^11.2
+                  d:      957
+                  c:    8.528
+                  k:       55
         postprocess:        8
 
         sage: kwds = {"use_lll":False, "postprocess":False}
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
-                rop:   2^66.9
-                  m:     1018
-                red:   2^66.9
-            delta_0: 1.009084
-               beta:      104
-             repeat:   2^13.3
-                  d:     1018
-                  c:    8.956
-                  k:        8
+                rop:   2^63.2
+                  m:     1033
+                red:   2^63.2
+            delta_0: 1.008953
+               beta:      107
+             repeat:      257
+                  d:     1033
+                  c:    9.027
+                  k:        0
         postprocess:        0
 
     This function is based on:
@@ -1467,27 +1468,30 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     best = None
 
+    if not decision and postprocess:
+        raise ValueError("Postprocessing is only defined for the dual attack which solves the decision version.")
+
     # too small a step size leads to an early abort, too large a step
     # size means stepping over target
     step_size = int(n/32)
 
     if not SDis.is_ternary(secret_distribution):
-        raise NotImplementedError("only ternary secrets are currently supported.")
+        raise NotImplementedError("Only ternary secrets are currently supported.")
 
     a, b = SDis.bounds(secret_distribution)
     h = SDis.nonzero(secret_distribution, n)
 
     k = 0
 
-    # TODO: success_probability=max(1-1/RR(2)**80, success_probability) is quite pessimistic
     while True:
+        probability = RR(success_probability_drop(n, h, k))
+
         current = f(n-k, alpha, q,
-                    success_probability=max(1-1/RR(2)**80, success_probability),
+                    success_probability=success_probability**probability if decision else success_probability,
                     secret_distribution=secret_distribution, **kwds)
 
         cost_lat  = current.values()[0]
         cost_post = 0
-        probability = success_probability_drop(n, h, k)
         if postprocess:
             repeat = current["repeat"]
             dim    = current["d"]
@@ -2637,12 +2641,12 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop: ≈2^135.8,  m:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
          dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
-        dual: rop: ≈2^108.7,  m:      512,  red: ≈2^108.7,  δ_0: 1.006345,  β:  197,  repeat:  ≈2^70.9,  d:  512, ...
+        dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop: ≈2^100.6,  m:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
          dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
-        dual: rop:  ≈2^90.9,  m:      524,  red:  ≈2^90.8,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^54.8,  d:  524, ...
+        dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524, ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
@@ -2669,14 +2673,18 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
     if "usvp" not in skip:
         if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
             algorithms["usvp"] = partial(drop_and_solve, primal_usvp_scale, reduction_cost_model=reduction_cost_model,
-                                         postprocess=False)
+                                         postprocess=False, decision=False)
         elif SDis.is_small(secret_distribution):
             algorithms["usvp"] = partial(primal_usvp_scale, reduction_cost_model=reduction_cost_model)
         else:
             algorithms["usvp"] = partial(primal_usvp, reduction_cost_model=reduction_cost_model)
 
     if "dec" not in skip:
-        algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
+        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
+            algorithms["dec"] = partial(drop_and_solve, primal_decode, reduction_cost_model=reduction_cost_model,
+                                        postprocess=False, decision=False)
+        else:
+            algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
 
     if "dual" not in skip:
         if SDis.is_ternary(secret_distribution):
