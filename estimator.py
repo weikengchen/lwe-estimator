@@ -2476,25 +2476,15 @@ def have_magma():
         return False
 
 
-def gb_cost(m, n, d, omega=2, d2=None):
+def gb_cost(n, D, omega=2):
     """
     Estimate the complexity of computing a Gröbner basis.
 
-    :param m: number polynomials `m > 0`
     :param n: number of variables `n > 0`
-    :param d: degree of all input polynomials
+    :param D: tuple of `(d,m)` pairs where `m` is number polynomials and `d` is a degree
     :param omega: linear algebra exponent, i.e. matrix-multiplication costs `O(n^ω)` operations.
-    :param d2: secondary degree (integer > 0 or ``None``)
 
-    Estimation is done for `m` polynomials of degree `d` in `n` variables under the assumption
-    that the system is semi-regular.
-
-    If `d2` is not ``None`` then `n` polynomials of degree are added to the system.  This is to
-    encode restrictions on the solution.  For example, if the solution is either `0` or `1`,
-    then `(x_i)⋅(x_i+1)` would evaluate to zero on it for any `x_i`.
     """
-    if m > n**d:
-        m = n**d
 
     if have_magma():
         R = magma.PowerSeriesRing(QQ, 2*n)
@@ -2505,10 +2495,11 @@ def gb_cost(m, n, d, omega=2, d2=None):
         z = R.gen()
         coeff = lambda f, d: f[d]  # noqa
 
-    if d2 is None:
-        s = (1-z**d)**m / (1-z)**n
-    else:
-        s = (1-z**d)**m * (1-z**d2)**n / (1-z)**n
+    s = 1
+    for d, m in D:
+        s *= (1-z**d)**m
+
+    s = s / (1-z)**n
 
     retval = Cost([("rop", oo), ("Dreg", oo)])
 
@@ -2517,10 +2508,11 @@ def gb_cost(m, n, d, omega=2, d2=None):
             break
     else:
         return retval
+
     retval["Dreg"] = dreg
     retval["rop"] = binomial(n + dreg, dreg)**omega
     retval["mem"] = binomial(n + dreg, dreg)**2
-    retval["d"] = binomial(n + dreg, dreg)
+
     return retval
 
 
@@ -2559,8 +2551,9 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
             d2 = b - a + 1
         except ValueError:
             d2 = 2*ceil(3*stddev)+1
+        d2 = [(d2, n)]
     else:
-        d2 = None
+        d2 = []
 
     ps_single = lambda C: RR(1 - (2/(C*RR(sqrt(2*pi))) * exp(-C**2/2)))  # noqa
 
@@ -2568,7 +2561,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
     d = n
     t = ZZ(floor((d-1)/2))
     C = t/stddev
-    pred = gb_cost(m_req, n, d, omega, d2=d2)
+    pred = gb_cost(n, [(d, m_req)] + d2, omega)
     pred["t"] = t
     pred["m"] = m_req
     pred = pred.reorder(["rop", "m", "Dreg", "t"])
@@ -2587,7 +2580,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
             continue
         m_req = floor(m_req)
 
-        current = gb_cost(m_req, n, d, omega, d2=d2)
+        current = gb_cost(n, [(d, m_req)] + d2, omega)
 
         if current["Dreg"] is None:
             continue
