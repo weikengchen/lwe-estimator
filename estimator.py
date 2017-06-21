@@ -2675,21 +2675,20 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
 
     if "usvp" not in skip:
         if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
-            algorithms["usvp"] = partial(drop_and_solve, primal_usvp_scale, reduction_cost_model=reduction_cost_model)
+            algorithms["usvp"] = partial(drop_and_solve, primal_usvp_scale, reduction_cost_model=reduction_cost_model,
+                                         postprocess=False)
         elif SDis.is_small(secret_distribution):
             algorithms["usvp"] = partial(primal_usvp_scale, reduction_cost_model=reduction_cost_model)
         else:
             algorithms["usvp"] = partial(primal_usvp, reduction_cost_model=reduction_cost_model)
 
     if "dec" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
-            algorithms["dec"] = partial(drop_and_solve, primal_decode, reduction_cost_model=reduction_cost_model)
-        else:
-            algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
+        algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
 
     if "dual" not in skip:
         if SDis.is_ternary(secret_distribution):
-            algorithms["dual"] = partial(drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model)
+            algorithms["dual"] = partial(drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model,
+                                         postprocess=True)
         elif SDis.is_small(secret_distribution):
             algorithms["dual"] = partial(dual_scale, reduction_cost_model=reduction_cost_model)
         else:
