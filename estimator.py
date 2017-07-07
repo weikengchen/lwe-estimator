@@ -23,7 +23,8 @@ from functools import partial
 from sage.arith.srange import srange
 from sage.calculus.var import var
 from sage.functions.log import exp, log
-from sage.functions.other import ceil, sqrt, floor, binomial, erf
+from sage.functions.other import ceil, sqrt, floor, binomial
+from sage.all import erf
 from sage.interfaces.magma import magma
 from sage.misc.all import cached_function
 from sage.misc.all import prod
