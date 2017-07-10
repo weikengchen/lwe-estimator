@@ -245,8 +245,14 @@ class Param:
             raise ValueError("LWE modulus must be greater than 0.")
         if m is not None and m < 1:
             raise InsufficientSamplesError(u"m=%d < 1"%m)
+
         if prec is None:
-            prec = 128
+            try:
+                prec = alpha.prec()
+            except AttributeError:
+                pass
+            if prec < 128:
+                prec = 128
         RR = RealField(prec)
         n, alpha, q =  ZZ(n), RR(alpha), ZZ(q),
 
