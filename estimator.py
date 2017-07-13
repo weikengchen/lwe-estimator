@@ -251,6 +251,11 @@ class Param:
                 prec = alpha.prec()
             except AttributeError:
                 pass
+            try:
+                prec = max(success_probability.prec(), prec)
+            except AttributeError:
+                pass
+
             if prec < 128:
                 prec = 128
         RR = RealField(prec)
@@ -1492,6 +1497,10 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     while True:
         probability = RR(success_probability_drop(n, h, k))
+
+        ## increase precision until the probability is meaningful
+        while success_probability**probability == 1:
+            success_probability = RealField(64+success_probability.prec())(success_probability)
 
         current = f(n-k, alpha, q,
                     success_probability=success_probability**probability if decision else success_probability,
