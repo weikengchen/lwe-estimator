@@ -1498,7 +1498,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     while True:
         probability = RR(success_probability_drop(n, h, k))
 
-        ## increase precision until the probability is meaningful
+        # increase precision until the probability is meaningful
         while success_probability**probability == 1:
             success_probability = RealField(64+success_probability.prec())(success_probability)
 
