@@ -2351,16 +2351,15 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     assert(C0 >= 0)
     # cost["C0(gauss)"] = RR(C0)
 
-    i = 1
     # Equation (8)
     C1 = sum([(n+1-i*b)*(m - i*(q**b - 1)/2) for i in range(1, t1+1)])
     assert(C1 >= 0)
     # cost["C1(bkw)"] = RR(C1)
 
     # Equation (9)
-    C2_ = sum([4*(M + i*(q**b - 1)/2)*N(i, sigma_set) for i in range(i, t2+1)])
+    C2_ = sum([4*(M + i*(q**b - 1)/2)*N(i, sigma_set) for i in range(1, t2+1)])
     C2 = RR(C2_)
-    for i in range(i, t2+1):
+    for i in range(1, t2+1):
         C2 += RR(ntop + ntest + sum([N(j, sigma_set) for j in range(1, i+1)]))*(M + (i-1)*(q**b - 1)/2)
     assert(C2 >= 0)
     # cost["C2(coded)"] = RR(C2)
