@@ -1062,8 +1062,8 @@ class BKZ:
         qnm = log_q*(n/m)
         qnm_p_log_delta_m = qnm + log_delta*m
         tmm1 = RDF(2*m/(m-1))
-        b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in xrange(m)]
-        b = [log_q - b[-1-i] for i in xrange(m)]
+        b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in range(m)]
+        b = [log_q - b[-1-i] for i in range(m)]
         b = map(lambda x: x.exp(), b)
         return b
 
@@ -1826,18 +1826,18 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
     B = BKZ.GSA(n, q, delta_0, m)
 
     d = [RDF(1)]*m
-    bd = [d[i] * B[i] for i in xrange(m)]
+    bd = [d[i] * B[i] for i in range(m)]
     scaling_factor = RDF(sqrt(pi) / (2*alpha*q))
-    probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
+    probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in range(m)]
     success_probability = prod(probs_bd)
 
     if RR(success_probability).is_NaN():
         # try in higher precision
         step = RR(step)
         d = [RR(1)]*m
-        bd = [d[i] * B[i] for i in xrange(m)]
+        bd = [d[i] * B[i] for i in range(m)]
         scaling_factor = RR(sqrt(pi) / (2*alpha*q))
-        probs_bd = [RR((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
+        probs_bd = [RR((bd[i]  * scaling_factor)).erf() for i in range(m)]
         success_probability = prod(probs_bd)
 
         if success_probability.is_NaN():
@@ -2426,6 +2426,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     assert(C0 >= 0)
     # cost["C0(gauss)"] = RR(C0)
 
+    i = 1
     # Equation (8)
     C1 = sum([(n+1-i*b)*(m - i*(q**b - 1)/2) for i in range(1, t1+1)])
     assert(C1 >= 0)
@@ -2548,7 +2549,7 @@ def gb_cost(n, D, omega=2):
 
     retval = Cost([("rop", oo), ("Dreg", oo)])
 
-    for dreg in xrange(2*n):
+    for dreg in range(2*n):
         if coeff(s, dreg) < 0:
             break
     else:
@@ -2759,7 +2760,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             tmp = algf(n, alpha, q, secret_distribution=secret_distribution, m=m)
             results[alg] = tmp
             logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, results[alg].str(**cost_kwds)))
-        except InsufficientSamplesError, msg:
-            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, "insufficient samples to run this algorithm: '%s'"%msg))
+        except InsufficientSamplesError as e:
+            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, "insufficient samples to run this algorithm: '%s'"%str(e)))
 
     return results
