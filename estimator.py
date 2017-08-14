@@ -2399,16 +2399,16 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
         sage: from estimator import Param, bkw_coded
         sage: n, alpha, q = Param.Regev(64)
         sage: bkw_coded(n, alpha, q)
-               rop:   2^50.7
-                 m:   2^39.6
-               mem:   2^39.6
-                 b:        3
-                t1:        2
-                t2:       10
-                 l:        2
-              ncod:       53
-              ntop:        0
-             ntest:        6
+             rop:   2^50.9
+               m:   2^39.6
+             mem:   2^39.6
+               b:        3
+              t1:        2
+              t2:       10
+               l:        2
+            ncod:       53
+            ntop:        0
+           ntest:        6
 
     .. [GuoJohSta15] Guo, Q., Johansson, T., & Stankovski, P.  (2015).  Coded-BKW: solving LWE using lattice
        codes.  In R.  Gennaro, & M.  J.  B.  Robshaw, CRYPTO~2015, Part~I (pp.  23–42).  :
