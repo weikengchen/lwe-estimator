@@ -1633,40 +1633,36 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
         sage: n, alpha, q = Param.Regev(256)
 
         sage: primal_usvp(n, alpha, q)
-                            rop:  2^170.4
-                              m:      488
-                            red:  2^170.4
-                        delta_0: 1.005147
-                           beta:      274
-                              d:      745
-                         repeat:       44
+                rop:  2^151.9
+                red:  2^151.9
+            delta_0: 1.005374
+               beta:      257
+                  d:      704
+                  m:     1200
 
         sage: primal_usvp(n, alpha, q, secret_distribution=True, m=n)
-                            rop:  2^260.4
-                              m:      256
-                            red:  2^260.4
-                        delta_0: 1.004091
-                           beta:      385
-                              d:      513
-                         repeat:       44
+                rop:  2^151.9
+                red:  2^151.9
+            delta_0: 1.005374
+               beta:      257
+                  d:      704
+                  m:      512
 
         sage: primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
-                        rop:  2^260.4
-                          m:      512
-                        red:  2^260.4
-                    delta_0: 1.004091
-                       beta:      385
-                          d:      513
-                     repeat:       44
+                rop:  2^203.1
+                red:  2^203.1
+            delta_0: 1.004609
+               beta:      323
+                  d:      511
+                  m:      512
 
         sage: primal_usvp(n, alpha, q, reduction_cost_model=BKZ.sieve)
-                            rop:  2^114.4
-                              m:      488
-                            red:  2^114.4
-                        delta_0: 1.005147
-                           beta:      274
-                              d:      745
-                         repeat:       44
+                rop:  2^103.9
+                red:  2^103.9
+            delta_0: 1.005374
+               beta:      257
+                  d:      704
+                  m:     1200
 
     [USENIX:ADPS16] Alkim, E., Léo Ducas, Thomas Pöppelmann, & Schwabe, P.  (2015).
     Post-quantum key exchange - a new hope.
@@ -1723,13 +1719,12 @@ def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
         sage: n, alpha, q = Param.Regev(256)
 
         sage: primal_usvp_scale(n, alpha, q)
-                 rop:  2^170.4
-                   m:      488
-                 red:  2^170.4
-             delta_0: 1.005147
-                beta:      274
-                   d:      745
-              repeat:       44
+                     rop:  2^151.9
+                     red:  2^151.9
+                 delta_0: 1.005374
+                    beta:      257
+                       d:      704
+                       m:     1200
 
         sage: primal_usvp_scale(n, alpha, q, secret_distribution=(-1,1), m=n)
                         rop:  2^110.6
@@ -2675,31 +2670,31 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
 
         sage: from estimator import estimate_lwe, Param, BKZ
         sage: d = estimate_lwe(*Param.Regev(128))
-        usvp: rop:  ≈2^48.9,  m:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
-         dec: rop:  ≈2^56.8,  m:      235,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  ...
-        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,    ...
+        usvp: rop:  ≈2^51.1,  red:  ≈2^51.1,  δ_0: 1.009214,  β:  102,  d:  357,  m:      610
+         dec: rop:  ≈2^56.8,  m:      235,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  ...
+        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  repeat:  ≈2^19.0,  ...
 
         sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
-        usvp: rop: ≈2^145.4,  m:      362,  red: ≈2^145.4,  δ_0: 1.005598,  β:  241,  d:  619,  repeat:       44
-         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
-        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624, ...
+        usvp: rop: ≈2^131.1,  red: ≈2^131.1,  δ_0: 1.005788,  β:  229,  d:  594,  m:      896
+         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  babai_op: ≈2^138.4,  ...
+        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624,  c:        1
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop: ≈2^135.8,  m:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
-        dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510, ...
+         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  babai_op: ≈2^138.4,  ...
+        dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510,  c:    4.099,  k:   ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop: ≈2^100.6,  m:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
-         dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
-        dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524, ...
+         dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  babai_op: ≈2^112.1,  ...
+        dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524,  c:    4.099,  k:   ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
-        usvp: rop:  ≈2^37.5,  m:      122,  red:  ≈2^37.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
-         dec: rop:  ≈2^32.7,  m:      156,  red:  ≈2^32.7,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
-        dual: rop:  ≈2^34.5,  m:      311,  red:  ≈2^34.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  ...
-         bkw: rop:  ≈2^63.1,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,  ...
+        usvp: rop:  ≈2^25.4,  red:  ≈2^25.4,  δ_0: 1.013310,  β:   40,  d:  141,  m:      548
+         dec: rop:  ≈2^32.7,  m:      156,  red:  ≈2^32.7,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  babai_op:  ≈2^15.1,  ...
+        dual: rop:  ≈2^34.5,  m:      311,  red:  ≈2^34.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  repeat:        2,  ...
+         bkw: rop:  ≈2^63.1,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,  ntop:   2,  ntest:   6
 
     """
 
