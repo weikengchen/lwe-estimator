@@ -1557,9 +1557,6 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
 # Primal Attack (uSVP)
 
-tau_default = 0.3       # τ used in uSVP
-tau_prob_default = 0.1  # probability of success for given τ
-
 def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
                  success_probability=0.99,
                  reduction_cost_model=reduction_default_cost):
@@ -1623,9 +1620,10 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
 
     return ret
 
+
 def primal_usvp(n, alpha, q, secret_distribution=True,
                 m=oo, success_probability=0.99,
-                reduction_cost_model=reduction_default_cost,**kwds):
+                reduction_cost_model=reduction_default_cost, **kwds):
     u"""
     Estimate cost of solving LWE using primal attack (uSVP version)
 
@@ -1720,7 +1718,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             "m": m}
 
     cost = binary_search(_primal_usvp, start=40, stop=2*n, param="block_size",
-                             predicate=lambda x, best: x["red"]<=best["red"], **kwds)
+                         predicate=lambda x, best: x["red"]<=best["red"], **kwds)
 
     for block_size in range(32, cost["beta"]+1)[::-1]:
         t = _primal_usvp(block_size=block_size, **kwds)
@@ -2599,30 +2597,30 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         sage: from estimator import estimate_lwe, Param, BKZ
         sage: d = estimate_lwe(*Param.Regev(128))
         usvp: rop:  ≈2^51.1,  red:  ≈2^51.1,  δ_0: 1.009214,  β:  102,  d:  357,  m:      610
-         dec: rop:  ≈2^56.8,  m:      235,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  babai_op:  ≈2^57.3,  ...
-        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  repeat:  ≈2^19.0,  ...
+         dec: rop:  ≈2^56.8,  m:      235,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  ...
+        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  ...
 
         sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
         usvp: rop: ≈2^131.1,  red: ≈2^131.1,  δ_0: 1.005788,  β:  229,  d:  594,  m:      896
-         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  babai_op: ≈2^138.4,  ...
-        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624,  c:        1
+         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3, ...
+        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop:  ≈2^91.3,  red:  ≈2^91.3,  δ_0: 1.006908,  β:  171,  d:  490,  m:      858
-        dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  babai_op: ≈2^138.4,  repeat:  ≈2^17.2,  ε: ≈2^-15.0
-        dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510,  c:    4.099,  k:       16,  postprocess:        1
+        dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510,  ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop:  ≈2^78.3,  red:  ≈2^78.3,  δ_0: 1.006908,  β:  171,  d:  490,  m:      858
-        dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  babai_op: ≈2^112.1,  repeat:      588,  ε: 0.007812
-        dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524,  c:    4.099,  k:       16,  postprocess:        1
+        dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
+        dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524,  ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
         usvp: rop:  ≈2^25.4,  red:  ≈2^25.4,  δ_0: 1.013310,  β:   40,  d:  141,  m:      548
-        dec: rop:  ≈2^32.7,  m:      156,  red:  ≈2^32.7,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  babai_op:  ≈2^15.1,  repeat:        1,  ε:        1
-        dual: rop:  ≈2^34.5,  m:      311,  red:  ≈2^34.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  repeat:        2,  ε:        1
-        bkw: rop:  ≈2^56.8,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ncod:  84,  ntop:   1,  ntest:   5
+        dec: rop:  ≈2^32.7,  m:      156,  red:  ≈2^32.7,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
+        dual: rop:  ≈2^34.5,  m:      311,  red:  ≈2^34.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  ...
+        bkw: rop:  ≈2^56.8,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ncod:  84,  ...
 
     """
 
@@ -2686,6 +2684,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             results[alg] = tmp
             logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, results[alg].str(**cost_kwds)))
         except InsufficientSamplesError as e:
-            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, "insufficient samples to run this algorithm: '%s'"%str(e)))
+            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg,
+                                  "insufficient samples to run this algorithm: '%s'"%str(e)))
 
     return results
