@@ -1560,11 +1560,9 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 tau_default = 0.3       # τ used in uSVP
 tau_prob_default = 0.1  # probability of success for given τ
 
-
-def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
-                tau=tau_default, tau_prob=tau_prob_default,
-                success_probability=0.99,
-                reduction_cost_model=reduction_default_cost):
+def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
+                 success_probability=0.99,
+                 reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using primal attack (uSVP version)
 
@@ -1573,8 +1571,61 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
-    :param tau:
-    :param tau_prob:
+    :param success_probability: targeted success probability < 1
+    :param reduction_cost_model: cost model for lattice reduction
+
+    .. note:: This is the low-level function, in most cases you will want to call ``primal_usp``
+
+    """
+
+    n, alpha, q = Param.preprocess(n, alpha, q)
+    RR = alpha.parent()
+    q = RR(q)
+    delta_0 = delta_0f(block_size)
+    sigma = stddevf(alpha*q)
+    block_size = RR(block_size)
+
+    if secret_distribution:
+        m += n
+
+    m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
+
+    log_b_star = lambda d: delta_0.log()*(2*block_size-d) + ((d-n-1)*q.log())/d
+
+    C = sigma.log() + block_size.log()/2
+
+    for d in range(n, m):
+        if log_b_star(d) - C >= 0:
+            break
+
+    ineq = lambda d: sigma * RR(sqrt(block_size)) <= delta_0**(2*block_size-d) * (q**ZZ(d-n-1))**(ZZ(1)/d)
+
+    ret = lattice_reduction_cost(reduction_cost_model, delta_0, d)
+    if not ineq(d):
+        ret["red"] = oo
+
+    ret["d"] = d
+    ret["m"] = m
+    if secret_distribution:
+        ret["m"] -= n
+
+    ret["delta_0"] = delta_0
+
+    return ret
+
+def primal_usvp(n, alpha, q, secret_distribution=True,
+                m=oo, success_probability=0.99,
+                reduction_cost_model=reduction_default_cost,**kwds):
+    u"""
+    Estimate cost of solving LWE using primal attack (uSVP version)
+
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param m: number of LWE samples `m > 0`
+    :param success_probability: targeted success probability < 1
+    :param reduction_cost_model: cost model for lattice reduction
 
     EXAMPLES::
 
@@ -1617,57 +1668,36 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
                               d:      745
                          repeat:       44
 
-    ..  [AlbFitGöp14] Albrecht, M.  R., Fitzpatrick, R., & Florian Göpfert (2014).  On the
-    efficacy of solving LWE by reduction to unique-SVP.  In H.  Lee, & D.  Han, ICISC 13 (pp.
-    293–310).  : Springer, Heidelberg.
-
-    ..  [GamNgu08] Gama, N., & Nguyen, P.  Q.  (2008).  Predicting Lattice Reduction.  In N.  P.
-    Smart, EUROCRYPT~2008 (pp.  31–51).  : Springer, Heidelberg.
+    [USENIX:ADPS16] Alkim, E., Léo Ducas, Thomas Pöppelmann, & Schwabe, P.  (2015).
+    Post-quantum key exchange - a new hope.
 
     ..  note :: this is the standard primal-usvp attack, for the small secret variant see
     ``primal_usvp_scale``
-
     """
 
     if m < 1:
         raise InsufficientSamplesError("m=%d < 1" % m)
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
-    RR = parent(alpha)
 
     if SDis.is_small(secret_distribution):
         m = m + n
 
-    log_delta_0 = log(tau*alpha*sqrt(e), 2)**2/(4*n*log(q, 2))
-    delta_0 = RR(2**log_delta_0)
+    kwds = {"n": n, "alpha": alpha, "q": q,
+            "secret_distribution": secret_distribution,
+            "reduction_cost_model": reduction_cost_model,
+            "m": m}
 
-    m_optimal = lattice_reduction_opt_m(n, q, delta_0)
-    if m > m_optimal:
-        m = m_optimal
-    else:
-        delta_0 = RR((q**(1-n/m)*sqrt(1/(e)) / (tau*alpha*q))**(1.0/m))
+    cost = binary_search(_primal_usvp, start=40, stop=2*n, param="block_size",
+                             predicate=lambda x, best: x["red"]<=best["red"], **kwds)
 
-    # check for valid delta
-    if delta_0 < 1:
-        raise OutOfBoundsError(u"δ_0 = %f < 1."%delta_0)
+    for block_size in range(32, cost["beta"]+1)[::-1]:
+        t = _primal_usvp(block_size=block_size, **kwds)
+        if t["red"] == oo:
+            break
+        cost = t
 
-    l2 = q**(1-n/m) * sqrt(m/(2*pi*e))
-    if l2 > q:
-        raise NotImplementedError(u"Case where λ_2 = q not implemented.")
-
-    repeat = amplify(success_probability, tau_prob, majority=False)
-
-    d = m + 1
-    cost = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
-    cost[u"d"] = d
-
-    if SDis.is_small(secret_distribution):
-        cost[u"m"] = m - n
-    else:
-        cost[u"m"] = m
-    cost = cost.repeat(repeat, select={"m": False})
-    return cost.reorder(["rop", "m"])
-
+    return cost
 
 def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
                       tau=tau_default, tau_prob=tau_prob_default,
@@ -2691,7 +2721,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             algorithms["usvp"] = partial(drop_and_solve, primal_usvp_scale, reduction_cost_model=reduction_cost_model,
                                          postprocess=False, decision=False)
         elif SDis.is_small(secret_distribution):
-            algorithms["usvp"] = partial(primal_usvp_scale, reduction_cost_model=reduction_cost_model)
+            algorithms["usvp"] = partial( primal_usvp_scale, reduction_cost_model=reduction_cost_model)
         else:
             algorithms["usvp"] = partial(primal_usvp, reduction_cost_model=reduction_cost_model)
 
