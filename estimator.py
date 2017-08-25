@@ -1583,7 +1583,10 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     block_size = RR(block_size)
 
     if SDis.is_ternary(secret_distribution):
-        h = SDis.nonzero(secret_distribution, n)
+        if SDis.is_sparse(secret_distribution):
+            h = SDis.nonzero(secret_distribution, n)
+        else:
+            h = n
         scale = RR(sqrt(1.5)*stddev*sqrt(n/h))
     else:
         scale = RR(1)
