@@ -153,6 +153,6 @@ always.
     sage: load("estimator.py")
     sage: n = 2048; q = 2^60 - 2^14 + 1; alpha = 8/q; m = 2*n
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
-    usvp: rop: ≈2^114.9,  red: ≈2^114.9,  δ_0: 1.004998,  β:  286,  d: 3964,  m:  ≈2^12.6
+    usvp: rop: ≈2^115.5,  red: ≈2^115.5,  δ_0: 1.004975,  β:  288,  d: 4013,  m:  ≈2^12.6
      dec: rop: ≈2^127.1,  m:  ≈2^11.1,  red: ≈2^127.1,  δ_0: 1.004663,  β:  318,  d: 4237,  babai: ≈2^114.8,  babai_op: ≈2^129.9,  repeat:        7,  ε: 0.500000
     dual: rop: ≈2^118.4,  m:  ≈2^12.0,  red: ≈2^118.4,  δ_0: 1.004864,  β:  298,  repeat:  ≈2^58.8,  d: 4090,  c:    3.908,  k:       30,  postprocess:       13
