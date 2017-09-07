@@ -2640,14 +2640,14 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         algorithms["mitm"] = mitm
 
     if "usvp" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
+        if SDis.is_sparse(secret_distribution) and SDis.is_ternary(secret_distribution):
             algorithms["usvp"] = partial(drop_and_solve, primal_usvp, reduction_cost_model=reduction_cost_model,
                                          postprocess=False, decision=False)
         else:
             algorithms["usvp"] = partial(primal_usvp, reduction_cost_model=reduction_cost_model)
 
     if "dec" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
+        if SDis.is_sparse(secret_distribution) and SDis.is_ternary(secret_distribution):
             algorithms["dec"] = partial(drop_and_solve, primal_decode, reduction_cost_model=reduction_cost_model,
                                         postprocess=False, decision=False)
         else:
