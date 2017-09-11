@@ -1062,8 +1062,8 @@ class BKZ:
         qnm = log_q*(n/m)
         qnm_p_log_delta_m = qnm + log_delta*m
         tmm1 = RDF(2*m/(m-1))
-        b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in xrange(m)]
-        b = [log_q - b[-1-i] for i in xrange(m)]
+        b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in range(m)]
+        b = [log_q - b[-1-i] for i in range(m)]
         b = map(lambda x: x.exp(), b)
         return b
 
@@ -1557,14 +1557,9 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
 # Primal Attack (uSVP)
 
-tau_default = 0.3       # τ used in uSVP
-tau_prob_default = 0.1  # probability of success for given τ
-
-
-def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
-                tau=tau_default, tau_prob=tau_prob_default,
-                success_probability=0.99,
-                reduction_cost_model=reduction_default_cost):
+def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
+                 success_probability=0.99,
+                 reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using primal attack (uSVP version)
 
@@ -1573,8 +1568,75 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
-    :param tau:
-    :param tau_prob:
+    :param success_probability: targeted success probability < 1
+    :param reduction_cost_model: cost model for lattice reduction
+
+    .. note:: This is the low-level function, in most cases you will want to call ``primal_usp``
+
+    """
+
+    n, alpha, q = Param.preprocess(n, alpha, q)
+    RR = alpha.parent()
+    q = RR(q)
+    delta_0 = delta_0f(block_size)
+    stddev = stddevf(alpha*q)
+    block_size = RR(block_size)
+
+    if SDis.is_ternary(secret_distribution):
+        if SDis.is_sparse(secret_distribution):
+            h = SDis.nonzero(secret_distribution, n)
+            scale = RR(stddev*sqrt(n/h))
+        else:
+            scale = RR(sqrt(1.5)*stddev)
+    else:
+        scale = RR(1)
+
+    if SDis.is_small(secret_distribution):
+        m += n
+
+    m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
+
+    def log_b_star(d):
+        return delta_0.log()*(2*block_size-d) + (n*scale.log() + (d-n-1)*q.log())/d
+
+    C = stddev.log() + block_size.log()/2
+
+    for d in range(n, m):
+        if log_b_star(d) - C >= 0:
+            break
+
+    def ineq(d):
+        lhs = stddev * RR(sqrt(block_size))
+        rhs = delta_0**(2*block_size-d) * (scale**n * q**(d-n-1))**(ZZ(1)/d)
+        return lhs <= rhs
+
+    ret = lattice_reduction_cost(reduction_cost_model, delta_0, d)
+    if not ineq(d):
+        ret["red"] = oo
+
+    ret["d"] = d
+    ret["m"] = m
+    if secret_distribution:
+        ret["m"] -= n
+
+    ret["delta_0"] = delta_0
+
+    return ret
+
+
+def primal_usvp(n, alpha, q, secret_distribution=True,
+                m=oo, success_probability=0.99,
+                reduction_cost_model=reduction_default_cost, **kwds):
+    u"""
+    Estimate cost of solving LWE using primal attack (uSVP version)
+
+    :param n: LWE dimension `n > 0`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param m: number of LWE samples `m > 0`
+    :param success_probability: targeted success probability < 1
+    :param reduction_cost_model: cost model for lattice reduction
 
     EXAMPLES::
 
@@ -1582,50 +1644,66 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
         sage: n, alpha, q = Param.Regev(256)
 
         sage: primal_usvp(n, alpha, q)
-                            rop:  2^170.4
-                              m:      488
-                            red:  2^170.4
-                        delta_0: 1.005147
-                           beta:      274
-                              d:      745
-                         repeat:       44
+                rop:  2^151.9
+                red:  2^151.9
+            delta_0: 1.005374
+               beta:      257
+                  d:      704
+                  m:     1200
 
         sage: primal_usvp(n, alpha, q, secret_distribution=True, m=n)
-                            rop:  2^260.4
-                              m:      256
-                            red:  2^260.4
-                        delta_0: 1.004091
-                           beta:      385
-                              d:      513
-                         repeat:       44
+                rop:  2^151.9
+                red:  2^151.9
+            delta_0: 1.005374
+               beta:      257
+                  d:      704
+                  m:      512
 
         sage: primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
-                        rop:  2^260.4
-                          m:      512
-                        red:  2^260.4
-                    delta_0: 1.004091
-                       beta:      385
-                          d:      513
-                     repeat:       44
+                rop:  2^203.1
+                red:  2^203.1
+            delta_0: 1.004609
+               beta:      323
+                  d:      511
+                  m:      512
 
         sage: primal_usvp(n, alpha, q, reduction_cost_model=BKZ.sieve)
-                            rop:  2^114.4
-                              m:      488
-                            red:  2^114.4
-                        delta_0: 1.005147
-                           beta:      274
-                              d:      745
-                         repeat:       44
+                rop:  2^103.9
+                red:  2^103.9
+            delta_0: 1.005374
+               beta:      257
+                  d:      704
+                  m:     1200
 
-    ..  [AlbFitGöp14] Albrecht, M.  R., Fitzpatrick, R., & Florian Göpfert (2014).  On the
-    efficacy of solving LWE by reduction to unique-SVP.  In H.  Lee, & D.  Han, ICISC 13 (pp.
-    293–310).  : Springer, Heidelberg.
+        sage: primal_usvp(n, alpha, q)
+                rop:  2^151.9
+                red:  2^151.9
+            delta_0: 1.005374
+               beta:      257
+                  d:      704
+                  m:     1200
 
-    ..  [GamNgu08] Gama, N., & Nguyen, P.  Q.  (2008).  Predicting Lattice Reduction.  In N.  P.
-    Smart, EUROCRYPT~2008 (pp.  31–51).  : Springer, Heidelberg.
+        sage: primal_usvp(n, alpha, q, secret_distribution=(-1,1), m=n)
+                rop:   2^81.9
+                red:   2^81.9
+            delta_0: 1.007317
+               beta:      156
+                  d:      492
+                  m:      512
 
-    ..  note :: this is the standard primal-usvp attack, for the small secret variant see
-    ``primal_usvp_scale``
+        sage: primal_usvp(n, alpha, q, secret_distribution=((-1,1), 64))
+                rop:   2^73.4
+                red:   2^73.4
+            delta_0: 1.007723
+               beta:      142
+                  d:      461
+                  m:      960
+
+    ..  [USENIX:ADPS16] Alkim, E., Léo Ducas, Thomas Pöppelmann, & Schwabe, P.  (2015).
+        Post-quantum key exchange - a new hope.
+
+    ..  [BaiGal14] Bai, S., & Galbraith, S.  D.  (2014).  Lattice decoding attacks on binary
+        LWE.  In W.  Susilo, & Y.  Mu, ACISP 14 (pp.  322–337).  : Springer, Heidelberg.
 
     """
 
@@ -1633,150 +1711,25 @@ def primal_usvp(n, alpha, q, secret_distribution=True, m=oo,
         raise InsufficientSamplesError("m=%d < 1" % m)
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
-    RR = parent(alpha)
 
     if SDis.is_small(secret_distribution):
         m = m + n
 
-    log_delta_0 = log(tau*alpha*sqrt(e), 2)**2/(4*n*log(q, 2))
-    delta_0 = RR(2**log_delta_0)
+    kwds = {"n": n, "alpha": alpha, "q": q,
+            "secret_distribution": secret_distribution,
+            "reduction_cost_model": reduction_cost_model,
+            "m": m}
 
-    m_optimal = lattice_reduction_opt_m(n, q, delta_0)
-    if m > m_optimal:
-        m = m_optimal
-    else:
-        delta_0 = RR((q**(1-n/m)*sqrt(1/(e)) / (tau*alpha*q))**(1.0/m))
+    cost = binary_search(_primal_usvp, start=40, stop=2*n, param="block_size",
+                         predicate=lambda x, best: x["red"]<=best["red"], **kwds)
 
-    # check for valid delta
-    if delta_0 < 1:
-        raise OutOfBoundsError(u"δ_0 = %f < 1."%delta_0)
+    for block_size in range(32, cost["beta"]+1)[::-1]:
+        t = _primal_usvp(block_size=block_size, **kwds)
+        if t["red"] == oo:
+            break
+        cost = t
 
-    l2 = q**(1-n/m) * sqrt(m/(2*pi*e))
-    if l2 > q:
-        raise NotImplementedError(u"Case where λ_2 = q not implemented.")
-
-    repeat = amplify(success_probability, tau_prob, majority=False)
-
-    d = m + 1
-    cost = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
-    cost[u"d"] = d
-
-    if SDis.is_small(secret_distribution):
-        cost[u"m"] = m - n
-    else:
-        cost[u"m"] = m
-    cost = cost.repeat(repeat, select={"m": False})
-    return cost.reorder(["rop", "m"])
-
-
-def primal_usvp_scale(n, alpha, q, secret_distribution=True, m=oo,
-                      tau=tau_default, tau_prob=tau_prob_default,
-                      success_probability=0.99,
-                      reduction_cost_model=reduction_default_cost):
-
-    """
-    Scaled-version of primal attack as described in [BaiGal14]_.
-
-    :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
-    :param q: modulus `0 < q`
-    :param secret_distribution: distribution of secret, see module level documentation for details
-    :param m: number of LWE samples `m > 0`
-    :param tau:
-    :param tau_prob:
-    :param success_probability: targeted success probability < 1
-    :param reduction_cost_model:
-
-    EXAMPLE::
-
-        sage: from estimator import Param, primal_usvp_scale
-        sage: n, alpha, q = Param.Regev(256)
-
-        sage: primal_usvp_scale(n, alpha, q)
-                 rop:  2^170.4
-                   m:      488
-                 red:  2^170.4
-             delta_0: 1.005147
-                beta:      274
-                   d:      745
-              repeat:       44
-
-        sage: primal_usvp_scale(n, alpha, q, secret_distribution=(-1,1), m=n)
-                        rop:  2^110.6
-                          m:      256
-                        red:  2^110.6
-                    delta_0: 1.006449
-                       beta:      192
-                          d:      513
-                     repeat:       44
-
-        sage: primal_usvp_scale(n, alpha, q, secret_distribution=((-1,1), 64))
-                        rop:   2^96.3
-                          m:      284
-                        red:   2^96.3
-                    delta_0: 1.006935
-                       beta:      170
-                          d:      541
-                     repeat:       44
-
-    ..  [BaiGal14] Bai, S., & Galbraith, S.  D.  (2014).  Lattice decoding attacks on binary
-        LWE.  In W.  Susilo, & Y.  Mu, ACISP 14 (pp.  322–337).  : Springer, Heidelberg.
-    """
-
-    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
-    RR = parent(alpha)
-
-    stddev = stddevf(alpha*q)
-    try:
-        a, b = SDis.bounds(secret_distribution)
-    except ValueError:
-        # fall back to standard primal attack
-        return primal_usvp(n=n, alpha=alpha, q=q, secret_distribution=secret_distribution, m=m,
-                           tau=tau, tau_prob=tau_prob,
-                           success_probability=success_probability,
-                           reduction_cost_model=reduction_cost_model)
-
-    if -a != b:
-        raise NotImplementedError
-
-    h = SDis.nonzero(secret_distribution, n)
-    # we compute the stddev of |s| and xi to scale each component to σ on average
-    variance = sum([ZZ(h)/n * i**2 for i in range(a, b+1) if i])
-    s_stddev = variance.sqrt()
-    xi = ZZ(1)/s_stddev
-
-    num = (log(q/stddev) - log(tau*sqrt(4*pi*e)))**2 * log(q/stddev)
-    den = n*(2*log(q/stddev)-log(xi))**2
-
-    log_delta_0 = RR(num/den)
-    delta_0 = RR(e**log_delta_0)
-
-    m_prime_optimal = ceil(sqrt(n*(log(q)-log(stddev))/log_delta_0))
-    if m > m_prime_optimal - n:
-        m_prime = m_prime_optimal
-    else:
-        m_prime = m+n
-        num = m_prime*(log(q/stddev) - log(2*tau*sqrt(pi*e))) +n*log(xi)-n*log(q/stddev)
-        den = m_prime**2
-        log_delta_0 = RR(num/den)
-        delta_0 = RR(e**log_delta_0)
-    m = m_prime - n
-
-    l2 = RR((q**m * (xi*stddev)**n)**(1/m_prime) * sqrt(m_prime/(2*pi*e)))
-    if l2 > q:
-        raise NotImplementedError("Case λ_2 = q not implemented.")
-
-    d = m_prime + 1
-
-    cost = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
-
-    cost["m"] = m
-    cost["d"] = d
-
-    repeat = amplify(success_probability, tau_prob)
-    cost = cost.repeat(repeat, select={"m": False})
-
-    return cost.reorder(["rop", "m"])
+    return cost
 
 
 # Primal Attack (Enumeration)
@@ -1801,18 +1754,18 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
     B = BKZ.GSA(n, q, delta_0, m)
 
     d = [RDF(1)]*m
-    bd = [d[i] * B[i] for i in xrange(m)]
+    bd = [d[i] * B[i] for i in range(m)]
     scaling_factor = RDF(sqrt(pi) / (2*alpha*q))
-    probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
+    probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in range(m)]
     success_probability = prod(probs_bd)
 
     if RR(success_probability).is_NaN():
         # try in higher precision
         step = RR(step)
         d = [RR(1)]*m
-        bd = [d[i] * B[i] for i in xrange(m)]
+        bd = [d[i] * B[i] for i in range(m)]
         scaling_factor = RR(sqrt(pi) / (2*alpha*q))
-        probs_bd = [RR((bd[i]  * scaling_factor)).erf() for i in xrange(m)]
+        probs_bd = [RR((bd[i]  * scaling_factor)).erf() for i in range(m)]
         success_probability = prod(probs_bd)
 
         if success_probability.is_NaN():
@@ -2407,9 +2360,9 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     # cost["C1(bkw)"] = RR(C1)
 
     # Equation (9)
-    C2_ = sum([4*(M + i*(q**b - 1)/2)*N(i, sigma_set) for i in range(i, t2+1)])
+    C2_ = sum([4*(M + i*(q**b - 1)/2)*N(i, sigma_set) for i in range(1, t2+1)])
     C2 = RR(C2_)
-    for i in range(i, t2+1):
+    for i in range(1, t2+1):
         C2 += RR(ntop + ntest + sum([N(j, sigma_set) for j in range(1, i+1)]))*(M + (i-1)*(q**b - 1)/2)
     assert(C2 >= 0)
     # cost["C2(coded)"] = RR(C2)
@@ -2449,16 +2402,16 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
         sage: from estimator import Param, bkw_coded
         sage: n, alpha, q = Param.Regev(64)
         sage: bkw_coded(n, alpha, q)
-               rop:   2^50.7
-                 m:   2^39.6
-               mem:   2^39.6
-                 b:        3
-                t1:        2
-                t2:       10
-                 l:        2
-              ncod:       53
-              ntop:        0
-             ntest:        6
+             rop:   2^50.9
+               m:   2^39.6
+             mem:   2^39.6
+               b:        3
+              t1:        2
+              t2:       10
+               l:        2
+            ncod:       53
+            ntop:        0
+           ntest:        6
 
     .. [GuoJohSta15] Guo, Q., Johansson, T., & Stankovski, P.  (2015).  Coded-BKW: solving LWE using lattice
        codes.  In R.  Gennaro, & M.  J.  B.  Robshaw, CRYPTO~2015, Part~I (pp.  23–42).  :
@@ -2523,7 +2476,7 @@ def gb_cost(n, D, omega=2):
 
     retval = Cost([("rop", oo), ("Dreg", oo)])
 
-    for dreg in xrange(2*n):
+    for dreg in range(2*n):
         if coeff(s, dreg) < 0:
             break
     else:
@@ -2645,31 +2598,31 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
 
         sage: from estimator import estimate_lwe, Param, BKZ
         sage: d = estimate_lwe(*Param.Regev(128))
-        usvp: rop:  ≈2^48.9,  m:      226,  red:  ≈2^48.9,  δ_0: 1.009971,  β:   86,  d:  355,  repeat:       44
+        usvp: rop:  ≈2^51.1,  red:  ≈2^51.1,  δ_0: 1.009214,  β:  102,  d:  357,  m:      610
          dec: rop:  ≈2^56.8,  m:      235,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  ...
-        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,    ...
+        dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  ...
 
         sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
-        usvp: rop: ≈2^145.4,  m:      362,  red: ≈2^145.4,  δ_0: 1.005598,  β:  241,  d:  619,  repeat:       44
-         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        usvp: rop: ≈2^131.1,  red: ≈2^131.1,  δ_0: 1.005788,  β:  229,  d:  594,  m:      896
+         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3, ...
         dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
-        usvp: rop: ≈2^135.8,  m:      306,  red: ≈2^135.8,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
+        usvp: rop:  ≈2^96.5,  red:  ≈2^96.5,  δ_0: 1.006744,  β:  179,  d:  506,  m:      870
          dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
         dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510, ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
-        usvp: rop: ≈2^100.6,  m:      306,  red: ≈2^100.6,  δ_0: 1.005789,  β:  228,  d:  563,  repeat:       44
+        usvp: rop:  ≈2^80.7,  red:  ≈2^80.7,  δ_0: 1.006744,  β:  179,  d:  506,  m:      870
          dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
         dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524, ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
-        usvp: rop:  ≈2^37.5,  m:      122,  red:  ≈2^37.5,  δ_0: 1.028520,  β:   40,  d:  223,  repeat:       44
+        usvp: rop:  ≈2^25.4,  red:  ≈2^25.4,  δ_0: 1.013310,  β:   40,  d:  141,  m:      548
          dec: rop:  ≈2^32.7,  m:      156,  red:  ≈2^32.7,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
         dual: rop:  ≈2^34.5,  m:      311,  red:  ≈2^34.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  ...
-         bkw: rop:  ≈2^63.1,  m:  ≈2^49.6,  mem:  ≈2^44.2,  b:   2,  t1:   0,  t2:  18,  l:   1,  ncod:  92,  ...
+         bkw: rop:  ≈2^56.8,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ncod:  84,  ...
 
     """
 
@@ -2687,16 +2640,14 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         algorithms["mitm"] = mitm
 
     if "usvp" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
-            algorithms["usvp"] = partial(drop_and_solve, primal_usvp_scale, reduction_cost_model=reduction_cost_model,
+        if SDis.is_sparse(secret_distribution) and SDis.is_ternary(secret_distribution):
+            algorithms["usvp"] = partial(drop_and_solve, primal_usvp, reduction_cost_model=reduction_cost_model,
                                          postprocess=False, decision=False)
-        elif SDis.is_small(secret_distribution):
-            algorithms["usvp"] = partial(primal_usvp_scale, reduction_cost_model=reduction_cost_model)
         else:
             algorithms["usvp"] = partial(primal_usvp, reduction_cost_model=reduction_cost_model)
 
     if "dec" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
+        if SDis.is_sparse(secret_distribution) and SDis.is_ternary(secret_distribution):
             algorithms["dec"] = partial(drop_and_solve, primal_decode, reduction_cost_model=reduction_cost_model,
                                         postprocess=False, decision=False)
         else:
@@ -2734,7 +2685,8 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             tmp = algf(n, alpha, q, secret_distribution=secret_distribution, m=m)
             results[alg] = tmp
             logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, results[alg].str(**cost_kwds)))
-        except InsufficientSamplesError, msg:
-            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg, "insufficient samples to run this algorithm: '%s'"%msg))
+        except InsufficientSamplesError as e:
+            logger.info("%s: %s"%(("%%%ds" % alg_width) % alg,
+                                  "insufficient samples to run this algorithm: '%s'"%str(e)))
 
     return results
