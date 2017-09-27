@@ -1612,6 +1612,7 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
 
     ret = lattice_reduction_cost(reduction_cost_model, delta_0, d)
     if not ineq(d):
+        ret["rop"] = oo
         ret["red"] = oo
 
     ret["d"] = d
