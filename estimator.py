@@ -630,8 +630,9 @@ class SDis:
                 return False
 
     @staticmethod
-    def is_ternary(secret_distribution):
-        """Return true if the secret is ternary (sparse or not)
+    def is_bounded_uniform(secret_distribution):
+        """Return true if the secret is bounded uniform (sparse or not).
+        It requires the bounds to be of opposite sign, as scaling code does not handle the other case.
 
         :param secret_distribution: distribution of secret, see module level documentation for details
 
@@ -639,14 +640,7 @@ class SDis:
 
         try:
             a, b = secret_distribution
-            if a == -1 and b == 1:
-                return True
-        except (TypeError, ValueError):
-            pass
-
-        try:
-            (a, b), h = secret_distribution
-            if a == -1 and b == 1:
+            if a <= 0 and 0 <= b:
                 return True
         except (TypeError, ValueError):
             pass
@@ -669,6 +663,22 @@ class SDis:
             return a, b
         except (TypeError, ValueError):
             raise ValueError("Cannot extract bounds for secret.")
+
+    @staticmethod
+    def is_ternary(secret_distribution):
+        """Return true if the secret is ternary (sparse or not)
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+
+        """
+
+        if SDis.is_bounded_uniform(secret_distribution):
+            a, b = SDis.bounds(secret_distribution)
+            if a == -1 and b == 1:
+                return True
+
+        return False
+
 
     @staticmethod
     def nonzero(secret_distribution, n):
@@ -1558,7 +1568,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 # Primal Attack (uSVP)
 
 def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
-                 success_probability=0.99,
+                 success_probability=0.99, scale=RR(1.),
                  reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using primal attack (uSVP version)
@@ -1581,18 +1591,6 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     delta_0 = delta_0f(block_size)
     stddev = stddevf(alpha*q)
     block_size = RR(block_size)
-
-    if SDis.is_ternary(secret_distribution):
-        if SDis.is_sparse(secret_distribution):
-            h = SDis.nonzero(secret_distribution, n)
-            scale = RR(stddev*sqrt(n/h))
-        else:
-            scale = RR(sqrt(1.5)*stddev)
-    else:
-        scale = RR(1)
-
-    if SDis.is_small(secret_distribution):
-        m += n
 
     m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
 
@@ -1713,10 +1711,28 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
+    # For small/sparse secret use Bai and Galbraith's scaled embedding
+    # NOTE: We assume a <= 0 <= b
+    # TODO: if a != -b then some improved scaling could be done by balancing the secret
+    if SDis.is_bounded_uniform(secret_distribution):
+        a, b = SDis.bounds(secret_distribution)
+        if SDis.is_sparse(secret_distribution):
+            h = SDis.nonzero(secret_distribution, n)
+        else:
+            h = (b-a)/(b-a+1)
+
+        scale = RR(sqrt((b-a)*n/(h*sum([i**2 for i in range(a,b+1)])))*stddev)
+    else:
+        scale = RR(1)
+
+    # allow for a larger embedding lattice dimension, using Bai and Galbraiths'
+    if SDis.is_small(secret_distribution):
+        m += n
+
     kwds = {"n": n, "alpha": alpha, "q": q,
             "secret_distribution": secret_distribution,
             "reduction_cost_model": reduction_cost_model,
-            "m": m}
+            "m": m, "scale": scale}
 
     cost = binary_search(_primal_usvp, start=40, stop=2*n, param="block_size",
                          predicate=lambda x, best: x["red"]<=best["red"], **kwds)
