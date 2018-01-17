@@ -1713,9 +1713,6 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
-    if SDis.is_small(secret_distribution):
-        m = m + n
-
     kwds = {"n": n, "alpha": alpha, "q": q,
             "secret_distribution": secret_distribution,
             "reduction_cost_model": reduction_cost_model,

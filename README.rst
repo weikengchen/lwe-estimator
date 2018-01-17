@@ -73,6 +73,7 @@ At present, this estimator is maintained by Martin Albrecht. Contributors are:
 -  Rachel Player
 -  Markus Schmidt
 -  Sam Scott
+-  Fernando Virdia
 
 Please follow `PEP8 <https://www.python.org/dev/peps/pep-0008/>`__ in your submissions. You can use
 `flake8 <http://flake8.pycqa.org/en/latest/>`__ to check for compliance. We use the following flake8
@@ -129,7 +130,7 @@ always.
     usvp: rop: ≈2^313.1,  red: ≈2^313.1,  δ_0: 1.002094,  β:  968,  d: 2101,  m:  ≈2^11.7
      dec: rop: ≈2^410.0,  m:     1308,  red: ≈2^410.0,  δ_0: 1.001763,  β: 1213,  d: 2332,  babai: ≈2^395.5,  babai_op: ≈2^410.6,  repeat:  ≈2^25.2,  ε: ≈2^-23.0
     dual: rop: ≈2^355.5,  m:  ≈2^11.1,  red: ≈2^355.5,  δ_0: 1.001884,  β: 1113,  repeat: ≈2^307.0,  d: 2263,  c:        1
-    
+
 `Frodo <http://ia.cr/2016/659>`__ ::
 
     sage: load("estimator.py")
