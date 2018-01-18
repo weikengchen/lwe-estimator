@@ -2311,7 +2311,7 @@ def dual_scale(n, alpha, q, secret_distribution,
         v_ = v/RR(sqrt(d))
 
         # we split our vector in two parts.
-        v_r = sigmaf(RR(    stddev*sqrt(m)*v_))  # 1. v_r is multiplied with the error stddev (dimension m-n)
+        v_r = sigmaf(RR(stddev*sqrt(m)*v_))      # 1. v_r is multiplied with the error stddev (dimension m-n)
         v_l = sigmaf(RR(c*stddev_s*sqrt(n)*v_))  # 2. v_l is the rounding noise (dimension n)
 
         ret = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
