@@ -800,6 +800,59 @@ class SDis:
             raise ValueError("Cannot extract `h`.")
 
     @staticmethod
+    def mean(secret_distribution, q=None, n=None):
+        """
+        Mean of the secret per component.
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+        :param n: only used for sparse secrets
+
+        EXAMPLE::
+
+            sage: from estimator import SDis
+            sage: SDis.mean(True)
+            0
+
+            sage: SDis.mean(False, q=10)
+            0
+
+            sage: SDis.mean(((-3,3)))
+            0
+
+            sage: SDis.mean(((-3,3),64), n=256)
+            0
+
+            sage: SDis.mean(((-3,2)))
+            -1/2
+
+            sage: SDis.mean(((-3,2),64), n=256)
+            -3/20
+
+        """
+        if not SDis.is_small(secret_distribution):
+            # uniform distribution variance
+            if q is None:
+                raise ValueError("Parameter q is required for uniform secret.")
+            a = -floor(q/2)
+            b = floor(q/2)
+            return (a + b)/ZZ(2)
+        else:
+            try:
+                a, b = SDis.bounds(secret_distribution)
+
+                try:
+                    (a, b), h = secret_distribution
+                    if n is None:
+                        raise ValueError("Parameter n is required for sparse secrets.")
+                    return h/ZZ(n) * (b*(b+1)-a*(a-1))/(2*(b-a))
+                except (TypeError, ValueError):
+                    return (a + b)/ZZ(2)
+            except ValueError:
+                # small with no bounds, it's normal
+                return ZZ(0)
+
+
+    @staticmethod
     def variance(secret_distribution, alpha=None, q=None, n=None):
         """
         Variance of the secret per component.
@@ -821,6 +874,12 @@ class SDis:
             sage: SDis.variance(((-3,3),64), 8./2^15, 2^15, n=256)
             7/6
 
+            sage: SDis.variance(((-3,2)))
+            -1/2
+
+            sage: SDis.variance(((-3,2),64), n=256)
+            371/400
+
             sage: SDis.variance(((-1,1)), 8./2^15, 2^15)
             2/3
 
@@ -831,6 +890,7 @@ class SDis:
             distribution is centred around zero.
         """
         if not SDis.is_small(secret_distribution):
+            # uniform distribution variance
             a = -floor(q/2)
             b = floor(q/2)
             n = b - a + 1
@@ -838,18 +898,17 @@ class SDis:
         else:
             try:
                 a, b = SDis.bounds(secret_distribution)
-
                 try:
                     (a, b), h = secret_distribution
-                    t = ((b - a + 1)**2 - 1)/ZZ(12)
-                    # take out zero
-                    t = ((b-a+1) * t) / ZZ(b-a)
                     if n is None:
                         raise ValueError("Parameter n is required for sparse secrets.")
-                    return h/ZZ(n) * t
+                    # Var(x) = E(x^2) - E(x)^2
+                    tt = h/ZZ(n)*sum([i**2 for i in range(a, b+1)])/(b-a)
+                    return tt-SDis.mean(secret_distribution, n=n)**2
                 except (TypeError, ValueError):
                     return ((b - a + 1)**2 - 1)/ZZ(12)
             except ValueError:
+                # small with no bounds, it's normal
                 return stddevf(alpha*q)**2
 
 
