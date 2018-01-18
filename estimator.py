@@ -2113,12 +2113,15 @@ def dual_scale(n, alpha, q, secret_distribution,
     # stddev of the error
     e = RR(stddevf(alpha*q))
 
-    if SDis.is_ternary(secret_distribution):
+    # Calculate scaling in the case of bounded_uniform secret distribution
+    # NOTE: We assume a <= 0 <= b
+    if SDis.is_bounded_uniform(secret_distribution):
         a, b = SDis.bounds(secret_distribution)
+        # nonzero correctly estimates the non-sparse case
         h = SDis.nonzero(secret_distribution, n)
         e_ = RR(1)
         if c is None:
-            c = RR(e*sqrt(2*n - n)/sqrt(h))
+            c = RR(e*sqrt(2*n - n)/sqrt(h*sum([i**2 for i in range(a,b+1)])/(b-a)))
     else:
         if not SDis.is_small(secret_distribution):
             m = m - n
