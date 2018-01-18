@@ -682,7 +682,6 @@ class SDis:
 
         return False
 
-
     @staticmethod
     def nonzero(secret_distribution, n):
         """Return number of non-zero elements or ``None``
