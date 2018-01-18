@@ -1735,7 +1735,8 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
 
     C = stddev.log() + block_size.log()/2
 
-    for d in range(n, m):
+    # we have m samples → the largest permissible dimension d is m+1
+    for d in range(n, m+2):
         if log_b_star(d) - C >= 0:
             break
 
@@ -1750,9 +1751,10 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
         ret["red"] = oo
 
     ret["d"] = d
-    ret["m"] = m
-    if secret_distribution:
-        ret["m"] -= n
+    if SDis.is_small(secret_distribution):
+        ret["m"] = d-n-1
+    else:
+        ret["m"] = d-1
 
     ret["delta_0"] = delta_0
 
