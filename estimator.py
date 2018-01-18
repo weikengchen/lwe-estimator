@@ -1587,6 +1587,18 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                   k:       55
         postprocess:        8
 
+        sage: duald(n, alpha, q, secret_distribution=((-3,3), 64))
+                rop:   2^55.6
+                  m:      525
+                red:   2^55.4
+            delta_0: 1.009233
+               beta:      101
+             repeat:   2^14.3
+                  d:      973
+                  c:    3.909
+                  k:       64
+        postprocess:        6
+
         sage: kwds = {"use_lll":False, "postprocess":False}
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
                 rop:   2^63.2
@@ -1599,6 +1611,19 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                   c:    9.027
                   k:        0
         postprocess:        0
+
+        sage: duald(n, alpha, q, secret_distribution=((-3,3), 64), **kwds)
+                rop:   2^67.9
+                  m:      560
+                red:   2^67.9
+            delta_0: 1.008668
+               beta:      114
+             repeat:  524.610
+                  d:     1068
+                  c:    4.162
+                  k:        4
+        postprocess:        0
+
 
     This function is based on:
 
@@ -1621,10 +1646,11 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     # size means stepping over target
     step_size = int(n/32)
 
-    if not SDis.is_ternary(secret_distribution):
-        raise NotImplementedError("Only ternary secrets are currently supported.")
+    if not SDis.is_bounded_uniform(secret_distribution):
+        raise NotImplementedError("Only bounded uniform secrets are currently supported.")
 
     a, b = SDis.bounds(secret_distribution)
+    assert(a == -b)
     h = SDis.nonzero(secret_distribution, n)
 
     k = 0
