@@ -1685,7 +1685,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 # Primal Attack (uSVP)
 
 def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
-                 success_probability=0.99, scale=1,
+                 success_probability=0.99,
                  reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using primal attack (uSVP version)
@@ -1696,10 +1696,9 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
-    :param scale: scale secret components by this factor
     :param reduction_cost_model: cost model for lattice reduction
 
-    .. note:: This is the low-level function, in most cases you will want to call ``primal_usp``
+    .. note:: This is the low-level function, in most cases you will want to call ``primal_usvp``
 
     """
 
@@ -1709,7 +1708,25 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     delta_0 = delta_0f(block_size)
     stddev = stddevf(alpha*q)
     block_size = RR(block_size)
-    scale = RR(scale)
+
+    # For small/sparse secret use Bai and Galbraith's scaled embedding
+    # NOTE: We assume a <= 0 <= b
+    # TODO: if a != -b then some improved scaling could be done by balancing the secret
+
+    if SDis.is_bounded_uniform(secret_distribution):
+        a, b = SDis.bounds(secret_distribution)
+        # nonzero correctly estimates the non-sparse case
+        h = SDis.nonzero(secret_distribution, n)
+        stddev = stddevf(alpha*q)
+        # target same stddev per component
+        # stddev == c * sqrt(h/n * SDis.variance(secret_distribution, alpha, q))
+        scale = stddev/RR(sqrt(h/n * SDis.variance(secret_distribution, alpha, q)))
+    else:
+        scale = RR(1)
+
+    # allow for a larger embedding lattice dimension, using Bai and Galbraith's
+    if SDis.is_small(secret_distribution):
+        m += n
 
     m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
 
@@ -1830,27 +1847,10 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
-    # For small/sparse secret use Bai and Galbraith's scaled embedding
-    # NOTE: We assume a <= 0 <= b
-    # TODO: if a != -b then some improved scaling could be done by balancing the secret
-
-    if SDis.is_bounded_uniform(secret_distribution):
-        a, b = SDis.bounds(secret_distribution)
-        # nonzero correctly estimates the non-sparse case
-        h = SDis.nonzero(secret_distribution, n)
-        stddev = RR(alpha * q / sqrt(2*pi))
-        scale = RR(sqrt((b-a)*n/(h*sum([i**2 for i in range(a, b+1)])))*stddev)
-    else:
-        scale = RR(1)
-
-    # allow for a larger embedding lattice dimension, using Bai and Galbraith's
-    if SDis.is_small(secret_distribution):
-        m += n
-
     kwds = {"n": n, "alpha": alpha, "q": q,
             "secret_distribution": secret_distribution,
             "reduction_cost_model": reduction_cost_model,
-            "m": m, "scale": scale}
+            "m": m}
 
     cost = binary_search(_primal_usvp, start=40, stop=2*n, param="block_size",
                          predicate=lambda x, best: x["red"]<=best["red"], **kwds)
