@@ -1691,6 +1691,53 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
 # Primal Attack (uSVP)
 
+def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
+    """
+    Scale factor for primal attack.
+
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param n: only used for sparse secrets
+
+    EXAMPLE::
+
+        sage: from estimator import _primal_scale_factor
+        sage: _primal_scale_factor(True, 8./2^15, 2^15)
+        1.000000000...
+
+        sage: _primal_scale_factor(((-1,1)), alpha=8./2^15, q=2^15)
+        3.908820095...
+
+        sage: _primal_scale_factor(((-1,1), 64), alpha=8./2^15, q=2^15, n=256)
+        6.383076486...
+
+        sage: _primal_scale_factor(((-3,3)), alpha=8./2^15, q=2^15)
+        1.595769121...
+
+        sage: _primal_scale_factor(((-3,3), 64), alpha=8./2^15, q=2^15, n=256)
+        2.954790254...
+
+    ..  note :: This function assumes that the bounds are of opposite sign, and that the
+        distribution is centred around zero.
+    """
+
+    # For small/sparse secret use Bai and Galbraith's scaled embedding
+    # NOTE: We assume a <= 0 <= b
+    # TODO: if a != -b then some improved scaling could be done by balancing the secret
+
+    if SDis.is_bounded_uniform(secret_distribution):
+        a, b = SDis.bounds(secret_distribution)
+        assert(a == -b)
+        # target same stddev per component
+        stddev = stddevf(alpha*q)
+        scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)))
+    else:
+        scale = RR(1)
+
+    return scale
+
+
 def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
                  success_probability=0.99,
                  reduction_cost_model=reduction_default_cost):
@@ -1716,17 +1763,7 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     stddev = stddevf(alpha*q)
     block_size = RR(block_size)
 
-    # For small/sparse secret use Bai and Galbraith's scaled embedding
-    # NOTE: We assume a <= 0 <= b
-    # TODO: if a != -b then some improved scaling could be done by balancing the secret
-
-    if SDis.is_bounded_uniform(secret_distribution):
-        a, b = SDis.bounds(secret_distribution)
-        # target same stddev per component
-        stddev = stddevf(alpha*q)
-        scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)))
-    else:
-        scale = RR(1)
+    scale = _primal_scale_factor(secret_distribution, alpha, q, n)
 
     # allow for a larger embedding lattice dimension, using Bai and Galbraith's
     if SDis.is_small(secret_distribution):
