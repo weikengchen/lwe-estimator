@@ -630,24 +630,6 @@ class SDis:
                 return False
 
     @staticmethod
-    def is_bounded_uniform(secret_distribution):
-        """Return true if the secret is bounded uniform (sparse or not).
-        It requires the bounds to be of opposite sign, as scaling code does not handle the other case.
-
-        :param secret_distribution: distribution of secret, see module level documentation for details
-
-        """
-
-        try:
-            a, b = secret_distribution
-            if a <= 0 and 0 <= b:
-                return True
-        except (TypeError, ValueError):
-            pass
-
-        return False
-
-    @staticmethod
     def bounds(secret_distribution):
         """Return bounds of secret distribution
 
@@ -663,6 +645,27 @@ class SDis:
             return a, b
         except (TypeError, ValueError):
             raise ValueError("Cannot extract bounds for secret.")
+
+    @staticmethod
+    def is_bounded_uniform(secret_distribution):
+        """Return true if the secret is bounded uniform (sparse or not).
+        It requires the bounds to be of opposite sign, as scaling code does not handle the other case.
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+
+        """
+
+        try:
+            # next will fail if not bounded_uniform
+            a, b = SDis.bounds(secret_distribution)
+
+            # check bounds are around 0, otherwise not implemented
+            if a <= 0 and 0 <= b:
+                return True
+        except (TypeError, ValueError):
+            pass
+
+        return False
 
     @staticmethod
     def is_ternary(secret_distribution):
@@ -1714,18 +1717,17 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
     # For small/sparse secret use Bai and Galbraith's scaled embedding
     # NOTE: We assume a <= 0 <= b
     # TODO: if a != -b then some improved scaling could be done by balancing the secret
+
     if SDis.is_bounded_uniform(secret_distribution):
         a, b = SDis.bounds(secret_distribution)
-        if SDis.is_sparse(secret_distribution):
-            h = SDis.nonzero(secret_distribution, n)
-        else:
-            h = (b-a)/(b-a+1)
-
-        scale = RR(sqrt((b-a)*n/(h*sum([i**2 for i in range(a,b+1)])))*stddev)
+        # nonzero correctly estimates the non-sparse case
+        h = SDis.nonzero(secret_distribution, n)
+        stddev = RR(alpha * q / sqrt(2*pi))
+        scale = RR(sqrt((b-a)*n/(h*sum([i**2 for i in range(a, b+1)])))*stddev)
     else:
         scale = RR(1)
 
-    # allow for a larger embedding lattice dimension, using Bai and Galbraiths'
+    # allow for a larger embedding lattice dimension, using Bai and Galbraith's
     if SDis.is_small(secret_distribution):
         m += n
 
