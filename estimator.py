@@ -1469,7 +1469,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
         sage: dualg = partial(guess_and_solve, dual_scale)
         sage: dualg(n, alpha, q, secret_distribution=((-1,1), 64))
             rop:   2^59.7
-              m:     1051
+              m:      539
             red:   2^59.7
         delta_0: 1.008653
            beta:      115
@@ -1577,7 +1577,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
                 rop:   2^52.1
-                  m:      957
+                  m:      500
                 red:   2^52.0
             delta_0: 1.009353
                beta:       98
@@ -1590,7 +1590,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         sage: kwds = {"use_lll":False, "postprocess":False}
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
                 rop:   2^63.2
-                  m:     1033
+                  m:      521
                 red:   2^63.2
             delta_0: 1.008953
                beta:      107
@@ -2234,27 +2234,27 @@ def dual_scale(n, alpha, q, secret_distribution,
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=(-1,1))
             rop:  2^100.7
-              m:      546
+              m:      290
             red:  2^100.7
         delta_0: 1.006598
            beta:      185
          repeat:   2^62.0
               d:      546
-              c:   31.241
+              c:   31.271
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=(-1,1), m=200)
             rop:  2^105.2
-              m:      456
+              m:      200
             red:  2^105.2
         delta_0: 1.006443
            beta:      192
          repeat:   2^68.0
               d:      456
-              c:   31.241
+              c:   31.271
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=((-1,1), 64))
             rop:   2^91.9
-              m:      514
+              m:      258
             red:   2^91.9
         delta_0: 1.006948
            beta:      170
@@ -2268,63 +2268,64 @@ def dual_scale(n, alpha, q, secret_distribution,
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
-
     RR = parent(alpha)
 
     # stddev of the error
-    e = RR(stddevf(alpha*q))
+    stddev = RR(stddevf(alpha*q))
+
+    m_max = m
+
+    if not SDis.is_small(secret_distribution):
+        m_max -= n  # We transform to normal form, spending n samples
 
     # Calculate scaling in the case of bounded_uniform secret distribution
-    # NOTE: We assume a <= 0 <= b
     if SDis.is_bounded_uniform(secret_distribution):
         a, b = SDis.bounds(secret_distribution)
-        # nonzero correctly estimates the non-sparse case
-        h = SDis.nonzero(secret_distribution, n)
-        e_ = RR(1)
+        assert(a == -b)  # We assume a <= 0 <= b
+        stddev_s = SDis.variance(secret_distribution, alpha, q, n).sqrt()
         if c is None:
-            c = RR(e*sqrt(2*n - n)/sqrt(h*sum([i**2 for i in range(a, b+1)])/(b-a)))
+            # |<v,s>| = |<w,e>| → c * \sqrt{n} * σ_s == \sqrt{m} * σ
+            # TODO: we are assuming n == m here!
+            c = RR(stddev/stddev_s)
     else:
-        if not SDis.is_small(secret_distribution):
-            m = m - n
+        stddev_s = stddev
         c = RR(1)
-        e_ = e
-        h = n
 
-    best = dual(n=n, alpha=alpha, q=q, m=m,
-                reduction_cost_model=reduction_cost_model)
+    best = dual(n=n, alpha=alpha, q=q, m=m, reduction_cost_model=reduction_cost_model)
     delta_0 = best["delta_0"]
 
     if use_lll:
-        scale = 2
+        rerand_scale = 2
     else:
-        scale = 1
+        rerand_scale = 1
 
     while True:
         m_optimal = lattice_reduction_opt_m(n, q/c, delta_0)
-        m_ = ZZ(min(m_optimal, m+n))
+        d = ZZ(min(m_optimal, m_max + n))
+        m = d-n
 
-        # the vector found will have norm
-        v = scale * delta_0**m_ * (q/c)**(n/m_)
+        # the vector found will have norm v
+        v = rerand_scale * delta_0**d * (q/c)**(n/d)
 
         # each component has stddev v_
-        v_ = v/RR(sqrt(m_))
+        v_ = v/RR(sqrt(d))
 
         # we split our vector in two parts.
-        v_r = sigmaf(RR(e*sqrt(m_-n)*v_))  # 1. v_r is multiplied with the error e (dimension m-n)
-        v_l = sigmaf(RR(c*e_*sqrt(h)*v_))  # 2. v_l is the rounding noise (dimension n)
+        v_r = sigmaf(RR(    stddev*sqrt(m)*v_))  # 1. v_r is multiplied with the error stddev (dimension m-n)
+        v_l = sigmaf(RR(c*stddev_s*sqrt(n)*v_))  # 2. v_l is the rounding noise (dimension n)
 
-        ret = lattice_reduction_cost(reduction_cost_model, delta_0, m_, B=log(q, 2))
+        ret = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
 
         repeat = max(amplify_sigma(success_probability, (v_r, v_l), q), RR(1))
         if use_lll:
-            lll=BKZ.LLL(m_, log(q, 2))
+            lll = BKZ.LLL(d, log(q, 2))
         else:
             lll = None
         ret = ret.repeat(times=repeat, lll=lll)
 
-        ret[u"m"] = m_
+        ret[u"m"] = m
         ret[u"repeat"] = repeat
-        ret[u"d"] = m_
+        ret[u"d"] = d
         ret[u"c"] = c
 
         ret = ret.reorder(["rop", "m"])
@@ -2333,7 +2334,7 @@ def dual_scale(n, alpha, q, secret_distribution,
         if best is None:
             best = ret
 
-        if ret["red"] > best["red"]:
+        if ret["rop"] > best["rop"]:
             break
 
         best = ret
@@ -2784,17 +2785,17 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
         usvp: rop: ≈2^131.1,  red: ≈2^131.1,  δ_0: 1.005788,  β:  229,  d:  594,  m:      337
          dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
-        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624,  ...
+        dual: rop: ≈2^166.0,  m:      368,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624,  ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
         usvp: rop:  ≈2^96.5,  red:  ≈2^96.5,  δ_0: 1.006744,  β:  179,  d:  506,  m:      249
          dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
-        dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510,  ...
+        dual: rop: ≈2^108.5,  m:      270,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510,  ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
         usvp: rop:  ≈2^80.7,  red:  ≈2^80.7,  δ_0: 1.006744,  β:  179,  d:  506,  m:      249
          dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
-        dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524,  ...
+        dual: rop:  ≈2^90.6,  m:      284,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524,  ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
