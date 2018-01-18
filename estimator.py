@@ -1685,7 +1685,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 # Primal Attack (uSVP)
 
 def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
-                 success_probability=0.99, scale=RR(1.),
+                 success_probability=0.99, scale=1,
                  reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using primal attack (uSVP version)
@@ -1696,6 +1696,7 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
+    :param scale: scale secret components by this factor
     :param reduction_cost_model: cost model for lattice reduction
 
     .. note:: This is the low-level function, in most cases you will want to call ``primal_usp``
@@ -1708,6 +1709,7 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     delta_0 = delta_0f(block_size)
     stddev = stddevf(alpha*q)
     block_size = RR(block_size)
+    scale = RR(scale)
 
     m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
 
