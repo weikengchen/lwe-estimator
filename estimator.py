@@ -601,6 +601,21 @@ class SDis:
 
         :param secret_distribution: distribution of secret, see module level documentation for details
 
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_sparse(True)
+            False
+
+            sage: SDis.is_sparse(((-1, 1), 64))
+            True
+
+            sage: SDis.is_sparse(((-3, 3), 64))
+            True
+
+            sage: SDis.is_sparse((-3, 3))
+            False
+
         """
         try:
             (a, b), h = secret_distribution
@@ -614,6 +629,24 @@ class SDis:
         """Return true if the secret distribution is small
 
         :param secret_distribution: distribution of secret, see module level documentation for details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_small(False)
+            False
+
+            sage: SDis.is_small(True)
+            True
+
+            sage: SDis.is_small(((-1, 1), 64))
+            True
+
+            sage: SDis.is_small(((-3, 3), 64))
+            True
+
+            sage: SDis.is_small((-3, 3))
+            True
 
         """
 
@@ -635,6 +668,28 @@ class SDis:
 
         :param secret_distribution: distribution of secret, see module level documentation for details
 
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.bounds(False)
+            Traceback (most recent call last):
+            ...
+            ValueError: Cannot extract bounds for secret.
+
+            sage: SDis.bounds(True)
+            Traceback (most recent call last):
+            ...
+            ValueError: Cannot extract bounds for secret.
+
+            sage: SDis.bounds(((-1, 1), 64))
+            (-1, 1)
+
+            sage: SDis.bounds(((-3, 3), 64))
+            (-3, 3)
+
+            sage: SDis.bounds((-3, 3))
+            (-3, 3)
+
         """
         try:
             (a, b) = secret_distribution
@@ -649,9 +704,30 @@ class SDis:
     @staticmethod
     def is_bounded_uniform(secret_distribution):
         """Return true if the secret is bounded uniform (sparse or not).
-        It requires the bounds to be of opposite sign, as scaling code does not handle the other case.
 
-        :param secret_distribution: distribution of secret, see module level documentation for details
+        :param secret_distribution: distribution of secret, see module level documentation for
+            details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_bounded_uniform(False)
+            False
+
+            sage: SDis.is_bounded_uniform(True)
+            False
+
+            sage: SDis.is_bounded_uniform(((-1, 1), 64))
+            True
+
+            sage: SDis.is_bounded_uniform(((-3, 3), 64))
+            True
+
+            sage: SDis.is_bounded_uniform((-3, 3))
+            True
+
+        ..  note :: This function requires the bounds to be of opposite sign, as scaling code does
+            not handle the other case.
 
         """
 
@@ -672,6 +748,27 @@ class SDis:
         """Return true if the secret is ternary (sparse or not)
 
         :param secret_distribution: distribution of secret, see module level documentation for details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_ternary(False)
+            False
+
+            sage: SDis.is_ternary(True)
+            False
+
+            sage: SDis.is_ternary(((-1, 1), 64))
+            True
+
+            sage: SDis.is_ternary((-1, 1))
+            True
+
+            sage: SDis.is_ternary(((-3, 3), 64))
+            False
+
+            sage: SDis.is_ternary((-3, 3))
+            False
 
         """
 
@@ -703,11 +800,31 @@ class SDis:
             raise ValueError("Cannot extract `h`.")
 
     @staticmethod
-    def variance(secret_distribution, alpha, q):
+    def variance(secret_distribution, alpha=None, q=None):
         """
         Variance of the secret per component.
 
 
+        EXAMPLE::
+
+            sage: from estimator import SDis
+            sage: SDis.variance(True, 8./2^15, 2^15).sqrt().n()
+            3.19...
+
+            sage: SDis.variance(((-3,3)), 8./2^15, 2^15)
+            4
+
+            sage: SDis.variance(((-3,3),64), 8./2^15, 2^15)
+            14/3
+
+            sage: SDis.variance(((-1,1)), 8./2^15, 2^15)
+            2/3
+
+            sage: SDis.variance(((-1,1),64), 8./2^15, 2^15)
+            1
+
+        ..  note :: This function assumes that the bounds are of opposite sign, and that the
+            distribution is centred at zero.
         """
         if not SDis.is_small(secret_distribution):
             a = -floor(q/2)
@@ -720,13 +837,11 @@ class SDis:
 
                 try:
                     (a, b), h = secret_distribution
-                    # sage: var("i,a,b")
-                    # sage: p = 1/(b-a)
-                    # sage: sum(i^2*p, i, a, b)
-                    return (2*a**3 - 2*b**3 - 3*a**2 - 3*b**2 + a - b)/(6*ZZ(a - b))
+                    t = ((b - a + 1)**2 - 1)/ZZ(12)
+                    # just taking out zero
+                    return ((b-a+1) * t) / ZZ(b-a)
                 except (TypeError, ValueError):
-                    n = b - a + 1
-                    return (n**2 - 1)/ZZ(12)
+                    return ((b - a + 1)**2 - 1)/ZZ(12)
             except ValueError:
                 return stddevf(alpha*q)**2
 
