@@ -1738,7 +1738,7 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
     return scale
 
 
-def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
+def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
                  success_probability=0.99,
                  reduction_cost_model=reduction_default_cost):
     """
@@ -1747,7 +1747,7 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
-    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param scale: The identity part of the lattice basis is scaled by this constant.
     :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
@@ -1763,11 +1763,7 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     stddev = stddevf(alpha*q)
     block_size = RR(block_size)
 
-    scale = _primal_scale_factor(secret_distribution, alpha, q, n)
-
-    # allow for a larger embedding lattice dimension, using Bai and Galbraith's
-    if SDis.is_small(secret_distribution):
-        m += n
+    scale = RR(scale)
 
     m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
 
@@ -1792,11 +1788,6 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
         ret["red"] = oo
 
     ret["d"] = d
-    if SDis.is_small(secret_distribution):
-        ret["m"] = d-n-1
-    else:
-        ret["m"] = d-1
-
     ret["delta_0"] = delta_0
 
     return ret
@@ -1890,10 +1881,15 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
+    # allow for a larger embedding lattice dimension, using Bai and Galbraith's
+    if SDis.is_small(secret_distribution):
+        m += n
+
+    scale = _primal_scale_factor(secret_distribution, alpha, q, n)
+
     kwds = {"n": n, "alpha": alpha, "q": q,
-            "secret_distribution": secret_distribution,
             "reduction_cost_model": reduction_cost_model,
-            "m": m}
+            "m": m, "scale": scale}
 
     cost = binary_search(_primal_usvp, start=40, stop=2*n, param="block_size",
                          predicate=lambda x, best: x["red"]<=best["red"], **kwds)
@@ -1903,6 +1899,11 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
         if t["red"] == oo:
             break
         cost = t
+
+    if SDis.is_small(secret_distribution):
+        cost["m"] = cost["d"]-n-1
+    else:
+        cost["m"] = cost["d"]-1
 
     return cost
 
