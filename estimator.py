@@ -800,10 +800,14 @@ class SDis:
             raise ValueError("Cannot extract `h`.")
 
     @staticmethod
-    def variance(secret_distribution, alpha=None, q=None):
+    def variance(secret_distribution, alpha=None, q=None, n=None):
         """
         Variance of the secret per component.
 
+        :param secret_distribution: distribution of secret, see module level documentation for details
+        :param alpha: only used for normal form LWE
+        :param q: only used for normal form LWE
+        :param n: only used for sparse secrets
 
         EXAMPLE::
 
@@ -814,17 +818,17 @@ class SDis:
             sage: SDis.variance(((-3,3)), 8./2^15, 2^15)
             4
 
-            sage: SDis.variance(((-3,3),64), 8./2^15, 2^15)
-            14/3
+            sage: SDis.variance(((-3,3),64), 8./2^15, 2^15, n=256)
+            7/6
 
             sage: SDis.variance(((-1,1)), 8./2^15, 2^15)
             2/3
 
-            sage: SDis.variance(((-1,1),64), 8./2^15, 2^15)
-            1
+            sage: SDis.variance(((-1,1),64), 8./2^15, 2^15, n=256)
+            1/4
 
         ..  note :: This function assumes that the bounds are of opposite sign, and that the
-            distribution is centred at zero.
+            distribution is centred around zero.
         """
         if not SDis.is_small(secret_distribution):
             a = -floor(q/2)
@@ -838,8 +842,11 @@ class SDis:
                 try:
                     (a, b), h = secret_distribution
                     t = ((b - a + 1)**2 - 1)/ZZ(12)
-                    # just taking out zero
-                    return ((b-a+1) * t) / ZZ(b-a)
+                    # take out zero
+                    t = ((b-a+1) * t) / ZZ(b-a)
+                    if n is None:
+                        raise ValueError("Parameter n is required for sparse secrets.")
+                    return h/ZZ(n) * t
                 except (TypeError, ValueError):
                     return ((b - a + 1)**2 - 1)/ZZ(12)
             except ValueError:
@@ -858,7 +865,7 @@ def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
 
     """
     length = SDis.nonzero(secret_distribution, n)
-    s_var = SDis.variance(secret_distribution, alpha, q)
+    s_var = SDis.variance(secret_distribution, alpha, q, n=n)
 
     p = RR(ceil(sqrt(2*pi*s_var*length/ZZ(12)) / alpha))
 
@@ -1715,12 +1722,9 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
 
     if SDis.is_bounded_uniform(secret_distribution):
         a, b = SDis.bounds(secret_distribution)
-        # nonzero correctly estimates the non-sparse case
-        h = SDis.nonzero(secret_distribution, n)
-        stddev = stddevf(alpha*q)
         # target same stddev per component
-        # stddev == c * sqrt(h/n * SDis.variance(secret_distribution, alpha, q))
-        scale = stddev/RR(sqrt(h/n * SDis.variance(secret_distribution, alpha, q)))
+        stddev = stddevf(alpha*q)
+        scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)))
     else:
         scale = RR(1)
 
