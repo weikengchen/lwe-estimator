@@ -2132,6 +2132,58 @@ primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat
 
 # Dual Attack
 
+
+def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
+    """
+    Scale factor for dual attack.
+
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param n: only used for sparse secrets
+    :param c: explicit constant `c`
+
+    EXAMPLE::
+
+        sage: from estimator import _dual_scale_factor
+        sage: _dual_scale_factor(True, 8./2^15, 2^15)
+        (1.00000000000000, 3.19153824321146)
+
+        sage: _dual_scale_factor(((-1,1)), alpha=8./2^15, q=2^15)
+        (3.90882009522336, 0.816496580927726)
+
+        sage: _dual_scale_factor(((-1,1), 64), alpha=8./2^15, q=2^15, n=256)
+        6.383076486...
+
+        sage: _dual_scale_factor(((-3,3)), alpha=8./2^15, q=2^15)
+        (6.38307648642292, 0.500000000000000)
+
+        sage: _dual_scale_factor(((-3,3), 64), alpha=8./2^15, q=2^15, n=256)
+        (2.95479025475795, 1.08012344973464)
+
+    ..  note :: This function assumes that the bounds are of opposite sign, and that the
+        distribution is centred around zero.
+    """
+
+    stddev = RR(stddevf(alpha*q))
+
+    # Calculate scaling in the case of bounded_uniform secret distribution
+    if SDis.is_bounded_uniform(secret_distribution):
+        a, b = SDis.bounds(secret_distribution)
+        assert(a == -b)  # We assume a <= 0 <= b
+        stddev_s = SDis.variance(secret_distribution, alpha, q, n).sqrt()
+        if c is None:
+            # |<v,s>| = |<w,e>| → c * \sqrt{n} * σ_s == \sqrt{m} * σ
+            # TODO: we are assuming n == m here!
+            c = RR(stddev/stddev_s)
+    else:
+        stddev_s = stddev
+        c = RR(1)
+
+    stddev_s = RR(stddev_s)
+
+    return c, stddev_s
+
 def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
           reduction_cost_model=reduction_default_cost):
     """
@@ -2304,18 +2356,7 @@ def dual_scale(n, alpha, q, secret_distribution,
     if not SDis.is_small(secret_distribution):
         m_max -= n  # We transform to normal form, spending n samples
 
-    # Calculate scaling in the case of bounded_uniform secret distribution
-    if SDis.is_bounded_uniform(secret_distribution):
-        a, b = SDis.bounds(secret_distribution)
-        assert(a == -b)  # We assume a <= 0 <= b
-        stddev_s = SDis.variance(secret_distribution, alpha, q, n).sqrt()
-        if c is None:
-            # |<v,s>| = |<w,e>| → c * \sqrt{n} * σ_s == \sqrt{m} * σ
-            # TODO: we are assuming n == m here!
-            c = RR(stddev/stddev_s)
-    else:
-        stddev_s = stddev
-        c = RR(1)
+    c, stddev_s = _dual_scale_factor(secret_distribution, alpha=alpha, q=q, n=n, c=c)
 
     best = dual(n=n, alpha=alpha, q=q, m=m, reduction_cost_model=reduction_cost_model)
     delta_0 = best["delta_0"]
