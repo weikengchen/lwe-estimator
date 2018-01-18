@@ -1790,22 +1790,22 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.005374
                beta:      257
                   d:      704
-                  m:     1200
+                  m:      447
 
         sage: primal_usvp(n, alpha, q, secret_distribution=True, m=n)
-                rop:  2^151.9
-                red:  2^151.9
-            delta_0: 1.005374
-               beta:      257
-                  d:      704
-                  m:      512
+                rop:  2^201.5
+                red:  2^201.5
+            delta_0: 1.004628
+               beta:      321
+                  d:      513
+                  m:      256
 
         sage: primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
-                rop:  2^203.1
-                red:  2^203.1
-            delta_0: 1.004609
-               beta:      323
-                  d:      511
+                rop:  2^201.5
+                red:  2^201.5
+            delta_0: 1.004628
+               beta:      321
+                  d:      513
                   m:      512
 
         sage: primal_usvp(n, alpha, q, reduction_cost_model=BKZ.sieve)
@@ -1814,7 +1814,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.005374
                beta:      257
                   d:      704
-                  m:     1200
+                  m:      447
 
         sage: primal_usvp(n, alpha, q)
                 rop:  2^151.9
@@ -1822,7 +1822,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.005374
                beta:      257
                   d:      704
-                  m:     1200
+                  m:      447
 
         sage: primal_usvp(n, alpha, q, secret_distribution=(-1,1), m=n)
                 rop:   2^81.9
@@ -1830,7 +1830,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.007317
                beta:      156
                   d:      492
-                  m:      512
+                  m:      235
 
         sage: primal_usvp(n, alpha, q, secret_distribution=((-1,1), 64))
                 rop:   2^73.4
@@ -1838,7 +1838,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.007723
                beta:      142
                   d:      461
-                  m:      960
+                  m:      204
 
     ..  [USENIX:ADPS16] Alkim, E., Léo Ducas, Thomas Pöppelmann, & Schwabe, P.  (2015).
         Post-quantum key exchange - a new hope.
@@ -2244,7 +2244,7 @@ def dual_scale(n, alpha, q, secret_distribution,
         h = SDis.nonzero(secret_distribution, n)
         e_ = RR(1)
         if c is None:
-            c = RR(e*sqrt(2*n - n)/sqrt(h*sum([i**2 for i in range(a,b+1)])/(b-a)))
+            c = RR(e*sqrt(2*n - n)/sqrt(h*sum([i**2 for i in range(a, b+1)])/(b-a)))
     else:
         if not SDis.is_small(secret_distribution):
             m = m - n
@@ -2386,7 +2386,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
 
     b = ZZ(b)
     cost["b"] = b
-    l = b - 1
+    l = b - 1  # noqa
     cost["l"] = l
 
     try:
