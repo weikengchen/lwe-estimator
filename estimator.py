@@ -1490,7 +1490,8 @@ def lattice_reduction_opt_m(n, q, delta):
     :param delta: root Hermite factor `δ_0`
 
     """
-    return ZZ(round(sqrt(n*log(q, 2)/log(delta, 2))))
+    # round can go wrong if the input is not a floating point number
+    return ZZ(round(sqrt(n*log(q, 2)/log(delta, 2)).n()))
 
 
 def sieve_or_enum(func):
