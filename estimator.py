@@ -911,7 +911,7 @@ class SDis:
             if not (a <= 0 and 0 <= b):
                 raise ValueError("a <= 0 and 0 <= b is required for uniform bounded secrets.")
             # E(x^2), using https://en.wikipedia.org/wiki/Square_pyramidal_number
-            tt = (h/ZZ(n))*( 2*b**3 + 3*b**2 + b - 2*a**3 + 3*a**2 - a )/(ZZ(6)*(b-a))
+            tt = (h/ZZ(n))*(2*b**3 + 3*b**2 + b - 2*a**3 + 3*a**2 - a)/(ZZ(6)*(b-a))
             # Var(x) = E(x^2) - E(x)^2
             return tt-SDis.mean(secret_distribution, n=n)**2
 
