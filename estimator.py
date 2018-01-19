@@ -2340,7 +2340,7 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
     if SDis.is_small(secret_distribution):
         m = m + n
     log_delta_0 = log(f(success_probability)/alpha, 2)**2 / (4*n*log(q, 2))
-    delta_0 = RR(2)**log_delta_0
+    delta_0 = min(RR(2)**log_delta_0, RR(1.02190))  # at most LLL
     m_optimal = lattice_reduction_opt_m(n, q, delta_0)
     if m > m_optimal:
         m = m_optimal
