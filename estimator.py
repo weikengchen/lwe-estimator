@@ -908,8 +908,11 @@ class SDis:
                 return ((b - a + 1)**2 - 1)/ZZ(12)
             if n is None:
                 raise ValueError("Parameter n is required for sparse secrets.")
+            if not (a <= 0 and 0 <= b):
+                raise ValueError("a <= 0 and 0 <= b is required for uniform bounded secrets.")
+            # E(x^2), using https://en.wikipedia.org/wiki/Square_pyramidal_number
+            tt = (h/ZZ(n))*( 2*b**3 + 3*b**2 + b - 2*a**3 + 3*a**2 - a )/(ZZ(6)*(b-a))
             # Var(x) = E(x^2) - E(x)^2
-            tt = h/ZZ(n)*sum([i**2 for i in range(a, b+1)])/(b-a)
             return tt-SDis.mean(secret_distribution, n=n)**2
 
 
