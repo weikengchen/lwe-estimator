@@ -2254,6 +2254,7 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
 
     return c, stddev_s
 
+
 def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
           reduction_cost_model=reduction_default_cost):
     """
