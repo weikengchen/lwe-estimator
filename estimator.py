@@ -869,19 +869,19 @@ class SDis:
             sage: SDis.variance(True, 8./2^15, 2^15).sqrt().n()
             3.19...
 
-            sage: SDis.variance(((-3,3)), 8./2^15, 2^15)
+            sage: SDis.variance((-3,3), 8./2^15, 2^15)
             4
 
             sage: SDis.variance(((-3,3),64), 8./2^15, 2^15, n=256)
             7/6
 
-            sage: SDis.variance(((-3,2)))
-            -1/2
+            sage: SDis.variance((-3,2))
+            35/12
 
             sage: SDis.variance(((-3,2),64), n=256)
             371/400
 
-            sage: SDis.variance(((-1,1)), 8./2^15, 2^15)
+            sage: SDis.variance((-1,1), 8./2^15, 2^15)
             2/3
 
             sage: SDis.variance(((-1,1),64), 8./2^15, 2^15, n=256)
