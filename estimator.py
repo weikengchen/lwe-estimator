@@ -793,6 +793,8 @@ class SDis:
                 (a, b), h = (a, b) # noqa
                 return h
             except (TypeError, ValueError):
+                if n is None:
+                    raise ValueError("Parameter n is required for sparse secrets.")
                 B = ZZ(b - a + 1)
                 h = ceil((B-1)/B * n)
                 return h
@@ -851,7 +853,6 @@ class SDis:
                 # small with no bounds, it's normal
                 return ZZ(0)
 
-
     @staticmethod
     def variance(secret_distribution, alpha=None, q=None, n=None):
         """
@@ -898,18 +899,18 @@ class SDis:
         else:
             try:
                 a, b = SDis.bounds(secret_distribution)
-                try:
-                    (a, b), h = secret_distribution
-                    if n is None:
-                        raise ValueError("Parameter n is required for sparse secrets.")
-                    # Var(x) = E(x^2) - E(x)^2
-                    tt = h/ZZ(n)*sum([i**2 for i in range(a, b+1)])/(b-a)
-                    return tt-SDis.mean(secret_distribution, n=n)**2
-                except (TypeError, ValueError):
-                    return ((b - a + 1)**2 - 1)/ZZ(12)
             except ValueError:
                 # small with no bounds, it's normal
                 return stddevf(alpha*q)**2
+            try:
+                (a, b), h = secret_distribution
+            except (TypeError, ValueError):
+                return ((b - a + 1)**2 - 1)/ZZ(12)
+            if n is None:
+                raise ValueError("Parameter n is required for sparse secrets.")
+            # Var(x) = E(x^2) - E(x)^2
+            tt = h/ZZ(n)*sum([i**2 for i in range(a, b+1)])/(b-a)
+            return tt-SDis.mean(secret_distribution, n=n)**2
 
 
 def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
@@ -1791,17 +1792,23 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         sage: _primal_scale_factor(True, 8./2^15, 2^15)
         1.000000000...
 
-        sage: _primal_scale_factor(((-1,1)), alpha=8./2^15, q=2^15)
+        sage: _primal_scale_factor((-1,1), alpha=8./2^15, q=2^15)
         3.908820095...
 
         sage: _primal_scale_factor(((-1,1), 64), alpha=8./2^15, q=2^15, n=256)
         6.383076486...
 
-        sage: _primal_scale_factor(((-3,3)), alpha=8./2^15, q=2^15)
+        sage: _primal_scale_factor((-3,3), alpha=8./2^15, q=2^15)
         1.595769121...
 
         sage: _primal_scale_factor(((-3,3), 64), alpha=8./2^15, q=2^15, n=256)
         2.954790254...
+
+        sage: _primal_scale_factor((-3,2), alpha=8./2^15, q=2^15)
+        1.868773442...
+
+        sage: _primal_scale_factor(((-3,2), 64), alpha=8./2^15, q=2^15, n=256)
+        3.313928192...
 
     ..  note :: This function assumes that the bounds are of opposite sign, and that the
         distribution is centred around zero.
@@ -1813,7 +1820,6 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
 
     if SDis.is_bounded_uniform(secret_distribution):
         a, b = SDis.bounds(secret_distribution)
-        assert(a == -b)
         # target same stddev per component
         stddev = stddevf(alpha*q)
         scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)))
@@ -2208,33 +2214,38 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
         sage: _dual_scale_factor(True, 8./2^15, 2^15)
         (1.00000000000000, 3.19153824321146)
 
-        sage: _dual_scale_factor(((-1,1)), alpha=8./2^15, q=2^15)
+        sage: _dual_scale_factor((-1,1), alpha=8./2^15, q=2^15)
         (3.90882009522336, 0.816496580927726)
 
         sage: _dual_scale_factor(((-1,1), 64), alpha=8./2^15, q=2^15, n=256)
-        6.383076486...
-
-        sage: _dual_scale_factor(((-3,3)), alpha=8./2^15, q=2^15)
         (6.38307648642292, 0.500000000000000)
+
+        sage: _dual_scale_factor((-3,3), alpha=8./2^15, q=2^15)
+        (1.59576912160573, 2.00000000000000)
 
         sage: _dual_scale_factor(((-3,3), 64), alpha=8./2^15, q=2^15, n=256)
         (2.95479025475795, 1.08012344973464)
 
+        sage: _dual_scale_factor((-3,2), alpha=8./2^15, q=2^15)
+        (1.79348966142733, 1.70782512765993)
+
+        sage: _dual_scale_factor(((-3,2), 64), alpha=8./2^15, q=2^15, n=256)
+        (3.27444914738684, 0.963068014212911)
+
     ..  note :: This function assumes that the bounds are of opposite sign, and that the
         distribution is centred around zero.
     """
-
     stddev = RR(stddevf(alpha*q))
-
     # Calculate scaling in the case of bounded_uniform secret distribution
+    # NOTE: We assume a <= 0 <= b
     if SDis.is_bounded_uniform(secret_distribution):
-        a, b = SDis.bounds(secret_distribution)
-        assert(a == -b)  # We assume a <= 0 <= b
-        stddev_s = SDis.variance(secret_distribution, alpha, q, n).sqrt()
+        stddev_s = SDis.variance(secret_distribution, alpha=alpha, q=q, n=n).sqrt()
+        avg_s = SDis.mean(secret_distribution, q=q, n=n)
         if c is None:
-            # |<v,s>| = |<w,e>| → c * \sqrt{n} * σ_s == \sqrt{m} * σ
-            # TODO: we are assuming n == m here!
-            c = RR(stddev/stddev_s)
+            # |<v,s>| = |<w,e>| → c * \sqrt{n} * \sqrt{σ_{s_i}^2 + E(s_i)^2} == \sqrt{m} * σ
+            # TODO: we are assuming n == m here! The coefficient formula for general m
+            #       is the one below * sqrt(m/n)
+            c = RR(stddev/sqrt(stddev_s**2 + avg_s**2))
     else:
         stddev_s = stddev
         c = RR(1)
