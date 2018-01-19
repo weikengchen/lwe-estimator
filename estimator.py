@@ -601,6 +601,21 @@ class SDis:
 
         :param secret_distribution: distribution of secret, see module level documentation for details
 
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_sparse(True)
+            False
+
+            sage: SDis.is_sparse(((-1, 1), 64))
+            True
+
+            sage: SDis.is_sparse(((-3, 3), 64))
+            True
+
+            sage: SDis.is_sparse((-3, 3))
+            False
+
         """
         try:
             (a, b), h = secret_distribution
@@ -614,6 +629,24 @@ class SDis:
         """Return true if the secret distribution is small
 
         :param secret_distribution: distribution of secret, see module level documentation for details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_small(False)
+            False
+
+            sage: SDis.is_small(True)
+            True
+
+            sage: SDis.is_small(((-1, 1), 64))
+            True
+
+            sage: SDis.is_small(((-3, 3), 64))
+            True
+
+            sage: SDis.is_small((-3, 3))
+            True
 
         """
 
@@ -630,34 +663,32 @@ class SDis:
                 return False
 
     @staticmethod
-    def is_ternary(secret_distribution):
-        """Return true if the secret is ternary (sparse or not)
-
-        :param secret_distribution: distribution of secret, see module level documentation for details
-
-        """
-
-        try:
-            a, b = secret_distribution
-            if a == -1 and b == 1:
-                return True
-        except (TypeError, ValueError):
-            pass
-
-        try:
-            (a, b), h = secret_distribution
-            if a == -1 and b == 1:
-                return True
-        except (TypeError, ValueError):
-            pass
-
-        return False
-
-    @staticmethod
     def bounds(secret_distribution):
         """Return bounds of secret distribution
 
         :param secret_distribution: distribution of secret, see module level documentation for details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.bounds(False)
+            Traceback (most recent call last):
+            ...
+            ValueError: Cannot extract bounds for secret.
+
+            sage: SDis.bounds(True)
+            Traceback (most recent call last):
+            ...
+            ValueError: Cannot extract bounds for secret.
+
+            sage: SDis.bounds(((-1, 1), 64))
+            (-1, 1)
+
+            sage: SDis.bounds(((-3, 3), 64))
+            (-3, 3)
+
+            sage: SDis.bounds((-3, 3))
+            (-3, 3)
 
         """
         try:
@@ -669,6 +700,84 @@ class SDis:
             return a, b
         except (TypeError, ValueError):
             raise ValueError("Cannot extract bounds for secret.")
+
+    @staticmethod
+    def is_bounded_uniform(secret_distribution):
+        """Return true if the secret is bounded uniform (sparse or not).
+
+        :param secret_distribution: distribution of secret, see module level documentation for
+            details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_bounded_uniform(False)
+            False
+
+            sage: SDis.is_bounded_uniform(True)
+            False
+
+            sage: SDis.is_bounded_uniform(((-1, 1), 64))
+            True
+
+            sage: SDis.is_bounded_uniform(((-3, 3), 64))
+            True
+
+            sage: SDis.is_bounded_uniform((-3, 3))
+            True
+
+        ..  note :: This function requires the bounds to be of opposite sign, as scaling code does
+            not handle the other case.
+
+        """
+
+        try:
+            # next will fail if not bounded_uniform
+            a, b = SDis.bounds(secret_distribution)
+
+            # check bounds are around 0, otherwise not implemented
+            if a <= 0 and 0 <= b:
+                return True
+        except (TypeError, ValueError):
+            pass
+
+        return False
+
+    @staticmethod
+    def is_ternary(secret_distribution):
+        """Return true if the secret is ternary (sparse or not)
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_ternary(False)
+            False
+
+            sage: SDis.is_ternary(True)
+            False
+
+            sage: SDis.is_ternary(((-1, 1), 64))
+            True
+
+            sage: SDis.is_ternary((-1, 1))
+            True
+
+            sage: SDis.is_ternary(((-3, 3), 64))
+            False
+
+            sage: SDis.is_ternary((-3, 3))
+            False
+
+        """
+
+        if SDis.is_bounded_uniform(secret_distribution):
+            a, b = SDis.bounds(secret_distribution)
+            if a == -1 and b == 1:
+                return True
+
+        return False
 
     @staticmethod
     def nonzero(secret_distribution, n):
@@ -684,6 +793,8 @@ class SDis:
                 (a, b), h = (a, b) # noqa
                 return h
             except (TypeError, ValueError):
+                if n is None:
+                    raise ValueError("Parameter n is required for sparse secrets.")
                 B = ZZ(b - a + 1)
                 h = ceil((B-1)/B * n)
                 return h
@@ -691,13 +802,96 @@ class SDis:
             raise ValueError("Cannot extract `h`.")
 
     @staticmethod
-    def variance(secret_distribution, alpha, q):
+    def mean(secret_distribution, q=None, n=None):
         """
-        Variance of the secret per component.
+        Mean of the secret per component.
 
+        :param secret_distribution: distribution of secret, see module level documentation for details
+        :param n: only used for sparse secrets
+
+        EXAMPLE::
+
+            sage: from estimator import SDis
+            sage: SDis.mean(True)
+            0
+
+            sage: SDis.mean(False, q=10)
+            0
+
+            sage: SDis.mean(((-3,3)))
+            0
+
+            sage: SDis.mean(((-3,3),64), n=256)
+            0
+
+            sage: SDis.mean(((-3,2)))
+            -1/2
+
+            sage: SDis.mean(((-3,2),64), n=256)
+            -3/20
 
         """
         if not SDis.is_small(secret_distribution):
+            # uniform distribution variance
+            if q is None:
+                raise ValueError("Parameter q is required for uniform secret.")
+            a = -floor(q/2)
+            b = floor(q/2)
+            return (a + b)/ZZ(2)
+        else:
+            try:
+                a, b = SDis.bounds(secret_distribution)
+
+                try:
+                    (a, b), h = secret_distribution
+                    if n is None:
+                        raise ValueError("Parameter n is required for sparse secrets.")
+                    return h/ZZ(n) * (b*(b+1)-a*(a-1))/(2*(b-a))
+                except (TypeError, ValueError):
+                    return (a + b)/ZZ(2)
+            except ValueError:
+                # small with no bounds, it's normal
+                return ZZ(0)
+
+    @staticmethod
+    def variance(secret_distribution, alpha=None, q=None, n=None):
+        """
+        Variance of the secret per component.
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+        :param alpha: only used for normal form LWE
+        :param q: only used for normal form LWE
+        :param n: only used for sparse secrets
+
+        EXAMPLE::
+
+            sage: from estimator import SDis
+            sage: SDis.variance(True, 8./2^15, 2^15).sqrt().n()
+            3.19...
+
+            sage: SDis.variance((-3,3), 8./2^15, 2^15)
+            4
+
+            sage: SDis.variance(((-3,3),64), 8./2^15, 2^15, n=256)
+            7/6
+
+            sage: SDis.variance((-3,2))
+            35/12
+
+            sage: SDis.variance(((-3,2),64), n=256)
+            371/400
+
+            sage: SDis.variance((-1,1), 8./2^15, 2^15)
+            2/3
+
+            sage: SDis.variance(((-1,1),64), 8./2^15, 2^15, n=256)
+            1/4
+
+        ..  note :: This function assumes that the bounds are of opposite sign, and that the
+            distribution is centred around zero.
+        """
+        if not SDis.is_small(secret_distribution):
+            # uniform distribution variance
             a = -floor(q/2)
             b = floor(q/2)
             n = b - a + 1
@@ -705,18 +899,21 @@ class SDis:
         else:
             try:
                 a, b = SDis.bounds(secret_distribution)
-
-                try:
-                    (a, b), h = secret_distribution
-                    # sage: var("i,a,b")
-                    # sage: p = 1/(b-a)
-                    # sage: sum(i^2*p, i, a, b)
-                    return (2*a**3 - 2*b**3 - 3*a**2 - 3*b**2 + a - b)/(6*ZZ(a - b))
-                except (TypeError, ValueError):
-                    n = b - a + 1
-                    return (n**2 - 1)/ZZ(12)
             except ValueError:
+                # small with no bounds, it's normal
                 return stddevf(alpha*q)**2
+            try:
+                (a, b), h = secret_distribution
+            except (TypeError, ValueError):
+                return ((b - a + 1)**2 - 1)/ZZ(12)
+            if n is None:
+                raise ValueError("Parameter n is required for sparse secrets.")
+            if not (a <= 0 and 0 <= b):
+                raise ValueError("a <= 0 and 0 <= b is required for uniform bounded secrets.")
+            # E(x^2), using https://en.wikipedia.org/wiki/Square_pyramidal_number
+            tt = (h/ZZ(n))*(2*b**3 + 3*b**2 + b - 2*a**3 + 3*a**2 - a)/(ZZ(6)*(b-a))
+            # Var(x) = E(x^2) - E(x)^2
+            return tt-SDis.mean(secret_distribution, n=n)**2
 
 
 def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
@@ -731,7 +928,7 @@ def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
 
     """
     length = SDis.nonzero(secret_distribution, n)
-    s_var = SDis.variance(secret_distribution, alpha, q)
+    s_var = SDis.variance(secret_distribution, alpha, q, n=n)
 
     p = RR(ceil(sqrt(2*pi*s_var*length/ZZ(12)) / alpha))
 
@@ -1335,7 +1532,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
         sage: dualg = partial(guess_and_solve, dual_scale)
         sage: dualg(n, alpha, q, secret_distribution=((-1,1), 64))
             rop:   2^59.7
-              m:     1051
+              m:      539
             red:   2^59.7
         delta_0: 1.008653
            beta:      115
@@ -1443,7 +1640,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
                 rop:   2^52.1
-                  m:      957
+                  m:      500
                 red:   2^52.0
             delta_0: 1.009353
                beta:       98
@@ -1453,10 +1650,22 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                   k:       55
         postprocess:        8
 
+        sage: duald(n, alpha, q, secret_distribution=((-3,3), 64))
+                rop:   2^55.6
+                  m:      525
+                red:   2^55.4
+            delta_0: 1.009233
+               beta:      101
+             repeat:   2^14.3
+                  d:      973
+                  c:    3.909
+                  k:       64
+        postprocess:        6
+
         sage: kwds = {"use_lll":False, "postprocess":False}
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64), **kwds)
                 rop:   2^63.2
-                  m:     1033
+                  m:      521
                 red:   2^63.2
             delta_0: 1.008953
                beta:      107
@@ -1465,6 +1674,19 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                   c:    9.027
                   k:        0
         postprocess:        0
+
+        sage: duald(n, alpha, q, secret_distribution=((-3,3), 64), **kwds)
+                rop:   2^67.9
+                  m:      560
+                red:   2^67.9
+            delta_0: 1.008668
+               beta:      114
+             repeat:  524.610
+                  d:     1068
+                  c:    4.162
+                  k:        4
+        postprocess:        0
+
 
     This function is based on:
 
@@ -1487,10 +1709,11 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     # size means stepping over target
     step_size = int(n/32)
 
-    if not SDis.is_ternary(secret_distribution):
-        raise NotImplementedError("Only ternary secrets are currently supported.")
+    if not SDis.is_bounded_uniform(secret_distribution):
+        raise NotImplementedError("Only bounded uniform secrets are currently supported.")
 
     a, b = SDis.bounds(secret_distribution)
+    assert(a == -b)
     h = SDis.nonzero(secret_distribution, n)
 
     k = 0
@@ -1557,7 +1780,59 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
 # Primal Attack (uSVP)
 
-def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
+def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
+    """
+    Scale factor for primal attack.
+
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param n: only used for sparse secrets
+
+    EXAMPLE::
+
+        sage: from estimator import _primal_scale_factor
+        sage: _primal_scale_factor(True, 8./2^15, 2^15)
+        1.000000000...
+
+        sage: _primal_scale_factor((-1,1), alpha=8./2^15, q=2^15)
+        3.908820095...
+
+        sage: _primal_scale_factor(((-1,1), 64), alpha=8./2^15, q=2^15, n=256)
+        6.383076486...
+
+        sage: _primal_scale_factor((-3,3), alpha=8./2^15, q=2^15)
+        1.595769121...
+
+        sage: _primal_scale_factor(((-3,3), 64), alpha=8./2^15, q=2^15, n=256)
+        2.954790254...
+
+        sage: _primal_scale_factor((-3,2), alpha=8./2^15, q=2^15)
+        1.868773442...
+
+        sage: _primal_scale_factor(((-3,2), 64), alpha=8./2^15, q=2^15, n=256)
+        3.313928192...
+
+    ..  note :: This function assumes that the bounds are of opposite sign, and that the
+        distribution is centred around zero.
+    """
+
+    # For small/sparse secret use Bai and Galbraith's scaled embedding
+    # NOTE: We assume a <= 0 <= b
+    # TODO: if a != -b then some improved scaling could be done by balancing the secret
+
+    if SDis.is_bounded_uniform(secret_distribution):
+        a, b = SDis.bounds(secret_distribution)
+        # target same stddev per component
+        stddev = stddevf(alpha*q)
+        scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)))
+    else:
+        scale = RR(1)
+
+    return scale
+
+
+def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
                  success_probability=0.99,
                  reduction_cost_model=reduction_default_cost):
     """
@@ -1566,12 +1841,12 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     :param n: LWE dimension `n > 0`
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
     :param q: modulus `0 < q`
-    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param scale: The identity part of the lattice basis is scaled by this constant.
     :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
 
-    .. note:: This is the low-level function, in most cases you will want to call ``primal_usp``
+    .. note:: This is the low-level function, in most cases you will want to call ``primal_usvp``
 
     """
 
@@ -1582,17 +1857,7 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
     stddev = stddevf(alpha*q)
     block_size = RR(block_size)
 
-    if SDis.is_ternary(secret_distribution):
-        if SDis.is_sparse(secret_distribution):
-            h = SDis.nonzero(secret_distribution, n)
-            scale = RR(stddev*sqrt(n/h))
-        else:
-            scale = RR(sqrt(1.5)*stddev)
-    else:
-        scale = RR(1)
-
-    if SDis.is_small(secret_distribution):
-        m += n
+    scale = RR(scale)
 
     m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
 
@@ -1601,7 +1866,8 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
 
     C = stddev.log() + block_size.log()/2
 
-    for d in range(n, m):
+    # we have m samples → the largest permissible dimension d is m+1
+    for d in range(n, m+2):
         if log_b_star(d) - C >= 0:
             break
 
@@ -1616,10 +1882,6 @@ def _primal_usvp(block_size, n, alpha, q, secret_distribution=True, m=oo,
         ret["red"] = oo
 
     ret["d"] = d
-    ret["m"] = m
-    if secret_distribution:
-        ret["m"] -= n
-
     ret["delta_0"] = delta_0
 
     return ret
@@ -1650,22 +1912,22 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.005374
                beta:      257
                   d:      704
-                  m:     1200
+                  m:      447
 
         sage: primal_usvp(n, alpha, q, secret_distribution=True, m=n)
-                rop:  2^151.9
-                red:  2^151.9
-            delta_0: 1.005374
-               beta:      257
-                  d:      704
-                  m:      512
+                rop:  2^201.5
+                red:  2^201.5
+            delta_0: 1.004628
+               beta:      321
+                  d:      513
+                  m:      256
 
         sage: primal_usvp(n, alpha, q, secret_distribution=False, m=2*n)
-                rop:  2^203.1
-                red:  2^203.1
-            delta_0: 1.004609
-               beta:      323
-                  d:      511
+                rop:  2^201.5
+                red:  2^201.5
+            delta_0: 1.004628
+               beta:      321
+                  d:      513
                   m:      512
 
         sage: primal_usvp(n, alpha, q, reduction_cost_model=BKZ.sieve)
@@ -1674,7 +1936,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.005374
                beta:      257
                   d:      704
-                  m:     1200
+                  m:      447
 
         sage: primal_usvp(n, alpha, q)
                 rop:  2^151.9
@@ -1682,7 +1944,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.005374
                beta:      257
                   d:      704
-                  m:     1200
+                  m:      447
 
         sage: primal_usvp(n, alpha, q, secret_distribution=(-1,1), m=n)
                 rop:   2^81.9
@@ -1690,7 +1952,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.007317
                beta:      156
                   d:      492
-                  m:      512
+                  m:      235
 
         sage: primal_usvp(n, alpha, q, secret_distribution=((-1,1), 64))
                 rop:   2^73.4
@@ -1698,7 +1960,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
             delta_0: 1.007723
                beta:      142
                   d:      461
-                  m:      960
+                  m:      204
 
     ..  [USENIX:ADPS16] Alkim, E., Léo Ducas, Thomas Pöppelmann, & Schwabe, P.  (2015).
         Post-quantum key exchange - a new hope.
@@ -1713,13 +1975,15 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
+    # allow for a larger embedding lattice dimension, using Bai and Galbraith's
     if SDis.is_small(secret_distribution):
-        m = m + n
+        m += n
+
+    scale = _primal_scale_factor(secret_distribution, alpha, q, n)
 
     kwds = {"n": n, "alpha": alpha, "q": q,
-            "secret_distribution": secret_distribution,
             "reduction_cost_model": reduction_cost_model,
-            "m": m}
+            "m": m, "scale": scale}
 
     cost = binary_search(_primal_usvp, start=40, stop=2*n, param="block_size",
                          predicate=lambda x, best: x["red"]<=best["red"], **kwds)
@@ -1729,6 +1993,11 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
         if t["red"] == oo:
             break
         cost = t
+
+    if SDis.is_small(secret_distribution):
+        cost["m"] = cost["d"]-n-1
+    else:
+        cost["m"] = cost["d"]-1
 
     return cost
 
@@ -1931,6 +2200,64 @@ primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat
 
 # Dual Attack
 
+
+def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
+    """
+    Scale factor for dual attack.
+
+    :param secret_distribution: distribution of secret, see module level documentation for details
+    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\sqrt{2π}`
+    :param q: modulus `0 < q`
+    :param n: only used for sparse secrets
+    :param c: explicit constant `c`
+
+    EXAMPLE::
+
+        sage: from estimator import _dual_scale_factor
+        sage: _dual_scale_factor(True, 8./2^15, 2^15)
+        (1.00000000000000, 3.19153824321146)
+
+        sage: _dual_scale_factor((-1,1), alpha=8./2^15, q=2^15)
+        (3.90882009522336, 0.816496580927726)
+
+        sage: _dual_scale_factor(((-1,1), 64), alpha=8./2^15, q=2^15, n=256)
+        (6.38307648642292, 0.500000000000000)
+
+        sage: _dual_scale_factor((-3,3), alpha=8./2^15, q=2^15)
+        (1.59576912160573, 2.00000000000000)
+
+        sage: _dual_scale_factor(((-3,3), 64), alpha=8./2^15, q=2^15, n=256)
+        (2.95479025475795, 1.08012344973464)
+
+        sage: _dual_scale_factor((-3,2), alpha=8./2^15, q=2^15)
+        (1.79348966142733, 1.70782512765993)
+
+        sage: _dual_scale_factor(((-3,2), 64), alpha=8./2^15, q=2^15, n=256)
+        (3.27444914738684, 0.963068014212911)
+
+    ..  note :: This function assumes that the bounds are of opposite sign, and that the
+        distribution is centred around zero.
+    """
+    stddev = RR(stddevf(alpha*q))
+    # Calculate scaling in the case of bounded_uniform secret distribution
+    # NOTE: We assume a <= 0 <= b
+    if SDis.is_bounded_uniform(secret_distribution):
+        stddev_s = SDis.variance(secret_distribution, alpha=alpha, q=q, n=n).sqrt()
+        avg_s = SDis.mean(secret_distribution, q=q, n=n)
+        if c is None:
+            # |<v,s>| = |<w,e>| → c * \sqrt{n} * \sqrt{σ_{s_i}^2 + E(s_i)^2} == \sqrt{m} * σ
+            # TODO: we are assuming n == m here! The coefficient formula for general m
+            #       is the one below * sqrt(m/n)
+            c = RR(stddev/sqrt(stddev_s**2 + avg_s**2))
+    else:
+        stddev_s = stddev
+        c = RR(1)
+
+    stddev_s = RR(stddev_s)
+
+    return c, stddev_s
+
+
 def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
           reduction_cost_model=reduction_default_cost):
     """
@@ -2059,27 +2386,27 @@ def dual_scale(n, alpha, q, secret_distribution,
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=(-1,1))
             rop:  2^100.7
-              m:      546
+              m:      290
             red:  2^100.7
         delta_0: 1.006598
            beta:      185
          repeat:   2^62.0
               d:      546
-              c:   31.241
+              c:   31.271
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=(-1,1), m=200)
             rop:  2^105.2
-              m:      456
+              m:      200
             red:  2^105.2
         delta_0: 1.006443
            beta:      192
          repeat:   2^68.0
               d:      456
-              c:   31.241
+              c:   31.271
 
         sage: dual_scale(*Param.Regev(256), secret_distribution=((-1,1), 64))
             rop:   2^91.9
-              m:      514
+              m:      258
             red:   2^91.9
         delta_0: 1.006948
            beta:      170
@@ -2093,60 +2420,53 @@ def dual_scale(n, alpha, q, secret_distribution,
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
-
     RR = parent(alpha)
 
     # stddev of the error
-    e = RR(stddevf(alpha*q))
+    stddev = RR(stddevf(alpha*q))
 
-    if SDis.is_ternary(secret_distribution):
-        a, b = SDis.bounds(secret_distribution)
-        h = SDis.nonzero(secret_distribution, n)
-        e_ = RR(1)
-        if c is None:
-            c = RR(e*sqrt(2*n - n)/sqrt(h))
-    else:
-        if not SDis.is_small(secret_distribution):
-            m = m - n
-        c = RR(1)
-        e_ = e
-        h = n
+    m_max = m
 
-    best = dual(n=n, alpha=alpha, q=q, m=m,
-                reduction_cost_model=reduction_cost_model)
+    if not SDis.is_small(secret_distribution):
+        m_max -= n  # We transform to normal form, spending n samples
+
+    c, stddev_s = _dual_scale_factor(secret_distribution, alpha=alpha, q=q, n=n, c=c)
+
+    best = dual(n=n, alpha=alpha, q=q, m=m, reduction_cost_model=reduction_cost_model)
     delta_0 = best["delta_0"]
 
     if use_lll:
-        scale = 2
+        rerand_scale = 2
     else:
-        scale = 1
+        rerand_scale = 1
 
     while True:
         m_optimal = lattice_reduction_opt_m(n, q/c, delta_0)
-        m_ = ZZ(min(m_optimal, m+n))
+        d = ZZ(min(m_optimal, m_max + n))
+        m = d-n
 
-        # the vector found will have norm
-        v = scale * delta_0**m_ * (q/c)**(n/m_)
+        # the vector found will have norm v
+        v = rerand_scale * delta_0**d * (q/c)**(n/d)
 
         # each component has stddev v_
-        v_ = v/RR(sqrt(m_))
+        v_ = v/RR(sqrt(d))
 
         # we split our vector in two parts.
-        v_r = sigmaf(RR(e*sqrt(m_-n)*v_))  # 1. v_r is multiplied with the error e (dimension m-n)
-        v_l = sigmaf(RR(c*e_*sqrt(h)*v_))  # 2. v_l is the rounding noise (dimension n)
+        v_r = sigmaf(RR(stddev*sqrt(m)*v_))      # 1. v_r is multiplied with the error stddev (dimension m-n)
+        v_l = sigmaf(RR(c*stddev_s*sqrt(n)*v_))  # 2. v_l is the rounding noise (dimension n)
 
-        ret = lattice_reduction_cost(reduction_cost_model, delta_0, m_, B=log(q, 2))
+        ret = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
 
         repeat = max(amplify_sigma(success_probability, (v_r, v_l), q), RR(1))
         if use_lll:
-            lll=BKZ.LLL(m_, log(q, 2))
+            lll = BKZ.LLL(d, log(q, 2))
         else:
             lll = None
         ret = ret.repeat(times=repeat, lll=lll)
 
-        ret[u"m"] = m_
+        ret[u"m"] = m
         ret[u"repeat"] = repeat
-        ret[u"d"] = m_
+        ret[u"d"] = d
         ret[u"c"] = c
 
         ret = ret.reorder(["rop", "m"])
@@ -2155,7 +2475,7 @@ def dual_scale(n, alpha, q, secret_distribution,
         if best is None:
             best = ret
 
-        if ret["red"] > best["red"]:
+        if ret["rop"] > best["rop"]:
             break
 
         best = ret
@@ -2246,7 +2566,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
 
     b = ZZ(b)
     cost["b"] = b
-    l = b - 1
+    l = b - 1  # noqa
     cost["l"] = l
 
     try:
@@ -2599,28 +2919,28 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
 
         sage: from estimator import estimate_lwe, Param, BKZ
         sage: d = estimate_lwe(*Param.Regev(128))
-        usvp: rop:  ≈2^51.1,  red:  ≈2^51.1,  δ_0: 1.009214,  β:  102,  d:  357,  m:      610
+        usvp: rop:  ≈2^51.1,  red:  ≈2^51.1,  δ_0: 1.009214,  β:  102,  d:  357,  m:      228
          dec: rop:  ≈2^56.8,  m:      235,  red:  ≈2^56.8,  δ_0: 1.009311,  β:   99,  d:  363,  babai:  ≈2^42.2,  ...
         dual: rop:  ≈2^74.7,  m:      376,  red:  ≈2^74.7,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  ...
 
         sage: d = estimate_lwe(**Param.LindnerPeikert(256, dict=True))
-        usvp: rop: ≈2^131.1,  red: ≈2^131.1,  δ_0: 1.005788,  β:  229,  d:  594,  m:      896
-         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3, ...
-        dual: rop: ≈2^166.0,  m:      624,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624, ...
+        usvp: rop: ≈2^131.1,  red: ≈2^131.1,  δ_0: 1.005788,  β:  229,  d:  594,  m:      337
+         dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
+        dual: rop: ≈2^166.0,  m:      368,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  repeat: ≈2^131.0,  d:  624,  ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
-        usvp: rop:  ≈2^96.5,  red:  ≈2^96.5,  δ_0: 1.006744,  β:  179,  d:  506,  m:      870
+        usvp: rop:  ≈2^96.5,  red:  ≈2^96.5,  δ_0: 1.006744,  β:  179,  d:  506,  m:      249
          dec: rop: ≈2^138.4,  m:      334,  red: ≈2^138.4,  δ_0: 1.006009,  β:  215,  d:  590,  babai: ≈2^123.3,  ...
-        dual: rop: ≈2^108.5,  m:      510,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510, ...
+        dual: rop: ≈2^108.5,  m:      270,  red: ≈2^108.4,  δ_0: 1.006395,  β:  195,  repeat:  ≈2^73.5,  d:  510,  ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
-        usvp: rop:  ≈2^80.7,  red:  ≈2^80.7,  δ_0: 1.006744,  β:  179,  d:  506,  m:      870
+        usvp: rop:  ≈2^80.7,  red:  ≈2^80.7,  δ_0: 1.006744,  β:  179,  d:  506,  m:      249
          dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  babai:  ≈2^97.0,  ...
-        dual: rop:  ≈2^90.6,  m:      524,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524, ...
+        dual: rop:  ≈2^90.6,  m:      284,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  repeat:  ≈2^53.5,  d:  524,  ...
 
         sage: d = estimate_lwe(n=100, alpha=8/2^20, q=2^20, skip="arora-gb")
         mitm: rop: ≈2^161.1,  m:       11,  mem: ≈2^153.5
-        usvp: rop:  ≈2^25.4,  red:  ≈2^25.4,  δ_0: 1.013310,  β:   40,  d:  141,  m:      548
+        usvp: rop:  ≈2^25.4,  red:  ≈2^25.4,  δ_0: 1.013310,  β:   40,  d:  141,  m:       40
          dec: rop:  ≈2^32.7,  m:      156,  red:  ≈2^32.7,  δ_0: 1.021398,  β:   40,  d:  256,  babai:        1,  ...
         dual: rop:  ≈2^34.5,  m:      311,  red:  ≈2^34.5,  δ_0: 1.014423,  β:   40,  d:  311,  |v|:  ≈2^12.9,  ...
          bkw: rop:  ≈2^56.8,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ncod:  84,  ...
