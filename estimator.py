@@ -1826,8 +1826,9 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         a, b = SDis.bounds(secret_distribution)
         # target same stddev per component
         stddev = stddevf(alpha*q)
-        scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)
-                                + SDis.mean(secret_distribution, q=q, n=n)**2))
+        var_s = SDis.variance(secret_distribution, alpha, q, n=n)
+        avg_s = SDis.mean(secret_distribution, q=q, n=n)
+        scale = stddev/RR(sqrt(var_s + avg_s**2))
     else:
         scale = RR(1)
 
