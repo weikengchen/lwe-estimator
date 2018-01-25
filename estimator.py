@@ -1809,10 +1809,10 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         2.954790254...
 
         sage: _primal_scale_factor((-3,2), alpha=8./2^15, q=2^15)
-        1.868773442...
+        1.793489661...
 
         sage: _primal_scale_factor(((-3,2), 64), alpha=8./2^15, q=2^15, n=256)
-        3.313928192...
+        3.274449147...
 
     ..  note :: This function assumes that the bounds are of opposite sign, and that the
         distribution is centred around zero.
@@ -1826,7 +1826,8 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         a, b = SDis.bounds(secret_distribution)
         # target same stddev per component
         stddev = stddevf(alpha*q)
-        scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)))
+        scale = stddev/RR(sqrt(SDis.variance(secret_distribution, alpha, q, n=n)
+                                + SDis.mean(secret_distribution, q=q, n=n)**2))
     else:
         scale = RR(1)
 
