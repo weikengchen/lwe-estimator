@@ -1701,15 +1701,9 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         ValueError: Rotations are only support as part of the primal-usvp attack on NTRU.
 
         sage: primald(n, alpha, q, secret_distribution=((-3,3), 64), rotations=True, **kwds)
-                rop:   2^44.5
-                red:   2^44.5
-            delta_0: 1.010046
-               beta:       84
-                  d:      914
-                  m:      445
-             repeat: 1.509286
-                  k:       44
-        postprocess:        0
+        Traceback (most recent call last):
+          ...
+        ValueError: Rotations strategies implemented only when guessing 0 non-zero components.
 
         sage: primald(n, alpha, q, secret_distribution=((-3,3), 64), rotations=False, **kwds)
                 rop:   2^51.4
