@@ -1610,14 +1610,17 @@ def success_probability_drop(n, h, k, fail=0, rotations=False):
     :param rotations: consider rotations of the basis to exploit ring structure (NTRU only)
     """
 
+    N = n         # population size
+    K = n-h       # number of success states in the population
+    n = k         # number of draws
+    k = n - fail  # number of observed successes
+    prob_drop = binomial(K, k)*binomial(N-K, n-k)/binomial(N, n)
     if rotations:
-        return RR(1-(1-binomial(n-k, h)/binomial(n, h))**n)
+        if fail == 0:
+            raise ValueError("Rotations strategies implemented only when guessing 0 non-zero components.")
+        return 1-(1-prob_drop)**N
     else:
-        N = n         # population size
-        K = n-h       # number of success states in the population
-        n = k         # number of draws
-        k = n - fail  # number of observed successes
-        return (binomial(K, k)*binomial(N-K, n-k)) / binomial(N, n)
+        return prob_drop
 
 
 def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability=0.99,
@@ -1706,6 +1709,17 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                   m:      445
              repeat: 1.509286
                   k:       44
+        postprocess:        0
+
+        sage: primald(n, alpha, q, secret_distribution=((-3,3), 64), rotations=False, **kwds)
+                rop:   2^51.4
+                red:   2^51.4
+            delta_0: 1.009350
+               beta:       98
+                  d:     1003
+                  m:      494
+             repeat: 1.708828
+                  k:        4
         postprocess:        0
 
     This function is based on:
