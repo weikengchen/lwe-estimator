@@ -1637,7 +1637,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     EXAMPLE:
 
-        sage: from estimator import drop_and_solve, dual_scale, partial
+        sage: from estimator import drop_and_solve, dual_scale, primal_usvp, partial
         sage: q = next_prime(2^30)
         sage: n, alpha = 512, 8/q
         sage: primald = partial(drop_and_solve, primal_usvp)
