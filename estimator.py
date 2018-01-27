@@ -1041,7 +1041,8 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
 
         key = list(current)[0]
         if best is None:
-            best = current
+            if current[key] is not PlusInfinity():
+                best = current
             i += step_size
             continue
 
