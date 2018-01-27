@@ -2355,7 +2355,7 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
     # TODO delta_0f(m) is HKZ reduction, and thus it is identical 1, i.e. meaningless.
     # A better check here would be good.
     if delta_0 < delta_0f(m):
-        raise OutOfBoundsError(u"δ_0 = %f < %f" % (delta_0, delta_0f(m)))
+        raise OutOfBoundsError("delta_0 = %f < %f" % (delta_0, delta_0f(m)))
 
     ret = lattice_reduction_cost(reduction_cost_model, delta_0, m, B=log(q, 2))
     ret[u"m"] = m
