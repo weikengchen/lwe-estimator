@@ -1616,8 +1616,6 @@ def success_probability_drop(n, h, k, fail=0, rotations=False):
     k = n - fail  # number of observed successes
     prob_drop = binomial(K, k)*binomial(N-K, n-k)/binomial(N, n)
     if rotations:
-        if fail == 0:
-            raise ValueError("Rotations strategies implemented only when guessing 0 non-zero components.")
         return 1-(1-prob_drop)**N
     else:
         return prob_drop
