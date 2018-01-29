@@ -1599,7 +1599,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
     return best
 
 
-def success_probability_drop(n, h, k, fail=0):
+def success_probability_drop(n, h, k, fail=0, rotations=False):
     """
     Probability that `k` randomly sampled components have at most ``fail`` non-zero components amongst
     them.
@@ -1609,17 +1609,22 @@ def success_probability_drop(n, h, k, fail=0):
     :param k: number of components to ignore
     :param fail: we tolerate ``fail`` number of non-zero components amongst the `k` ignored
         components
+    :param rotations: consider rotations of the basis to exploit ring structure (NTRU only)
     """
 
     N = n         # population size
     K = n-h       # number of success states in the population
     n = k         # number of draws
     k = n - fail  # number of observed successes
-    return (binomial(K, k)*binomial(N-K, n-k)) / binomial(N, n)
+    prob_drop = binomial(K, k)*binomial(N-K, n-k)/binomial(N, n)
+    if rotations:
+        return 1-(1-prob_drop)**N
+    else:
+        return prob_drop
 
 
 def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability=0.99,
-                   postprocess=True, decision=True, **kwds):
+                   postprocess=True, decision=True, rotations=False, **kwds):
     """
     Solve instances of dimension ``n-k`` with increasing ``k`` using ``f`` and pick parameters such
     that cost is minimised.
@@ -1635,9 +1640,10 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     EXAMPLE:
 
-        sage: from estimator import drop_and_solve, dual_scale, partial
+        sage: from estimator import drop_and_solve, dual_scale, primal_usvp, partial
         sage: q = next_prime(2^30)
         sage: n, alpha = 512, 8/q
+        sage: primald = partial(drop_and_solve, primal_usvp)
         sage: duald = partial(drop_and_solve, dual_scale)
 
         sage: duald(n, alpha, q, secret_distribution=((-1,1), 64))
@@ -1689,6 +1695,32 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                   k:        4
         postprocess:        0
 
+        sage: duald(n, alpha, q, secret_distribution=((-3,3), 64), rotations=True, **kwds)
+        Traceback (most recent call last):
+          ...
+        ValueError: Rotations are only support as part of the primal-usvp attack on NTRU.
+
+        sage: primald(n, alpha, q, secret_distribution=((-3,3), 64), rotations=True, **kwds)
+                rop:   2^44.5
+                red:   2^44.5
+            delta_0: 1.010046
+               beta:       84
+                  d:      914
+                  m:      445
+             repeat: 1.509286
+                  k:       44
+        postprocess:        0
+
+        sage: primald(n, alpha, q, secret_distribution=((-3,3), 64), rotations=False, **kwds)
+                rop:   2^51.4
+                red:   2^51.4
+            delta_0: 1.009350
+               beta:       98
+                  d:     1003
+                  m:      494
+             repeat: 1.708828
+                  k:        4
+        postprocess:        0
 
     This function is based on:
 
@@ -1698,6 +1730,10 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
 
     """
+
+    if rotations and f.func_name != "primal_usvp":
+        raise ValueError("Rotations are only support as part of the primal-usvp attack on NTRU.")
+
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
     RR = parent(alpha)
@@ -1721,7 +1757,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     k = 0
 
     while True:
-        probability = RR(success_probability_drop(n, h, k))
+        probability = RR(success_probability_drop(n, h, k, rotations=rotations))
 
         # increase precision until the probability is meaningful
         while success_probability**probability == 1:
@@ -1746,7 +1782,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                     postprocess = i
                     break
                 cost_post += cost_post_i
-                probability += success_probability_drop(n, h, k, i)
+                probability += success_probability_drop(n, h, k, i, rotations=rotations)
 
         current["rop"] = cost_lat + cost_post
         current = current.repeat(1/probability, select={"m": False})
