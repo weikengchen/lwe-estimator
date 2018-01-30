@@ -1736,8 +1736,6 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
-    RR = parent(alpha)
-
     best = None
 
     if not decision and postprocess:
