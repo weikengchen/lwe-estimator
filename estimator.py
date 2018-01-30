@@ -1754,10 +1754,10 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     assert(a == -b)
     h = SDis.nonzero(secret_distribution, n)
 
-    k = 0
+    k = ZZ(0)
 
-    while True:
-        probability = RR(success_probability_drop(n, h, k, rotations=rotations))
+    while (n-h) > k:
+        probability = success_probability_drop(n, h, k, rotations=rotations)
 
         # increase precision until the probability is meaningful
         while success_probability**probability == 1:
