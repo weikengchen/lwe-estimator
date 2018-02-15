@@ -1601,7 +1601,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
 
 def success_probability_drop(n, h, k, fail=0, rotations=False):
     """
-    Probability that `k` randomly sampled components have at most ``fail`` non-zero components amongst
+    Probability that `k` randomly sampled components have ``fail`` non-zero components amongst
     them.
 
     :param n: LWE dimension `n > 0`
