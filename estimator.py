@@ -1044,6 +1044,10 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
             if current[key] is not PlusInfinity():
                 best = current
             i += step_size
+
+            if i > 8192:  # somewhat arbitrary constant
+                raise RuntimeError("Looks like we are stuck in an infinite loop.")
+
             continue
 
         if key not in best or current[key] < best[key]:
