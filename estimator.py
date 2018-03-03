@@ -2071,7 +2071,7 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
     probs_bd = [RDF((bd[i]  * scaling_factor)).erf() for i in range(m)]
     success_probability = prod(probs_bd)
 
-    if RR(success_probability).is_NaN():
+    if RR(success_probability).is_NaN() or success_probability == 0.0:
         # try in higher precision
         step = RR(step)
         d = [RR(1)]*m
