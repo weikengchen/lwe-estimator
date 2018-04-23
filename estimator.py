@@ -2564,15 +2564,15 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
         a, b = SDis.bounds(secret_distribution)
         size = b-a+1
     except ValueError:
-        size = alpha*q
+        size = (2*t*alpha*q) + 1
 
-    m_required = ceil(log(2*n/(size**(n/2)))/log(2*t*alpha))
+    m_required = ceil((log((2*n)/((size**(n/2))-1)))/(log(size/q)))
     if m is not None and m < m_required:
         raise InsufficientSamplesError("m=%d < %d (required)"%(m, m_required))
     else:
         m = m_required
 
-    if (m*(2*alpha) > 1- 1/(2*n)):
+    if ((3*t*alpha)*m > 1- 1/(2*n)):
         raise ValueError("Cannot find m to satisfy constraints (noise too big).")
 
     ret["rop"] = RR(size**(n/2) * 2*n * m)
