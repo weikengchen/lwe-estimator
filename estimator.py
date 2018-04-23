@@ -357,11 +357,11 @@ class Cost:
 
             sage: from estimator import Cost
             sage: s = Cost({"delta_0":5, "bar":2})
-            sage: print s
+            sage: print(s)
             bar: 2, delta_0: 5
 
             sage: s = Cost([(u"delta_0", 5), ("bar",2)])
-            sage: print s
+            sage: print(s)
             delta_0: 5, bar: 2
 
         """
