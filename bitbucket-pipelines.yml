@@ -10,7 +10,8 @@ pipelines:
     - step:
         script: # Modify the commands below to build your repository.
           - export SAGE_ROOT=`sage -c "import os; print os.environ['SAGE_ROOT']" | tail -1`
-          - source $SAGE_ROOT/local/bin/sage-env
+          - export PATH="$SAGE_ROOT/local/bin:$PATH"
+          - export SAGE_PYTHON_VERSION=2
           - umask 000 # allow to run doctests in  world writable directory
           - pip install -r requirements.txt # install flake8
           - flake8 estimator.py
