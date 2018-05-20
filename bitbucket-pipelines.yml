@@ -11,7 +11,7 @@ pipelines:
         name: PEP8
         script:
           - sudo apt-get update && sudo apt-get install -y python-pip
-          - pip installl flake8
+          - pip install flake8
           - $HOME/.local/bin/flake8 estimator.py
     - step:
         name: Doctest
