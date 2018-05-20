@@ -7,16 +7,16 @@ Welcome to LWE Estimator's documentation!
 =========================================
 
 .. toctree::
-   :caption: Module Overview
+   :caption: Introduction
    :maxdepth: 2
 
    readme_link
+   documentationreadme
 
 .. toctree::
    :caption: API Reference
    :glob:
 
-   <api_doc>
    _apidoc/*
 
 .. toctree::
