@@ -15,9 +15,10 @@ The following distributions for the secret are supported:
 
 """
 
-
-# Imports
+# Allow this file to be imported by Sphinx
+import sage.all
 
+# Imports
 from collections import OrderedDict
 from functools import partial
 from sage.arith.srange import srange
