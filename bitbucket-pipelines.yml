@@ -24,3 +24,9 @@ pipelines:
           - umask 000 # allow to run doctests in  world writable directory
           - PYTHONIOENCODING=UTF-8 PYTHONPATH=`pwd` sage-runtests estimator.py
           - PYTHONIOENCODING=UTF-8 PYTHONPATH=`pwd` sage-runtests README.rst
+    - step:
+        name: Docs Build
+        script: 
+          - ./docbuild.sh
+        artifacts: 
+          - doc/_build/html
