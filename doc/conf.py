@@ -18,7 +18,50 @@
 #
 import os
 import sys
-sys.path.append(os.path.abspath('../'))
+try:
+    from unittest.mock import MagicMock
+except ImportError:
+    from mock import Mock as MagicMock
+
+sys.path.insert(0, os.path.abspath('../'))
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+MOCK_MODULES = [
+    'sage',
+    'sage.all', 
+    'sage.arith',
+    'sage.arith.srange',
+    'sage.calculus',
+    'sage.calculus.var',
+    'sage.functions',
+    'sage.functions.log',
+    'sage.functions',
+    'sage.functions.other',
+    'sage.interfaces',
+    'sage.interfaces.magma',
+    'sage.misc',
+    'sage.misc.all',
+    'sage.numerical',
+    'sage.numerical.optimize',
+    'sage.rings',
+    'sage.rings.all',
+    'sage.rings',
+    'sage.rings.infinity',
+    'sage.structure',
+    'sage.structure.element',
+    'sage.symbolic',
+    'sage.symbolic.all',
+    'scipy',
+    'scipy.optimize',
+    'sage.crypto',
+    'sage.crypto.lwe',
+]
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
  # sys.path.insert(0, os.path.abspath('.'))
 
 # -- General configuration ------------------------------------------------

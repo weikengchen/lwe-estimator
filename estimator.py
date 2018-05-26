@@ -15,8 +15,6 @@ The following distributions for the secret are supported:
 
 """
 
-# Allow this file to be imported by Sphinx
-import sage.all
 
 # Imports
 from collections import OrderedDict
@@ -1541,7 +1539,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param success_probability: targeted success probability < 1
 
-    EXAMPLE:
+    EXAMPLE::
 
         sage: from estimator import guess_and_solve, dual_scale, partial
         sage: q = next_prime(2^30)
