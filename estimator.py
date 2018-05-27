@@ -10,8 +10,8 @@ The following distributions for the secret are supported:
 
 - ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
 - ``"uniform"`` : uniform mod q (alias: ``False``)
-- ``(a,b)`` : uniform in the interval `[a,…,b]`
-- ``((a,b), h)`` : exactly `h` components are `∈ [a,…,b]∖\{0\}`, all other components are zero
+- ``(a,b)`` : uniform in the interval ``[a,…,b]``
+- ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]∖\{0\}``, all other components are zero
 
 """
 
@@ -1293,7 +1293,7 @@ class BKZ:
         Runtime estimation assuming the Lindner-Peikert model in elementary operations.
 
         ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for LWE-based
-        encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
+            encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
 
         :param beta: block size
         :param d: lattice dimension
@@ -1312,9 +1312,10 @@ class BKZ:
          :param d: lattice dimension
          :param B: bit-size of entries
 
-        ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
-        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
+        ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in 
+        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 
         10–24).
+
          """
         return BKZ.LLL(d, B) + ZZ(2)**RR(0.387*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
 
@@ -1330,6 +1331,7 @@ class BKZ:
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
         10–24).
+
         """
         # TODO we simply pick the same additive constant 16.4 as for the experimental result in [BDGL16]
         return BKZ.LLL(d, B) + ZZ(2)**RR(0.292*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
@@ -1344,8 +1346,9 @@ class BKZ:
          :param B: bit-size of entries
 
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
-        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
-        10–24).
+            nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
+            10–24).
+
         """
         # TODO this is somewhat arbitrary
         if beta <= 90:
@@ -1651,7 +1654,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     :param postprocess: check against shifted distributions
     :param decision: the underlying algorithm solves the decision version or not
 
-    EXAMPLE:
+    EXAMPLE::
 
         sage: from estimator import drop_and_solve, dual_scale, primal_usvp, partial
         sage: q = next_prime(2^30)
@@ -2176,7 +2179,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
               epsilon:  2^-14.0
 
     ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for
-    LWE-based encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
+        LWE-based encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
@@ -2433,7 +2436,7 @@ def dual_scale(n, alpha, q, secret_distribution,
     :param c: explicit constant `c`
     :param use_lll: use LLL calls to produce more small vectors
 
-    EXAMPLES:
+    EXAMPLES::
 
         sage: from estimator import Param, dual_scale
 
@@ -2468,8 +2471,8 @@ def dual_scale(n, alpha, q, secret_distribution,
                   c:   51.065
 
     .. [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
-    parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
-    (pp.  103–129).  : .
+       parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
+       (pp.  103–129). 
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)

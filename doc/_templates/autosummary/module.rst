@@ -13,7 +13,9 @@
 .. autosummary::
     :toctree: {{ fullname }}
     {% for class in classes %}
+    {% if class in members %}
     {{ class }}
+    {% endif %}
     {% endfor %}
 
 {% endif %}
