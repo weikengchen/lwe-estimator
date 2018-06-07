@@ -2700,7 +2700,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     cost["ntest"] = ntest  # hypothesis testing
 
     # Theorem 1: quantization noise + addition noise
-    s_var = SDis.variance(secret_distribution, alpha, q)
+    s_var = SDis.variance(secret_distribution, alpha, q, n=n)
     coding_variance = s_var * sigma_set**2 * ntot
     sigma_final = RR(sqrt(2**(t1+t2) * sigma**2 + coding_variance))
     # cost[u"σ_final"] = RR(sigma_final)
