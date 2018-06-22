@@ -1407,7 +1407,7 @@ class BKZ:
         """
         # TODO replace these by fplll timings
         repeat = BKZ.svp_repeat(beta, d)
-        cost = RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765 + log(100,2))
+        cost = RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765 + log(100, 2))
         return BKZ.LLL(d, B) +  repeat * ZZ(2)**cost
 
     @staticmethod
