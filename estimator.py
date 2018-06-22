@@ -1395,13 +1395,19 @@ class BKZ:
              sage: f.subs(find_fit(T, f, solution_dict=True))
              k |--> 0.270188776350190*k*log(k) - 1.0192050451318417*k + 16.10253135200765
 
+        The estimation 
+             2^(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765)
+        is of the number of enumeration nodes, hence we also need to multiply by the number of cycles to process one node.
+        This cost per node is typically estimated as 100 [FPLLL].
+
          .. [CheNgu12] Yuanmi Chen and Phong Q. Nguyen. BKZ 2.0: Better lattice security estimates (Full Version).
                        2012. http://www.di.ens.fr/~ychen/research/Full_BKZ.pdf
-
+         .. [FPLLL]    The FPLLL development team. fplll, a lattice reduction library. 2016. 
+                       Available at https://github.com/fplll/fplll
         """
         # TODO replace these by fplll timings
         repeat = BKZ.svp_repeat(beta, d)
-        cost = RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765)
+        cost = RR(0.270188776350190*beta*log(beta) - 1.0192050451318417*beta + 16.10253135200765 + log(100,2))
         return BKZ.LLL(d, B) +  repeat * ZZ(2)**cost
 
     @staticmethod
