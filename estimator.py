@@ -1312,8 +1312,8 @@ class BKZ:
          :param d: lattice dimension
          :param B: bit-size of entries
 
-        ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in 
-        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp. 
+        ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
+        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
         10–24).
 
          """
@@ -2472,7 +2472,7 @@ def dual_scale(n, alpha, q, secret_distribution,
 
     .. [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
        parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
-       (pp.  103–129). 
+       (pp.  103–129).
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
