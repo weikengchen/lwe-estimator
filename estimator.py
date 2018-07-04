@@ -38,7 +38,7 @@ import sage.crypto.lwe
 
 oo = PlusInfinity()
 
-
+
 class Logging:
     """
     Control level of detail being printed.
@@ -80,7 +80,7 @@ class Logging:
         for logger in loggers:
             logging.getLogger(logger).setLevel(lvl)
 
-
+
 # Utility Classes #
 
 class OutOfBoundsError(ValueError):
@@ -96,7 +96,7 @@ class InsufficientSamplesError(ValueError):
     """
     pass
 
-
+
 # Binary Search #
 
 def binary_search_minimum(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
@@ -165,7 +165,7 @@ def binary_search(f, start, stop, param, predicate=lambda x, best: x<=best, *arg
                     direction = 1
     return best
 
-
+
 class Param:
     """
     Namespace for processing LWE parameter sets.
@@ -270,7 +270,7 @@ class Param:
         else:
             return n, alpha, q
 
-
+
 # Error Parameter Conversions
 
 def stddevf(sigma):
@@ -323,7 +323,7 @@ def alphaf(sigma, q, sigma_is_stddev=False):
     else:
         return RR(sigmaf(sigma)/q)
 
-
+
 class Cost:
     """
     Algorithms costs.
@@ -588,7 +588,7 @@ class Cost:
     def __unicode__(self):
         return self.str(unicode=True)
 
-
+
 class SDis:
     """
     Distributions of Secrets.
@@ -937,7 +937,7 @@ def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
     beta = RR(sqrt(2)*alpha)
     return f(n, beta, p, secret_distribution, *args, **kwds)
 
-
+
 # Repetition
 
 def amplify(target_success_probability, success_probability, majority=False):
@@ -1069,7 +1069,7 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
 
     return best
 
-
+
 class BKZ:
     """
     Cost estimates for BKZ.
@@ -1267,7 +1267,7 @@ class BKZ:
         b = [log_q - b[-1-i] for i in range(m)]
         b = map(lambda x: x.exp(), b)
         return b
-
+
     # BKZ Estimates
 
     @staticmethod
@@ -1529,7 +1529,7 @@ def sieve_or_enum(func):
             return b
     return wrapper
 
-
+
 # Combinatorial Algorithms for Sparse/Sparse Secrets
 
 def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.99, **kwds):
@@ -1829,7 +1829,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     return best
 
-
+
 # Primal Attack (uSVP)
 
 def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
@@ -2055,7 +2055,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     return cost
 
-
+
 # Primal Attack (Enumeration)
 
 def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_enum=2**15.1):
@@ -2251,7 +2251,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
 
 primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat_select={"m": False})
 
-
+
 # Dual Attack
 
 
@@ -2539,7 +2539,7 @@ def dual_scale(n, alpha, q, secret_distribution,
 
     return best
 
-
+
 # Combinatorial
 
 def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
@@ -2814,7 +2814,7 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
         raise InsufficientSamplesError("m=%d < %d (required)"%(m, best["m"]))
     return best
 
-
+
 # Algebraic
 
 @cached_function
@@ -2954,7 +2954,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
                     break
     return best
 
-
+
 # Toplevel function
 
 def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
