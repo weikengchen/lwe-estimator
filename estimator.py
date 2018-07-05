@@ -10,14 +10,13 @@ The following distributions for the secret are supported:
 
 - ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
 - ``"uniform"`` : uniform mod q (alias: ``False``)
-- ``(a,b)`` : uniform in the interval `[a,…,b]`
-- ``((a,b), h)`` : exactly `h` components are `∈ [a,…,b]∖\{0\}`, all other components are zero
+- ``(a,b)`` : uniform in the interval ``[a,…,b]``
+- ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]∖\{0\}``, all other components are zero
 
 """
 
-
-# Imports
 
+# Imports
 from collections import OrderedDict
 from functools import partial
 from sage.arith.srange import srange
@@ -39,7 +38,7 @@ import sage.crypto.lwe
 
 oo = PlusInfinity()
 
-
+
 class Logging:
     """
     Control level of detail being printed.
@@ -81,7 +80,7 @@ class Logging:
         for logger in loggers:
             logging.getLogger(logger).setLevel(lvl)
 
-
+
 # Utility Classes #
 
 class OutOfBoundsError(ValueError):
@@ -97,7 +96,7 @@ class InsufficientSamplesError(ValueError):
     """
     pass
 
-
+
 # Binary Search #
 
 def binary_search_minimum(f, start, stop, param, extract=lambda x: x, *arg, **kwds):
@@ -166,7 +165,7 @@ def binary_search(f, start, stop, param, predicate=lambda x, best: x<=best, *arg
                     direction = 1
     return best
 
-
+
 class Param:
     """
     Namespace for processing LWE parameter sets.
@@ -271,7 +270,7 @@ class Param:
         else:
             return n, alpha, q
 
-
+
 # Error Parameter Conversions
 
 def stddevf(sigma):
@@ -324,7 +323,7 @@ def alphaf(sigma, q, sigma_is_stddev=False):
     else:
         return RR(sigmaf(sigma)/q)
 
-
+
 class Cost:
     """
     Algorithms costs.
@@ -589,7 +588,7 @@ class Cost:
     def __unicode__(self):
         return self.str(unicode=True)
 
-
+
 class SDis:
     """
     Distributions of Secrets.
@@ -938,7 +937,7 @@ def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
     beta = RR(sqrt(2)*alpha)
     return f(n, beta, p, secret_distribution, *args, **kwds)
 
-
+
 # Repetition
 
 def amplify(target_success_probability, success_probability, majority=False):
@@ -1070,7 +1069,7 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
 
     return best
 
-
+
 class BKZ:
     """
     Cost estimates for BKZ.
@@ -1268,7 +1267,7 @@ class BKZ:
         b = [log_q - b[-1-i] for i in range(m)]
         b = map(lambda x: x.exp(), b)
         return b
-
+
     # BKZ Estimates
 
     @staticmethod
@@ -1294,7 +1293,7 @@ class BKZ:
         Runtime estimation assuming the Lindner-Peikert model in elementary operations.
 
         ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for LWE-based
-        encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
+            encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
 
         :param beta: block size
         :param d: lattice dimension
@@ -1316,6 +1315,7 @@ class BKZ:
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
         10–24).
+
          """
         return BKZ.LLL(d, B) + ZZ(2)**RR(0.387*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
 
@@ -1331,6 +1331,7 @@ class BKZ:
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
         nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
         10–24).
+
         """
         # TODO we simply pick the same additive constant 16.4 as for the experimental result in [BDGL16]
         return BKZ.LLL(d, B) + ZZ(2)**RR(0.292*beta + 16.4 + log(BKZ.svp_repeat(beta, d), 2))
@@ -1345,8 +1346,9 @@ class BKZ:
          :param B: bit-size of entries
 
         ..  [BDGL16] Becker, A., Ducas, L., Gama, N., & Laarhoven, T.  (2016).  New directions in
-        nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
-        10–24).
+            nearest neighbor searching with applications to lattice sieving.  In SODA 2016, (pp.
+            10–24).
+
         """
         # TODO this is somewhat arbitrary
         if beta <= 90:
@@ -1527,7 +1529,7 @@ def sieve_or_enum(func):
             return b
     return wrapper
 
-
+
 # Combinatorial Algorithms for Sparse/Sparse Secrets
 
 def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.99, **kwds):
@@ -1540,7 +1542,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param success_probability: targeted success probability < 1
 
-    EXAMPLE:
+    EXAMPLE::
 
         sage: from estimator import guess_and_solve, dual_scale, partial
         sage: q = next_prime(2^30)
@@ -1652,7 +1654,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
     :param postprocess: check against shifted distributions
     :param decision: the underlying algorithm solves the decision version or not
 
-    EXAMPLE:
+    EXAMPLE::
 
         sage: from estimator import drop_and_solve, dual_scale, primal_usvp, partial
         sage: q = next_prime(2^30)
@@ -1827,7 +1829,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     return best
 
-
+
 # Primal Attack (uSVP)
 
 def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
@@ -2053,7 +2055,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     return cost
 
-
+
 # Primal Attack (Enumeration)
 
 def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_enum=2**15.1):
@@ -2177,7 +2179,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
               epsilon:  2^-14.0
 
     ..  [LinPei11] Lindner, R., & Peikert, C.  (2011).  Better key sizes (and attacks) for
-    LWE-based encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
+        LWE-based encryption.  In A.  Kiayias, CT-RSA~2011 (pp.  319–339).  : Springer, Heidelberg.
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
@@ -2249,7 +2251,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
 
 primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat_select={"m": False})
 
-
+
 # Dual Attack
 
 
@@ -2434,7 +2436,7 @@ def dual_scale(n, alpha, q, secret_distribution,
     :param c: explicit constant `c`
     :param use_lll: use LLL calls to produce more small vectors
 
-    EXAMPLES:
+    EXAMPLES::
 
         sage: from estimator import Param, dual_scale
 
@@ -2469,8 +2471,8 @@ def dual_scale(n, alpha, q, secret_distribution,
                   c:   51.065
 
     .. [Albrecht17] Albrecht, M.  R.  (2017).  On dual lattice attacks against small-secret LWE and
-    parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
-    (pp.  103–129).  : .
+       parameter choices in helib and SEAL.  In J.  Coron, & J.  B.  Nielsen, EUROCRYPT} 2017, Part {II
+       (pp.  103–129).
     """
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
@@ -2537,7 +2539,7 @@ def dual_scale(n, alpha, q, secret_distribution,
 
     return best
 
-
+
 # Combinatorial
 
 def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
@@ -2812,7 +2814,7 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
         raise InsufficientSamplesError("m=%d < %d (required)"%(m, best["m"]))
     return best
 
-
+
 # Algebraic
 
 @cached_function
@@ -2952,7 +2954,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
                     break
     return best
 
-
+
 # Toplevel function
 
 def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
