@@ -42,6 +42,11 @@ At present the following algorithms are covered by this estimator.
 
 Above, we use `cryptobib <http://cryptobib.di.ens.fr>`__-style bibtex keys as references.
 
+Documentation
+-------------
+
+Documentation for the ``estimator`` is available `here <https://lwe-estimator.readthedocs.io/>`__.
+
 Evolution
 ---------
 
