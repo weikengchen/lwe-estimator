@@ -155,7 +155,7 @@ always.
      dec: rop: ≈2^144.9,  m:     1237,  red: ≈2^144.9,  δ_0: 1.004148,  β:  378,  d: 2041,  babai: ≈2^130.9,  babai_op: ≈2^146.0,  repeat:       17,  ε: 0.250000
     dual: rop: ≈2^139.4,  m:     1231,  red: ≈2^139.4,  δ_0: 1.004180,  β:  373,  repeat:  ≈2^93.0,  d: 2035,  c:        1
 
-`SEAL v2.2 <https://www.microsoft.com/en-us/research/wp-content/uploads/2017/06/sealmanual.pdf>`__ ::
+`SEAL <https://www.microsoft.com/en-us/research/project/simple-encrypted-arithmetic-library/>`__ ::
 
     sage: load("estimator.py")
     sage: n = 2048; q = 2^60 - 2^14 + 1; alpha = 8/q; m = 2*n
