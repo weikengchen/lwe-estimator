@@ -286,8 +286,9 @@ def stddevf(sigma):
         sage: stddevf(n)
         25.532...
     """
-    RR = parent(sigma)
-    return sigma/RR(sqrt(2*pi))
+
+    sigma_copy = RR(sigma)
+    return sigma_copy/RR(sqrt(2*pi))
 
 
 def sigmaf(stddev):
