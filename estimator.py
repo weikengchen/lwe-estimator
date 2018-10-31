@@ -2661,17 +2661,18 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
             return 0
 
         # solve for nest by aiming for ntop == 0
-        ntest = var("nest")
+        ntest = var("ntest")
         sigma_set = sqrt(q**(2*(1-l/ntest))/12)
         ncod = sum([N(i, sigma_set) for i in range(1, t2+1)])
         ntop = n - ncod - ntest - t1*b
-        try:
-            ntest = round(find_root(0 == ntop, 0, n))
-        except RuntimeError:
-            # annoyingly we get a RuntimeError when find_root can't find a
-            # solution, we translate to something more meaningful
-            raise ValueError("Cannot find parameters for n=%d, l=%d, t1=%d, t2=%d, b=%d"%(n, l, t1, t2, b))
-        return ZZ(ntest)
+
+        ntest_min = 1
+        for ntest in range(2, n+1):
+            if abs(ntop(ntest=ntest).n()) < abs(ntop(ntest=ntest_min).n()):
+                ntest_min = ntest
+            else:
+                break
+        return ZZ(ntest_min)
 
     # we compute t1 from N_i by observing that any N_i ≤ b gives no advantage
     # over vanilla BKW, but the estimates for coded BKW always assume
