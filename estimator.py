@@ -11,7 +11,7 @@ The following distributions for the secret are supported:
 - ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
 - ``"uniform"`` : uniform mod q (alias: ``False``)
 - ``(a,b)`` : uniform in the interval ``[a,…,b]``
-- ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]∖\{0\}``, all other components are zero
+- ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]∖\\{0\\}``, all other components are zero
 
 """
 
@@ -467,7 +467,7 @@ class Cost:
         :returns:      a new cost estimate
 
         We maintain a local dictionary which decides if an entry is multiplied by `times` or not.
-        For example, δ would not be multiplied but "\#bop" would be. This check is strict such that
+        For example, δ would not be multiplied but "#bop" would be. This check is strict such that
         unknown entries raise an error. This is to enforce a decision on whether an entry should be
         multiplied by `times` if the function `report` reports on is called `times` often.
 
@@ -920,7 +920,7 @@ def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
 
     :param f: run f
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
 
@@ -1006,7 +1006,7 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
 
     :param f:                    a function returning a cost estimate
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param success_probability: targeted success probability < 1
     :param optimisation_target:  which value to minimise
@@ -1537,7 +1537,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
 
     :param f:
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param success_probability: targeted success probability < 1
@@ -1647,7 +1647,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     :param f: attack estimate function
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param success_probability: targeted success probability < 1
@@ -1837,7 +1837,7 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
     Scale factor for primal attack.
 
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param n: only used for sparse secrets
 
@@ -1893,7 +1893,7 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
     Estimate cost of solving LWE using primal attack (uSVP version)
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param scale: The identity part of the lattice basis is scaled by this constant.
     :param m: number of LWE samples `m > 0`
@@ -1948,7 +1948,7 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
     Estimate cost of solving LWE using primal attack (uSVP version)
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
@@ -2063,7 +2063,7 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
     Estimates the cost of performing enumeration.
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param success_probability: target success probability
     :param delta_0: root-Hermite factor `δ_0 > 1`
@@ -2131,7 +2131,7 @@ def _primal_decode(n, alpha, q, secret_distribution=True, m=oo, success_probabil
     Decoding attack as described in [LinPei11]_.
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
@@ -2260,7 +2260,7 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
     Scale factor for dual attack.
 
     :param secret_distribution: distribution of secret, see module level documentation for details
-    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param n: only used for sparse secrets
     :param c: explicit constant `c`
@@ -2318,7 +2318,7 @@ def _dual(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99,
     Estimate cost of solving LWE using dual attack as described in [MicReg09]_
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
@@ -2427,7 +2427,7 @@ def dual_scale(n, alpha, q, secret_distribution,
     described in [EC:Abrecht17]_
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
@@ -2547,7 +2547,7 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     Meet-in-the-Middle attack as described in [AlbPlaSco15]_
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
@@ -2602,7 +2602,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     Coded-BKW.
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param t2:                   number of coded BKW steps (≥ 0)
     :param b:                    table size (≥ 1)
@@ -2769,7 +2769,7 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
     Coded-BKW as described in [C:GuoJohSta15]
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param success_probability: targeted success probability < 1
     :param samples: the number of available samples
@@ -2871,14 +2871,14 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
     Arora-GB as described in [AroGe11,ACFP14]_
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param m: number of LWE samples `m > 0`
     :param success_probability: targeted success probability < 1
     :param omega: linear algebra constant
 
-    ..  [ACFP14] Albrecht, M.  R., Cid, C., Jean-Charles Faug\`ere, & Perret, L.  (2014).
+    ..  [ACFP14] Albrecht, M.  R., Cid, C., Jean-Charles Faugère, & Perret, L.  (2014).
         Algebraic algorithms for LWE.
 
     ..  [AroGe11] Arora, S., & Ge, R.  (2011).  New algorithms for learning in presence of
@@ -2964,7 +2964,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
     Highlevel-function for estimating security of LWE parameter sets
 
     :param n: LWE dimension `n > 0`
-    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\sqrt{2π}`
+    :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param m: number of LWE samples `m > 0`
     :param secret_distribution: distribution of secret, see module level documentation for details
