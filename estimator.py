@@ -282,12 +282,26 @@ def stddevf(sigma):
     EXAMPLE::
 
         sage: from estimator import stddevf
-        sage: n = 64.0
-        sage: stddevf(n)
+        sage: stddevf(64.0)
         25.532...
+
+        sage: stddevf(64)
+        25.532...
+
+        sage: stddevf(RealField(256)(64)).prec()
+        256
+
     """
-    sigma_copy = RR(sigma)
-    return sigma_copy/RR(sqrt(2*pi))
+
+    try:
+        prec = parent(sigma).prec()
+    except AttributeError:
+        prec = 0
+    if prec > 0:
+        FF = parent(sigma)
+    else:
+        FF = RR
+    return FF(sigma)/FF(sqrt(2*pi))
 
 
 def sigmaf(stddev):
