@@ -112,9 +112,8 @@ A pre-print is available as
 
     Cryptology ePrint Archive, Report 2015/046, 2015. https://eprint.iacr.org/2015/046
 
-A high-level overview of that work is given, for instance, in this
-`talk <https://martinralbrecht.files.wordpress.com/2015/05/20150507-lwe-survey-london.pdf>`__.
-
+An updated version of the material covered in the above survey is available in
+`Rachel Player's PhD thesis <https://pure.royalholloway.ac.uk/portal/files/29983580/2018playerrphd.pdf>`__.
 
 Parameters from the Literature
 ------------------------------
