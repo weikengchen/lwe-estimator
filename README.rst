@@ -36,7 +36,7 @@ At present the following algorithms are covered by this estimator.
 -  Coded-BKW [C:GuoJohSta15]
 -  dual-lattice attack and small/sparse secret variant [EC:Albrecht17]
 -  lattice-reduction + enumeration [RSA:LinPei11]
--  primal attack via uSVP [ICISC:AlbFitGop13,ACISP:BaiGal14]
+-  primal attack via uSVP [USENIX:ADPS16,ACISP:BaiGal14]
 -  Arora-Ge algorithm [ICALP:AroGe11] using Gröbner bases
    [EPRINT:ACFP14]
 
