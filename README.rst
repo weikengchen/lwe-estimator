@@ -157,8 +157,8 @@ always.
 `SEAL <https://www.microsoft.com/en-us/research/project/simple-encrypted-arithmetic-library/>`__ ::
 
     sage: load("estimator.py")
-    sage: n = 2048; q = 2^60 - 2^14 + 1; alpha = 8/q; m = 2*n
+    sage: n = 2048; q = 2^54 - 2^24 + 1; alpha = 8/q; m = 2*n
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
-    usvp: rop: ≈2^115.5,  red: ≈2^115.5,  δ_0: 1.004975,  β:  288,  d: 4013,  m:     1964
-     dec: rop: ≈2^127.1,  m:  ≈2^11.1,  red: ≈2^127.1,  δ_0: 1.004663,  β:  318,  d: 4237,  babai: ≈2^114.8,  babai_op: ≈2^129.9,  repeat:        7,  ε: 0.500000
-    dual: rop: ≈2^118.4,  m:  ≈2^11.0,  red: ≈2^118.4,  δ_0: 1.004864,  β:  298,  repeat:  ≈2^58.8,  d: 4090,  c:    3.909,  k:       30,  postprocess:       13
+    usvp: rop: ≈2^129.7,  red: ≈2^129.7,  δ_0: 1.004479,  β:  337,  d: 3915,  m:     1866
+     dec: rop: ≈2^144.4,  m:  ≈2^11.1,  red: ≈2^144.4,  δ_0: 1.004154,  β:  377,  d: 4272,  babai: ≈2^131.2,  babai_op: ≈2^146.3,  repeat:        7,  ε: 0.500000
+    dual: rop: ≈2^134.2,  m:  ≈2^11.0,  red: ≈2^134.2,  δ_0: 1.004353,  β:  352,  repeat:  ≈2^59.6,  d: 4091,  c:    3.909,  k:       32,  postprocess:       10
