@@ -1201,6 +1201,7 @@ class BKZ:
 
         TESTS::
 
+            sage: from estimator import betaf, delta_0f
             sage: betaf(delta_0f(500))
             500
 
