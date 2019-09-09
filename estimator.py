@@ -1197,6 +1197,14 @@ class BKZ:
 
     @staticmethod
     def _beta_find_root(delta):
+        """
+
+        TESTS::
+
+            sage: betaf(delta_0f(500))
+            500
+
+        """
         # handle k < 40 separately
         k = ZZ(40)
         if delta_0f(k) < delta:
@@ -1204,7 +1212,7 @@ class BKZ:
 
         try:
             k = find_root(lambda k: RR(BKZ._delta_0f(k) - delta), 40, 2**16, maxiter=500)
-            k = ceil(k)
+            k = ceil(k-1e-8)
         except RuntimeError:
             # finding root failed; reasons:
             # 1. maxiter not sufficient
