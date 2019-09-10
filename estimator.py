@@ -1921,7 +1921,7 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
     :param q: modulus `0 < q`
     :param scale: The identity part of the lattice basis is scaled by this constant.
     :param m: number of available LWE samples `m > 0`
-    :param d: dimension for the attack d <= n + m + 1  (`None' for optimized choice)
+    :param d: dimension for the attack d <= m + 1  (`None' for optimized choice)
     :parap kannan_coeff: Coeff for Kannan's embedding (`None' to set it kannan_coeff=stddev, 
         which is optimal at least when Distrib(secret) = Distrib(Error).)
     :param success_probability: targeted success probability < 1
@@ -1956,6 +1956,8 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
         for d in range(n, m+2):
             if log_b_star(d) - C >= 0:
                 break
+    assert(d <= m+1)
+
 
     def ineq(d):
         lhs = sqrt(stddev**2 * (block_size - 1) + kannan_coeff**2)
