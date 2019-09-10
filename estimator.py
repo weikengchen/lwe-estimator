@@ -1910,7 +1910,8 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
 
 
 def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
-                 success_probability=0.99,
+                 success_probability=0.99, 
+                 kannan_coeff=None, d=None,
                  reduction_cost_model=reduction_default_cost):
     """
     Estimate cost of solving LWE using primal attack (uSVP version)
@@ -1919,7 +1920,10 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
     :param alpha: noise rate `0 ≤ α < 1`, noise will have standard deviation `αq/\\sqrt{2π}`
     :param q: modulus `0 < q`
     :param scale: The identity part of the lattice basis is scaled by this constant.
-    :param m: number of LWE samples `m > 0`
+    :param m: number of available LWE samples `m > 0`
+    :param d: dimension for the attack d <= n + m + 1  (`None' for optimized choice)
+    :parap kannan_coeff: Coeff for Kannan's embedding (`None' to set it kannan_coeff=stddev, 
+        which is optimal at least when Distrib(secret) = Distrib(Error).)
     :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
 
@@ -1938,15 +1942,20 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
 
     m = min(2*ceil(sqrt(n*log(q)/log(delta_0))), m)
 
-    def log_b_star(d):
-        return delta_0.log()*(2*block_size-d) + (n*scale.log() + (d-n-1)*q.log())/d
+    if kannan_coeff is None:
+        kannan_coeff = stddev
 
-    C = stddev.log() + block_size.log()/2
+
+    def log_b_star(d):
+        return delta_0.log()*(2*block_size-d) + (kannan_coeff.log() + n*scale.log() + (d-n-1)*q.log())/d
+
+    C = (stddev**2 * (block_size - 1) + kannan_coeff**2).log() / 2
 
     # we have m samples → the largest permissible dimension d is m+1
-    for d in range(n, m+2):
-        if log_b_star(d) - C >= 0:
-            break
+    if d is None:
+        for d in range(n, m+2):
+            if log_b_star(d) - C >= 0:
+                break
 
     def ineq(d):
         lhs = stddev * RR(sqrt(block_size))
@@ -1966,6 +1975,7 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
 
 def primal_usvp(n, alpha, q, secret_distribution=True,
                 m=oo, success_probability=0.99,
+                kannan_coeff=None, d=None,
                 reduction_cost_model=reduction_default_cost, **kwds):
     u"""
     Estimate cost of solving LWE using primal attack (uSVP version)
@@ -2058,7 +2068,8 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     scale = _primal_scale_factor(secret_distribution, alpha, q, n)
 
-    kwds = {"n": n, "alpha": alpha, "q": q,
+    kwds = {"n": n, "alpha": alpha, "q": q, 
+            "kannan_coeff" : kannan_coeff, "d" : d,
             "reduction_cost_model": reduction_cost_model,
             "m": m, "scale": scale}
 
