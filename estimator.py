@@ -1958,8 +1958,8 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
                 break
 
     def ineq(d):
-        lhs = stddev * RR(sqrt(block_size))
-        rhs = delta_0**(2*block_size-d) * (scale**n * q**(d-n-1))**(ZZ(1)/d)
+        lhs = sqrt(stddev**2 * (block_size - 1) + kannan_coeff**2)
+        rhs = delta_0**(2*block_size-d) * (kannan_coeff * scale**n * q**(d-n-1))**(ZZ(1)/d)
         return lhs <= rhs
 
     ret = lattice_reduction_cost(reduction_cost_model, delta_0, d)
