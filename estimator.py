@@ -1910,7 +1910,7 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
 
 
 def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
-                 success_probability=0.99, 
+                 success_probability=0.99,
                  kannan_coeff=None, d=None,
                  reduction_cost_model=reduction_default_cost):
     """
@@ -1922,7 +1922,7 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
     :param scale: The identity part of the lattice basis is scaled by this constant.
     :param m: number of available LWE samples `m > 0`
     :param d: dimension for the attack d <= m + 1  (`None' for optimized choice)
-    :parap kannan_coeff: Coeff for Kannan's embedding (`None' to set it kannan_coeff=stddev, 
+    :parap kannan_coeff: Coeff for Kannan's embedding (`None' to set it kannan_coeff=stddev,
         which is optimal at least when Distrib(secret) = Distrib(Error).)
     :param success_probability: targeted success probability < 1
     :param reduction_cost_model: cost model for lattice reduction
@@ -1945,7 +1945,6 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
     if kannan_coeff is None:
         kannan_coeff = stddev
 
-
     def log_b_star(d):
         return delta_0.log()*(2*block_size-d) + (kannan_coeff.log() + n*scale.log() + (d-n-1)*q.log())/d
 
@@ -1957,7 +1956,6 @@ def _primal_usvp(block_size, n, alpha, q, scale=1, m=oo,
             if log_b_star(d) - C >= 0:
                 break
     assert(d <= m+1)
-
 
     def ineq(d):
         lhs = sqrt(stddev**2 * (block_size - 1) + kannan_coeff**2)
@@ -2070,8 +2068,8 @@ def primal_usvp(n, alpha, q, secret_distribution=True,
 
     scale = _primal_scale_factor(secret_distribution, alpha, q, n)
 
-    kwds = {"n": n, "alpha": alpha, "q": q, 
-            "kannan_coeff" : kannan_coeff, "d" : d,
+    kwds = {"n": n, "alpha": alpha, "q": q,
+            "kannan_coeff": kannan_coeff, "d": d,
             "reduction_cost_model": reduction_cost_model,
             "m": m, "scale": scale}
 
