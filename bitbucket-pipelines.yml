@@ -16,7 +16,7 @@ pipelines:
     - step:
         name: Doctest
         script:
-          - export SAGE_ROOT=`sage -c "import os; print os.environ['SAGE_ROOT']" | tail -1`
+          - export SAGE_ROOT=`sage -c "import os; print(os.environ['SAGE_ROOT'])" | tail -1`
           - export PATH="$SAGE_ROOT/build/bin:$SAGE_ROOT/local/bin:$PATH"
           - export SAGE_PYTHON_VERSION=2
           - export SAGE_LOCAL="$SAGE_ROOT/local"
