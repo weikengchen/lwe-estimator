@@ -254,7 +254,7 @@ class Param:
             except AttributeError:
                 pass
 
-            if prec < 128:
+            if prec is None or prec < 128:
                 prec = 128
         RR = RealField(prec)
         n, alpha, q =  ZZ(n), RR(alpha), ZZ(q),
@@ -1769,7 +1769,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     """
 
-    if rotations and f.func_name != "primal_usvp":
+    if rotations and f.__name__ != "primal_usvp":
         raise ValueError("Rotations are only support as part of the primal-usvp attack on NTRU.")
 
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
@@ -1803,7 +1803,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
                     success_probability=success_probability**probability if decision else success_probability,
                     secret_distribution=secret_distribution, **kwds)
 
-        cost_lat  = current.values()[0]
+        cost_lat  = list(current.values())[0]
         cost_post = 0
         if postprocess:
             repeat = current["repeat"]
