@@ -354,7 +354,7 @@ class Cost:
         else:
             self.data = OrderedDict(data)
 
-        for k, v in kwds.iteritems():
+        for k, v in kwds.items():
             self.data[k] = v
 
     def str(self, keyword_width=None, newline=None, round_bound=2048, compact=False, unicode=True):
@@ -1288,7 +1288,7 @@ class BKZ:
         tmm1 = RDF(2*m/(m-1))
         b = [(qnm_p_log_delta_m - log_delta*(tmm1 * i)) for i in range(m)]
         b = [log_q - b[-1-i] for i in range(m)]
-        b = map(lambda x: x.exp(), b)
+        b = list(map(lambda x: x.exp(), b))
         return b
 
     # BKZ Estimates
