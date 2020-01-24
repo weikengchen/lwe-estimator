@@ -1068,11 +1068,11 @@ def rinse_and_repeat(f, n, alpha, q, success_probability=0.99, m=oo,
         else:
             # we go back
             i = -log(best["epsilon"], 2) - step_size
-            i += step_size/2
+            i += step_size//2
             if i <= 0:
-                i = step_size/2
+                i = step_size//2
             # and half the step size
-            step_size = step_size/2
+            step_size = step_size//2
 
         if step_size == 0:
             break
@@ -1594,7 +1594,7 @@ def guess_and_solve(f, n, alpha, q, secret_distribution, success_probability=0.9
     step_size = 16
     fail_attempts, max_fail_attempts = 0, 5
     while step_size >= n:
-        step_size /= 2
+        step_size //= 2
     i = 0
     while True:
         if i<0:
@@ -1781,7 +1781,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
     # too small a step size leads to an early abort, too large a step
     # size means stepping over target
-    step_size = int(n/32)
+    step_size = int(n//32)
 
     if not SDis.is_bounded_uniform(secret_distribution):
         raise NotImplementedError("Only bounded uniform secrets are currently supported.")
@@ -1840,11 +1840,11 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         else:
             # we go back
             k = best["k"] - step_size
-            k += step_size/2
+            k += step_size//2
             if k <= 0:
-                k = step_size/2
+                k = step_size//2
             # and half the step size
-            step_size = step_size/2
+            step_size = step_size//2
 
         if step_size == 0:
             break
