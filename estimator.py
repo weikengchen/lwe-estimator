@@ -250,7 +250,7 @@ class Param:
             except AttributeError:
                 pass
             try:
-                prec = max(success_probability.prec(), prec)
+                prec = max(success_probability.prec(), prec if prec else 0)
             except AttributeError:
                 pass
 
@@ -943,7 +943,6 @@ def switch_modulus(f, n, alpha, q, secret_distribution, *args, **kwds):
     s_var = SDis.variance(secret_distribution, alpha, q, n=n)
 
     p = RR(ceil(sqrt(2*pi*s_var*length/ZZ(12)) / alpha))
-
     if p < 32:  # some random point
         # we can't pretend everything is uniform any more, p is too small
         p = RR(ceil(sqrt(2*pi*s_var*length*2/ZZ(12)) / alpha))
