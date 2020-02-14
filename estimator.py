@@ -1902,9 +1902,6 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         sage: _primal_scale_factor((0, 1), alpha=sqrt(2*pi)/2^15/1.99, q=2^15) > 1
         True
 
-    ..  note :: This function assumes that the bounds are of opposite sign, and that the
-        distribution is centred around zero.
-
     ..  [BaiGal14] Bai, S., & Galbraith, S.  D.  (2014).  Lattice decoding attacks on binary
         LWE.  In W.  Susilo, & Y.  Mu, ACISP 14 (pp.  322–337).  : Springer, Heidelberg.
     """
