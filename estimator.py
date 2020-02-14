@@ -1899,8 +1899,8 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         sage: _primal_scale_factor((0, 1), alpha=sqrt(2*pi)/2^15/2, q=2^15)
         1.000000000...
 
-        sage: _primal_scale_factor((0, 1), alpha=sqrt(2*pi)/2^15/1.99, q=2^15)
-        1.00...
+        sage: _primal_scale_factor((0, 1), alpha=sqrt(2*pi)/2^15/1.99, q=2^15) > 1
+        True
 
     ..  note :: This function assumes that the bounds are of opposite sign, and that the
         distribution is centred around zero.
