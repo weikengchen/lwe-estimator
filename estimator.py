@@ -651,6 +651,9 @@ class SDis:
             sage: SDis.is_small(True)
             True
 
+            sage: SDis.is_small("normal")
+            True
+
             sage: SDis.is_small(((-1, 1), 64))
             True
 
@@ -658,6 +661,9 @@ class SDis:
             True
 
             sage: SDis.is_small((-3, 3))
+            True
+
+            sage: SDis.is_small((0, 1))
             True
 
         """
@@ -1855,7 +1861,8 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
 
 def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
     """
-    Scale factor for primal attack.
+    Scale factor for primal attack, in the style of [BaiGal14]. In the case of non-centered secret
+    distributions, it first appropriately rebalances the lattice bases to maximise the scaling.
 
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\\sqrt{2π}`
@@ -1881,28 +1888,35 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         2.954790254...
 
         sage: _primal_scale_factor((-3,2), alpha=8./2^15, q=2^15)
-        1.793489661...
+        1.868773442...
 
         sage: _primal_scale_factor(((-3,2), 64), alpha=8./2^15, q=2^15, n=256)
-        3.274449147...
+        3.313928192...
 
-    ..  note :: This function assumes that the bounds are of opposite sign, and that the
-        distribution is centred around zero.
+        sage: _primal_scale_factor((0, 1), alpha=sqrt(2*pi)/2^15, q=2^15)
+        2.000000000...
+
+        sage: _primal_scale_factor((0, 1), alpha=sqrt(2*pi)/2^15/2, q=2^15)
+        1.000000000...
+
+        sage: _primal_scale_factor((0, 1), alpha=sqrt(2*pi)/2^15/1.99, q=2^15) > 1
+        True
+
+    ..  [BaiGal14] Bai, S., & Galbraith, S.  D.  (2014).  Lattice decoding attacks on binary
+        LWE.  In W.  Susilo, & Y.  Mu, ACISP 14 (pp.  322–337).  : Springer, Heidelberg.
     """
 
     # For small/sparse secret use Bai and Galbraith's scaled embedding
     # NOTE: We assume a <= 0 <= b
-    # TODO: if a != -b then some improved scaling could be done by balancing the secret
 
-    if SDis.is_bounded_uniform(secret_distribution):
-        a, b = SDis.bounds(secret_distribution)
-        # target same stddev per component
+    scale = RR(1)
+    if SDis.is_small(secret_distribution):
+        # target same same shortest vector length as in Kannan's embedding of same dimension
         stddev = stddevf(alpha*q)
         var_s = SDis.variance(secret_distribution, alpha, q, n=n)
-        avg_s = SDis.mean(secret_distribution, q=q, n=n)
-        scale = stddev/RR(sqrt(var_s + avg_s**2))
-    else:
-        scale = RR(1)
+        if stddev**2 > var_s:
+            # only scale if the error is sampled wider than the secret
+            scale = stddev/RR(sqrt(var_s))
 
     return scale
 
