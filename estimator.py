@@ -532,6 +532,14 @@ class Cost:
             u"amplify": False,
             u"repeat": False,  # we deal with it below
             u"c": False,
+
+            u"b": False,
+            u"t1": False,
+            u"t2": False,
+            u"l": False,
+            u"ncod": False,
+            u"ntop": False,
+            u"ntest": False,
         }
 
         if lll and self["red"] != self["rop"]:
