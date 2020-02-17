@@ -2780,13 +2780,16 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     m = (t1+t2)*(q**b-1)/2 + M
     cost["m"] = RR(m)
 
-    # Equation (7)
-    n_ = n - t1*b
-    C0 = (m-n_) * (n+1) * ceil(n_/(b-1))
-    assert(C0 >= 0)
-    # cost["C0(gauss)"] = RR(C0)
+    if not SDis.is_small(secret_distribution):
+        # Equation (7)
+        n_ = n - t1*b
+        C0 = (m-n_) * (n+1) * ceil(n_/(b-1))
+        assert(C0 >= 0)
+        # cost["C0(gauss)"] = RR(C0)
+    else:
+        C0 = 0
 
-    # Equation (8)
+    # Equation ( 8)
     C1 = sum([(n+1-i*b)*(m - i*(q**b - 1)/2) for i in range(1, t1+1)])
     assert(C1 >= 0)
     # cost["C1(bkw)"] = RR(C1)
@@ -2834,7 +2837,7 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
         sage: from estimator import Param, bkw_coded
         sage: n, alpha, q = Param.Regev(64)
         sage: bkw_coded(n, alpha, q)
-             rop:   2^50.9
+             rop:   2^48.8
                m:   2^39.6
              mem:   2^39.6
                b:        3
@@ -3054,7 +3057,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         usvp: rop:  ≈2^32.0,  red:  ≈2^32.0,  δ_0: 1.013310,  β:   40,  d:  141,  m:       40
          dec: rop:  ≈2^33.7,  m:      156,  red:  ≈2^33.7,  δ_0: 1.021398,  β:   40,  d:  256,  ...
         dual: rop:  ≈2^35.3,  m:      311,  red:  ≈2^35.3,  δ_0: 1.014423,  β:   40,  d:  311,  ...
-         bkw: rop:  ≈2^56.8,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ncod:  84,  ...
+         bkw: rop:  ≈2^53.6,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ncod:  84,  ...
 
     """
 

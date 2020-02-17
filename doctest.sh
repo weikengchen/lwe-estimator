@@ -7,4 +7,6 @@ export SAGE_ROOT="$SAGE_ROOT"
 
 # shellcheck source=/dev/null
 source "$SAGE_ROOT/local/bin/sage-env"
-PYTHONIOENCODING=UTF-8 PYTHONPATH=$(pwd) sage-runtests "$@"
+for file in "$@"; do
+    PYTHONIOENCODING=UTF-8 PYTHONPATH=$(pwd) sage-runtests "$file"
+done
