@@ -2721,9 +2721,16 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
         ntop = n - ncod - ntest - t1*b
 
         try:
-            return ZZ(round(find_root(ntop, 2, n+1, rtol=0.1)))
+            start = max(ZZ(round(find_root(ntop, 2, n-t1*b+1, rtol=0.1))) - 1, 2)
         except RuntimeError:
-            return ZZ(1)
+            start = 2
+        ntest_min = 1
+        for ntest in range(start, n-t1*b+1):
+            if abs(ntop(ntest=ntest).n()) < abs(ntop(ntest=ntest_min).n()):
+                ntest_min = ntest
+            else:
+                break
+        return ZZ(ntest_min)
 
     # we compute t1 from N_i by observing that any N_i ≤ b gives no advantage
     # over vanilla BKW, but the estimates for coded BKW always assume
@@ -3054,7 +3061,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         usvp: rop:  ≈2^32.0,  red:  ≈2^32.0,  δ_0: 1.013310,  β:   40,  d:  141,  m:       40
          dec: rop:  ≈2^33.7,  m:      156,  red:  ≈2^33.7,  δ_0: 1.021398,  β:   40,  d:  256,  ...
         dual: rop:  ≈2^35.3,  m:      311,  red:  ≈2^35.3,  δ_0: 1.014423,  β:   40,  d:  311,  ...
-         bkw: rop:  ≈2^54.2,  m:  ≈2^43.9,  mem:  ≈2^44.9,  b:   2,  t1:  14,  t2:  16,  l:   1,  ncod:  68, ...
+         bkw: rop:  ≈2^53.6,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ncod:  84,  ...
 
 
     """
