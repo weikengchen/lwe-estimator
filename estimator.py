@@ -2651,7 +2651,7 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
 cfft = 1  # convolutions mod q
 
 
-def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99, t2=0, b=2, ntest=None):
+def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99, t2=0, b=2, ntest=None):  # noqa
     """
     Coded-BKW.
 
