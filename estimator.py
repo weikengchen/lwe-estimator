@@ -2819,7 +2819,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     return cost
 
 
-def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
+def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99, ntest=None):
     """
     Coded-BKW as described in [C:GuoJohSta15]
 
@@ -2859,7 +2859,7 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
                           b=b, n=n, alpha=alpha, q=q,
                           secret_distribution=secret_distribution,
                           success_probability=success_probability,
-                          m=m)
+                          m=m, ntest=ntest)
         return r
 
     best = binary_search(_run, 2, 3*bstart, "b",
