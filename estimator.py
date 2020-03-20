@@ -806,6 +806,42 @@ class SDis:
         return False
 
     @staticmethod
+    def is_binary(secret_distribution):
+        """Return true if the secret is binary (sparse or not)
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_binary(False)
+            False
+
+            sage: SDis.is_binary(True)
+            False
+
+            sage: SDis.is_binary(((-1, 1), 64))
+            False
+
+            sage: SDis.is_binary((-1, 1))
+            False
+
+            sage: SDis.is_binary(((0, 1), 64))
+            True
+
+            sage: SDis.is_binary((0, 1))
+            True
+
+        """
+
+        if SDis.is_bounded_uniform(secret_distribution):
+            a, b = SDis.bounds(secret_distribution)
+            if a == 0 and b == 1:
+                return True
+
+        return False
+
+    @staticmethod
     def nonzero(secret_distribution, n):
         """Return number of non-zero elements or ``None``
 
