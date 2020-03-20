@@ -1836,7 +1836,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         raise NotImplementedError("Only bounded uniform secrets are currently supported.")
 
     a, b = SDis.bounds(secret_distribution)
-    assert(a == -b)
+    assert(a == -b or a == 0 and b == 1)
     h = SDis.nonzero(secret_distribution, n)
 
     k = ZZ(0)
