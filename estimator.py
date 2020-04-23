@@ -1704,6 +1704,7 @@ def success_probability_drop(n, h, k, fail=0, rotations=False):
     n = k         # number of draws
     k = n - fail  # number of observed successes
     prob_drop = binomial(K, k)*binomial(N-K, n-k)/binomial(N, n)
+
     if rotations:
         return 1-(1-prob_drop)**N
     else:
@@ -3119,8 +3120,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         algorithms["mitm"] = mitm
 
     if "usvp" not in skip:
-        if SDis.is_ternary(secret_distribution) or SDis.is_binary(secret_distribution)\
-                or SDis.is_sparse(secret_distribution) and a == -b:
+        if SDis.is_bounded_uniform(secret_distribution):
             algorithms["usvp"] = partial(drop_and_solve, primal_usvp, reduction_cost_model=reduction_cost_model,
                                          postprocess=False, decision=False)
         else:
@@ -3134,8 +3134,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
 
     if "dual" not in skip:
-        if SDis.is_ternary(secret_distribution) or SDis.is_binary(secret_distribution)\
-                or SDis.is_sparse(secret_distribution) and a == -b:
+        if SDis.is_bounded_uniform(secret_distribution):
             algorithms["dual"] = partial(drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model,
                                          postprocess=True)
         elif SDis.is_small(secret_distribution):
