@@ -1704,7 +1704,6 @@ def success_probability_drop(n, h, k, fail=0, rotations=False):
     n = k         # number of draws
     k = n - fail  # number of observed successes
     prob_drop = binomial(K, k)*binomial(N-K, n-k)/binomial(N, n)
-
     if rotations:
         return 1-(1-prob_drop)**N
     else:
@@ -1837,7 +1836,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         raise NotImplementedError("Only bounded uniform secrets are currently supported.")
 
     a, b = SDis.bounds(secret_distribution)
-    assert(a == -b or SDis.is_binary(secret_distribution))
+    assert(SDis.is_bounded_uniform(secret_distribution))
     h = SDis.nonzero(secret_distribution, n)
 
     k = ZZ(0)
@@ -3112,9 +3111,6 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
     except AttributeError:
         pass
     skip = [s.strip().lower() for s in skip]
-
-    if SDis.is_bounded_uniform(secret_distribution):
-        a, b = SDis.bounds(secret_distribution)
 
     if "mitm" not in skip:
         algorithms["mitm"] = mitm
