@@ -858,7 +858,7 @@ class SDis:
                 if n is None:
                     raise ValueError("Parameter n is required for sparse secrets.")
                 B = ZZ(b - a + 1)
-                h = ceil((B-1)/B * n)
+                h = floor((B-1)/B * n)
                 return h
         except (TypeError, ValueError):
             raise ValueError("Cannot extract `h`.")
