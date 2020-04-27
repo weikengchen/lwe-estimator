@@ -39,6 +39,15 @@ At present the following algorithms are covered by this estimator.
 -  primal attack via uSVP [USENIX:ADPS16,ACISP:BaiGal14]
 -  Arora-Ge algorithm [ICALP:AroGe11] using Gröbner bases
    [EPRINT:ACFP14]
+  
+The following distributions for the secret are supported:
+
+- ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
+- ``"uniform"`` : uniform mod q (alias: ``False``)
+- ``(a,b)`` : uniform in the interval ``[a,…,b]``
+- ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]\{0}``, all other components are zero
+
+We note that distributions of the form ``(a,b)`` are assumed to be of fixed Hamming weight, with ``h = floor((b-a)/(b-a+1) * n)``.
 
 Above, we use `cryptobib <http://cryptobib.di.ens.fr>`__-style bibtex keys as references.
 
@@ -73,6 +82,7 @@ below in your pull requests.
 At present, this estimator is maintained by Martin Albrecht. Contributors are:
 
 -  Martin Albrecht
+-  Ben Curtis
 -  Florian Göpfert
 -  Cedric Lefebvre
 -  James Owen
