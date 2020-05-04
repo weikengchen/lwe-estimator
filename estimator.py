@@ -3154,8 +3154,9 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
 
     logger = logging.getLogger("estimator")
 
-    if SDis.is_bounded_uniform(secret_distribution):
-        logger.info("Warning: this secret distribution is assumed to have Hamming weight %s." % SDis.nonzero(secret_distribution, n))
+    if SDis.is_bounded_uniform(secret_distribution) and not SDis.is_sparse(secret_distribution):
+        h = SDis.nonzero(secret_distribution, n)
+        logger.info("Warning: the LWE secret is assumed to have Hamming weight %s." % h)
 
     results = OrderedDict()
     for alg in algorithms:
