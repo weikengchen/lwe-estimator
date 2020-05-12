@@ -47,7 +47,7 @@ The following distributions for the secret are supported:
 - ``(a,b)`` : uniform in the interval ``[a,…,b]``
 - ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]\{0}``, all other components are zero
 
-We note that distributions of the form ``(a,b)`` are assumed to be of fixed Hamming weight, with ``h = floor((b-a)/(b-a+1) * n)``.
+We note that distributions of the form ``(a,b)`` are assumed to be of fixed Hamming weight, with ``h = round((b-a)/(b-a+1) * n)``.
 
 Above, we use `cryptobib <http://cryptobib.di.ens.fr>`__-style bibtex keys as references.
 
