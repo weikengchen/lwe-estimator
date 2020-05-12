@@ -169,6 +169,7 @@ always.
     sage: load("estimator.py")
     sage: n = 2048; q = 2^54 - 2^24 + 1; alpha = 8/q; m = 2*n
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
-    usvp: rop: ≈2^129.7,  red: ≈2^129.7,  δ_0: 1.004479,  β:  337,  d: 3914,  m:     1865
+    Warning: the LWE secret is assumed to have Hamming weight 1365.
+    usvp: rop: ≈2^129.7,  red: ≈2^129.7,  δ_0: 1.004479,  β:  337,  d: 3914,  m:     1865,  repeat:        1,  k:        0,  postprocess:        0
      dec: rop: ≈2^144.4,  m:  ≈2^11.1,  red: ≈2^144.4,  δ_0: 1.004154,  β:  377,  d: 4272,  babai: ≈2^131.2,  babai_op: ≈2^146.3,  repeat:        7,  ε: 0.500000
     dual: rop: ≈2^134.2,  m:  ≈2^11.0,  red: ≈2^134.2,  δ_0: 1.004353,  β:  352,  repeat:  ≈2^59.6,  d: 4091,  c:    3.909,  k:       32,  postprocess:       10
