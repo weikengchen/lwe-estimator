@@ -2733,7 +2733,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
         """
         return floor(b/(1-log(12*sigma_set**2/ZZ(2)**i, q)/2))
 
-    def find_ntest(n, l, t1, t2, b):
+    def find_ntest(n, l, t1, t2, b): # noqa
         """
         If the parameter `ntest` is not provided, we use this function to estimate it.
 
