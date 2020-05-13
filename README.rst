@@ -39,6 +39,15 @@ At present the following algorithms are covered by this estimator.
 -  primal attack via uSVP [USENIX:ADPS16,ACISP:BaiGal14]
 -  Arora-Ge algorithm [ICALP:AroGe11] using Gröbner bases
    [EPRINT:ACFP14]
+  
+The following distributions for the secret are supported:
+
+- ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
+- ``"uniform"`` : uniform mod q (alias: ``False``)
+- ``(a,b)`` : uniform in the interval ``[a,…,b]``
+- ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]\{0}``, all other components are zero
+
+We note that distributions of the form ``(a,b)`` are assumed to be of fixed Hamming weight, with ``h = round((b-a)/(b-a+1) * n)``.
 
 Above, we use `cryptobib <http://cryptobib.di.ens.fr>`__-style bibtex keys as references.
 
@@ -73,6 +82,7 @@ below in your pull requests.
 At present, this estimator is maintained by Martin Albrecht. Contributors are:
 
 -  Martin Albrecht
+-  Ben Curtis
 -  Florian Göpfert
 -  Cedric Lefebvre
 -  James Owen
@@ -159,6 +169,7 @@ always.
     sage: load("estimator.py")
     sage: n = 2048; q = 2^54 - 2^24 + 1; alpha = 8/q; m = 2*n
     sage: _ = estimate_lwe(n, alpha, q, secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve, m=m)
-    usvp: rop: ≈2^129.7,  red: ≈2^129.7,  δ_0: 1.004479,  β:  337,  d: 3914,  m:     1865
+    Warning: the LWE secret is assumed to have Hamming weight 1365.
+    usvp: rop: ≈2^129.7,  red: ≈2^129.7,  δ_0: 1.004479,  β:  337,  d: 3914,  m:     1865,  repeat:        1,  k:        0,  postprocess:        0
      dec: rop: ≈2^144.4,  m:  ≈2^11.1,  red: ≈2^144.4,  δ_0: 1.004154,  β:  377,  d: 4272,  babai: ≈2^131.2,  babai_op: ≈2^146.3,  repeat:        7,  ε: 0.500000
     dual: rop: ≈2^134.2,  m:  ≈2^11.0,  red: ≈2^134.2,  δ_0: 1.004353,  β:  352,  repeat:  ≈2^59.6,  d: 4091,  c:    3.909,  k:       32,  postprocess:       10

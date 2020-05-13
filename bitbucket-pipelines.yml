@@ -10,15 +10,15 @@ pipelines:
     - step:
         name: PEP8
         script:
-          - sudo apt-get update && sudo apt-get install -y python-pip
-          - pip install flake8
+          - sudo apt-get update && sudo apt-get install -y python3-pip
+          - pip3 install flake8
           - $HOME/.local/bin/flake8 estimator.py
     - step:
         name: Doctest
         script:
           - export SAGE_ROOT=`sage -c "import os; print(os.environ['SAGE_ROOT'])" | tail -1`
           - export PATH="$SAGE_ROOT/build/bin:$SAGE_ROOT/local/bin:$PATH"
-          - export SAGE_PYTHON_VERSION=2
+          - export SAGE_PYTHON_VERSION=3
           - export SAGE_LOCAL="$SAGE_ROOT/local"
           - export DOT_SAGE=/home/sage/.sage/
           - umask 000 # allow to run doctests in  world writable directory

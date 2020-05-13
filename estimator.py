@@ -806,6 +806,42 @@ class SDis:
         return False
 
     @staticmethod
+    def is_binary(secret_distribution):
+        """Return true if the secret is binary (sparse or not)
+
+        :param secret_distribution: distribution of secret, see module level documentation for details
+
+        EXAMPLES::
+
+            sage: from estimator import SDis
+            sage: SDis.is_binary(False)
+            False
+
+            sage: SDis.is_binary(True)
+            False
+
+            sage: SDis.is_binary(((-1, 1), 64))
+            False
+
+            sage: SDis.is_binary((-1, 1))
+            False
+
+            sage: SDis.is_binary(((0, 1), 64))
+            True
+
+            sage: SDis.is_binary((0, 1))
+            True
+
+        """
+
+        if SDis.is_bounded_uniform(secret_distribution):
+            a, b = SDis.bounds(secret_distribution)
+            if a == 0 and b == 1:
+                return True
+
+        return False
+
+    @staticmethod
     def nonzero(secret_distribution, n):
         """Return number of non-zero elements or ``None``
 
@@ -822,7 +858,7 @@ class SDis:
                 if n is None:
                     raise ValueError("Parameter n is required for sparse secrets.")
                 B = ZZ(b - a + 1)
-                h = ceil((B-1)/B * n)
+                h = round((B-1)/B * n)
                 return h
         except (TypeError, ValueError):
             raise ValueError("Cannot extract `h`.")
@@ -1800,7 +1836,7 @@ def drop_and_solve(f, n, alpha, q, secret_distribution=True, success_probability
         raise NotImplementedError("Only bounded uniform secrets are currently supported.")
 
     a, b = SDis.bounds(secret_distribution)
-    assert(a == -b)
+    assert(SDis.is_bounded_uniform(secret_distribution))
     h = SDis.nonzero(secret_distribution, n)
 
     k = ZZ(0)
@@ -2697,7 +2733,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
         """
         return floor(b/(1-log(12*sigma_set**2/ZZ(2)**i, q)/2))
 
-    def find_ntest(n, l, t1, t2, b):
+    def find_ntest(n, l, t1, t2, b): # noqa
         """
         If the parameter `ntest` is not provided, we use this function to estimate it.
 
@@ -3047,12 +3083,14 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         dual: rop: ≈2^166.0,  m:      368,  red: ≈2^166.0,  δ_0: 1.005479,  β:  249,  ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1))
-        usvp: rop: ≈2^102.5,  red: ≈2^102.5,  δ_0: 1.006744,  β:  178,  d:  499,  m:      242
+        Warning: the LWE secret is assumed to have Hamming weight 171.
+        usvp: rop: ≈2^102.5,  red: ≈2^102.5,  δ_0: 1.006744,  β:  178,  d:  499,  m:      242,  ...
          dec: rop: ≈2^142.9,  m:      334,  red: ≈2^142.9,  δ_0: 1.006061,  β:  212,  d:  590,  ...
         dual: rop: ≈2^112.3,  m:      268,  red: ≈2^112.3,  δ_0: 1.006445,  β:  192,  ...
 
         sage: d = estimate_lwe(*Param.LindnerPeikert(256), secret_distribution=(-1,1), reduction_cost_model=BKZ.sieve)
-        usvp: rop:  ≈2^80.3,  red:  ≈2^80.3,  δ_0: 1.006744,  β:  178,  d:  499,  m:      242
+        Warning: the LWE secret is assumed to have Hamming weight 171.
+        usvp: rop:  ≈2^80.3,  red:  ≈2^80.3,  δ_0: 1.006744,  β:  178,  d:  499,  m:      242,  ...
          dec: rop: ≈2^111.8,  m:      369,  red: ≈2^111.8,  δ_0: 1.005423,  β:  253,  d:  625,  ...
         dual: rop:  ≈2^90.6,  m:      284,  red:  ≈2^90.6,  δ_0: 1.006065,  β:  212,  ...
 
@@ -3080,7 +3118,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
         algorithms["mitm"] = mitm
 
     if "usvp" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_ternary(secret_distribution):
+        if SDis.is_bounded_uniform(secret_distribution):
             algorithms["usvp"] = partial(drop_and_solve, primal_usvp, reduction_cost_model=reduction_cost_model,
                                          postprocess=False, decision=False)
         else:
@@ -3094,7 +3132,7 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
             algorithms["dec"] = partial(primal_decode, reduction_cost_model=reduction_cost_model)
 
     if "dual" not in skip:
-        if SDis.is_ternary(secret_distribution):
+        if SDis.is_bounded_uniform(secret_distribution):
             algorithms["dual"] = partial(drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model,
                                          postprocess=True)
         elif SDis.is_small(secret_distribution):
@@ -3117,6 +3155,10 @@ def estimate_lwe(n, alpha=None, q=None, secret_distribution=True, m=oo, # noqa
     cost_kwds = {"compact": False}
 
     logger = logging.getLogger("estimator")
+
+    if SDis.is_bounded_uniform(secret_distribution) and not SDis.is_sparse(secret_distribution):
+        h = SDis.nonzero(secret_distribution, n)
+        logger.info("Warning: the LWE secret is assumed to have Hamming weight %s." % h)
 
     results = OrderedDict()
     for alg in algorithms:
