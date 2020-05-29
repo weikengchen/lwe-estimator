@@ -112,9 +112,7 @@ def binary_search_minimum(f, start, stop, param, extract=lambda x: x, *arg, **kw
     :param extract: comparison is performed on ``extract(f(param=?, *args, **kwds))``
 
     """
-    return binary_search(
-        f, start, stop, param, predictate=lambda x, best: extract(x) <= extract(best), *arg, **kwds
-    )
+    return binary_search(f, start, stop, param, predictate=lambda x, best: extract(x) <= extract(best), *arg, **kwds)
 
 
 def binary_search(f, start, stop, param, predicate=lambda x, best: x <= best, *arg, **kwds):
@@ -409,11 +407,7 @@ class Cost:
                 kk = fmt % kk
             if not newline and k in format_strings:
                 s.append(format_strings[k] % (kk, v))
-            elif (
-                ZZ(1) / round_bound < v < round_bound
-                or v == 0
-                or ZZ(-1) / round_bound > v > -round_bound
-            ):
+            elif ZZ(1) / round_bound < v < round_bound or v == 0 or ZZ(-1) / round_bound > v > -round_bound:
                 try:
                     if compact:
                         s.append(u"%s: %d" % (kk, ZZ(v)))
@@ -431,10 +425,7 @@ class Cost:
                         else:
                             s.append(u"%s: %8.3f" % (kk, v))
             else:
-                t = u"%s" % (u"≈" if unicode else "") + u"%s2^%.1f" % (
-                    "-" if v < 0 else "",
-                    log(abs(v), 2).n(),
-                )
+                t = u"%s" % (u"≈" if unicode else "") + u"%s2^%.1f" % ("-" if v < 0 else "", log(abs(v), 2).n(),)
                 if compact:
                     s.append(u"%s: %s" % (kk, t))
                 else:
@@ -578,9 +569,7 @@ class Cost:
                 else:
                     ret[key] = self.data[key]
             except KeyError:
-                raise NotImplementedError(
-                    u"You found a bug, this function does not know about '%s' but should." % key
-                )
+                raise NotImplementedError(u"You found a bug, this function does not know about '%s' but should." % key)
         ret[u"repeat"] = times * ret.get("repeat", 1)
         return Cost(ret)
 
@@ -993,11 +982,7 @@ class SDis:
             if not (a <= 0 and 0 <= b):
                 raise ValueError("a <= 0 and 0 <= b is required for uniform bounded secrets.")
             # E(x^2), using https://en.wikipedia.org/wiki/Square_pyramidal_number
-            tt = (
-                (h / ZZ(n))
-                * (2 * b ** 3 + 3 * b ** 2 + b - 2 * a ** 3 + 3 * a ** 2 - a)
-                / (ZZ(6) * (b - a))
-            )
+            tt = (h / ZZ(n)) * (2 * b ** 3 + 3 * b ** 2 + b - 2 * a ** 3 + 3 * a ** 2 - a) / (ZZ(6) * (b - a))
             # Var(x) = E(x^2) - E(x)^2
             return tt - SDis.mean(secret_distribution, n=n) ** 2
 
@@ -1269,14 +1254,7 @@ class BKZ:
         # This seems reasonable, since for such large inputs the exact value of k
         # doesn't make such a big difference.
         try:
-            k = newton(
-                lambda k: RR(BKZ._delta_0f(k) - delta),
-                100,
-                fprime=None,
-                args=(),
-                tol=1.48e-08,
-                maxiter=500,
-            )
+            k = newton(lambda k: RR(BKZ._delta_0f(k) - delta), 100, fprime=None, args=(), tol=1.48e-08, maxiter=500,)
             k = ceil(k)
             if k < 40:
                 # newton may output k < 40. The old beta method wouldn't do this. For
@@ -1529,12 +1507,7 @@ class BKZ:
          """
         # TODO replace these by fplll timings
         repeat = BKZ.svp_repeat(beta, d)
-        cost = RR(
-            0.270188776350190 * beta * log(beta)
-            - 1.0192050451318417 * beta
-            + 16.10253135200765
-            + log(100, 2)
-        )
+        cost = RR(0.270188776350190 * beta * log(beta) - 1.0192050451318417 * beta + 16.10253135200765 + log(100, 2))
         return BKZ.LLL(d, B) + repeat * ZZ(2) ** cost
 
     @staticmethod
@@ -1898,9 +1871,7 @@ def drop_and_solve(
     best = None
 
     if not decision and postprocess:
-        raise ValueError(
-            "Postprocessing is only defined for the dual attack which solves the decision version."
-        )
+        raise ValueError("Postprocessing is only defined for the dual attack which solves the decision version.")
 
     # too small a step size leads to an early abort, too large a step
     # size means stepping over target
@@ -1926,9 +1897,7 @@ def drop_and_solve(
             n - k,
             alpha,
             q,
-            success_probability=success_probability ** probability
-            if decision
-            else success_probability,
+            success_probability=success_probability ** probability if decision else success_probability,
             secret_distribution=secret_distribution,
             **kwds
         )
@@ -2092,10 +2061,7 @@ def _primal_usvp(
         kannan_coeff = stddev
 
     def log_b_star(d):
-        return (
-            delta_0.log() * (2 * block_size - d)
-            + (kannan_coeff.log() + n * scale.log() + (d - n - 1) * q.log()) / d
-        )
+        return delta_0.log() * (2 * block_size - d) + (kannan_coeff.log() + n * scale.log() + (d - n - 1) * q.log()) / d
 
     C = (stddev ** 2 * (block_size - 1) + kannan_coeff ** 2).log() / 2
 
@@ -2108,9 +2074,7 @@ def _primal_usvp(
 
     def ineq(d):
         lhs = sqrt(stddev ** 2 * (block_size - 1) + kannan_coeff ** 2)
-        rhs = delta_0 ** (2 * block_size - d) * (kannan_coeff * scale ** n * q ** (d - n - 1)) ** (
-            ZZ(1) / d
-        )
+        rhs = delta_0 ** (2 * block_size - d) * (kannan_coeff * scale ** n * q ** (d - n - 1)) ** (ZZ(1) / d)
         return lhs <= rhs
 
     ret = lattice_reduction_cost(reduction_cost_model, delta_0, d)
@@ -2408,14 +2372,9 @@ def _primal_decode(
     RR = alpha.parent()
 
     delta_0m1 = (
-        _dual(
-            n,
-            alpha,
-            q,
-            success_probability=success_probability,
-            secret_distribution=secret_distribution,
-            m=m,
-        )["delta_0"]
+        _dual(n, alpha, q, success_probability=success_probability, secret_distribution=secret_distribution, m=m,)[
+            "delta_0"
+        ]
         - 1
     )
 
@@ -2446,9 +2405,7 @@ def _primal_decode(
         bkz = lattice_reduction_cost(reduction_cost_model, delta_0, m_, B=log(q, 2))
         bkz["d"] = m_
 
-        enum = enumeration_cost(
-            n, alpha, q, success_probability, delta_0, m_, clocks_per_enum=clocks_per_enum
-        )
+        enum = enumeration_cost(n, alpha, q, success_probability, delta_0, m_, clocks_per_enum=clocks_per_enum)
         current = combine(enum, bkz).reorder(["rop", "m"])
 
         # if lattice reduction is cheaper than enumration, make it more expensive
@@ -2473,9 +2430,7 @@ def _primal_decode(
     return current
 
 
-primal_decode = partial(
-    rinse_and_repeat, _primal_decode, decision=False, repeat_select={"m": False}
-)
+primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat_select={"m": False})
 
 
 # Dual Attack
@@ -2539,13 +2494,7 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
 
 
 def _dual(
-    n,
-    alpha,
-    q,
-    secret_distribution=True,
-    m=oo,
-    success_probability=0.99,
-    reduction_cost_model=reduction_default_cost,
+    n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99, reduction_cost_model=reduction_default_cost,
 ):
     """
     Estimate cost of solving LWE using dual attack as described in [MicReg09]_
@@ -2748,9 +2697,7 @@ def dual_scale(
         v_ = v / RR(sqrt(d))
 
         # we split our vector in two parts.
-        v_r = sigmaf(
-            RR(stddev * sqrt(m) * v_)
-        )  # 1. v_r is multiplied with the error stddev (dimension m-n)
+        v_r = sigmaf(RR(stddev * sqrt(m) * v_))  # 1. v_r is multiplied with the error stddev (dimension m-n)
         v_l = sigmaf(RR(c * stddev_s * sqrt(n) * v_))  # 2. v_l is the rounding noise (dimension n)
 
         ret = lattice_reduction_cost(reduction_cost_model, delta_0, d, B=log(q, 2))
@@ -2840,9 +2787,7 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
 cfft = 1  # convolutions mod q
 
 
-def _bkw_coded(
-    n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99, t2=0, b=2, ntest=None
-):  # noqa
+def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99, t2=0, b=2, ntest=None):  # noqa
     """
     Coded-BKW.
 
@@ -2993,9 +2938,7 @@ def _bkw_coded(
     C2_ = sum([4 * (M + i * (q ** b - 1) / 2) * N(i, sigma_set) for i in range(1, t2 + 1)])
     C2 = RR(C2_)
     for i in range(1, t2 + 1):
-        C2 += RR(ntop + ntest + sum([N(j, sigma_set) for j in range(1, i + 1)])) * (
-            M + (i - 1) * (q ** b - 1) / 2
-        )
+        C2 += RR(ntop + ntest + sum([N(j, sigma_set) for j in range(1, i + 1)])) * (M + (i - 1) * (q ** b - 1) / 2)
     assert C2 >= 0
     # cost["C2(coded)"] = RR(C2)
 
@@ -3010,9 +2953,7 @@ def _bkw_coded(
     assert C4 >= 0
     # cost["C4(test)"] = RR(C4)
 
-    C = (C0 + C1 + C2 + C3 + C4) / (
-        erf(d / sqrt(2 * sigma)) ** ntop
-    )  # TODO don't ignore success probability
+    C = (C0 + C1 + C2 + C3 + C4) / (erf(d / sqrt(2 * sigma)) ** ntop)  # TODO don't ignore success probability
     cost["rop"] = RR(C)
     cost["mem"] = (t1 + t2) * q ** b
 
@@ -3074,11 +3015,7 @@ def bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=0
         return r
 
     best = binary_search(
-        _run,
-        2,
-        3 * bstart,
-        "b",
-        predicate=lambda x, best: x["rop"] <= best["rop"] and (best["m"] > m or x["m"] <= m),
+        _run, 2, 3 * bstart, "b", predicate=lambda x, best: x["rop"] <= best["rop"] and (best["m"] > m or x["m"] <= m),
     )
     # binary search cannot fail. It just outputs some X with X["oracle"]>m.
     if best["m"] > m:
@@ -3158,9 +3095,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
         Springer, Heidelberg.
     """
 
-    n, alpha, q, success_probability = Param.preprocess(
-        n, alpha, q, success_probability, prec=2 * log(n, 2) * n
-    )
+    n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability, prec=2 * log(n, 2) * n)
 
     RR = alpha.parent()
     stddev = RR(stddevf(RR(alpha) * q))
@@ -3178,7 +3113,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
     else:
         d2 = []
 
-    ps_single = lambda C: RR(1 - (2 / (C * RR(sqrt(2 * pi))) * exp(-C ** 2 / 2)))  # noqa
+    ps_single = lambda C: RR(1 - (2 / (C * RR(sqrt(2 * pi))) * exp(-(C ** 2) / 2)))  # noqa
 
     m_req = floor(exp(RR(0.75) * n))
     d = n
@@ -3231,12 +3166,12 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
 # Toplevel function
 
 
-def estimate_lwe(
+def estimate_lwe(  # noqa
     n,
     alpha=None,
     q=None,
     secret_distribution=True,
-    m=oo,  # noqa
+    m=oo,
     reduction_cost_model=reduction_default_cost,
     skip=("mitm", "arora-gb", "bkw"),
 ):
@@ -3326,10 +3261,7 @@ def estimate_lwe(
     if "dual" not in skip:
         if SDis.is_bounded_uniform(secret_distribution):
             algorithms["dual"] = partial(
-                drop_and_solve,
-                dual_scale,
-                reduction_cost_model=reduction_cost_model,
-                postprocess=True,
+                drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model, postprocess=True,
             )
         elif SDis.is_small(secret_distribution):
             algorithms["dual"] = partial(dual_scale, reduction_cost_model=reduction_cost_model)
@@ -3365,11 +3297,7 @@ def estimate_lwe(
             logger.info("%s: %s" % (("%%%ds" % alg_width) % alg, results[alg].str(**cost_kwds)))
         except InsufficientSamplesError as e:
             logger.info(
-                "%s: %s"
-                % (
-                    ("%%%ds" % alg_width) % alg,
-                    "insufficient samples to run this algorithm: '%s'" % str(e),
-                )
+                "%s: %s" % (("%%%ds" % alg_width) % alg, "insufficient samples to run this algorithm: '%s'" % str(e),)
             )
 
     return results
