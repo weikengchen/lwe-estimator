@@ -5,7 +5,7 @@
 # Please don't just blindly call this to make failures go away,
 # but review all changes.
 ###############################################################################
-SAGE_ROOT=$(sage -c "import os; print os.environ['SAGE_ROOT']")
+SAGE_ROOT=$(sage -c "import os; print(os.environ['SAGE_ROOT'])")
 export SAGE_ROOT="$SAGE_ROOT"
 
 # shellcheck source=/dev/null
