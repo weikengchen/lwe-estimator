@@ -318,8 +318,24 @@ def sigmaf(stddev):
         sage: n = 64.0
         sage: sigmaf(stddevf(n))
         64.000...
+
+        sage: sigmaf(RealField(128)(1.0))
+        2.5066282746310005024157652848110452530
+        sage: sigmaf(1.0)
+        2.50662827463100
+        sage: sigmaf(1)
+        2.50662827463100
+        sage: sigmaf(1r)
+        2.50662827463100
+
     """
     RR = parent(stddev)
+    #  check that we got ourselves a real number type
+    try:
+        if (abs(RR(0.5) - 0.5) > 0.001):
+            RR = RealField(53)  # hardcode something
+    except TypeError:
+        RR = RealField(53)  # hardcode something
     return RR(sqrt(2 * pi)) * stddev
 
 
