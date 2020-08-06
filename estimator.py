@@ -2543,7 +2543,8 @@ primal_decode = partial(rinse_and_repeat, _primal_decode, decision=False, repeat
 
 def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
     """
-    Scale factor for dual attack.
+    Scale factor for dual attack. Assumes the secret vector has been "re-balanced", as to
+    be distributed around 0.
 
     :param secret_distribution: distribution of secret, see module level documentation for details
     :param alpha: noise rate `0 ≤ α < 1`, noise has standard deviation `αq/\\sqrt{2π}`
@@ -2573,10 +2574,10 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
         (2.95479025475795, 1.08012344973464)
 
         sage: _dual_scale_factor((-3,2), alpha=8./2^15, q=2^15)
-        (1.79348966142733, 1.70782512765993)
+        (1.86877344262086, 1.70782512765993)
 
         sage: _dual_scale_factor(((-3,2), 64), alpha=8./2^15, q=2^15, n=256)
-        (3.27444914738684, 0.963068014212911)
+        (3.31392819210159, 0.963068014212911)
 
     ..  note :: This function assumes that the bounds are of opposite sign, and that the
         distribution is centred around zero.
@@ -2586,12 +2587,11 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
     # NOTE: We assume a <= 0 <= b
     if SDis.is_small(secret_distribution):
         stddev_s = SDis.variance(secret_distribution, alpha=alpha, q=q, n=n).sqrt()
-        avg_s = SDis.mean(secret_distribution, q=q, n=n)
         if c is None:
             # |<v,s>| = |<w,e>| → c * \sqrt{n} * \sqrt{σ_{s_i}^2 + E(s_i)^2} == \sqrt{m} * σ
             # TODO: we are assuming n == m here! The coefficient formula for general m
             #       is the one below * sqrt(m/n)
-            c = RR(stddev / sqrt(stddev_s ** 2 + avg_s ** 2))
+            c = RR(stddev / stddev_s)
     else:
         stddev_s = stddev
         c = RR(1)
@@ -3325,6 +3325,13 @@ def estimate_lwe(  # noqa
          dec: rop:  ≈2^34.0,  m:      156,  red:  ≈2^34.0,  δ_0: 1.021398,  β:   40,  d:  256,  ...
         dual: rop:  ≈2^35.5,  m:      311,  red:  ≈2^35.5,  δ_0: 1.014423,  β:   40,  d:  311,  ...
          bkw: rop:  ≈2^53.6,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ...
+
+        sage: d = estimate_lwe(n=100, secret_distribution=1, alpha=8/2^20, q=2^20, skip="arora-gb")
+        mitm: rop: ≈2^329.2,  m:       23,  mem: ≈2^321.5
+        usvp: rop:  ≈2^32.2,  red:  ≈2^32.2,  δ_0: 1.013310,  β:   40,  d:  127,  m:       26
+        dec: rop:  ≈2^34.0,  m:      156,  red:  ≈2^34.0,  δ_0: 1.021398,  β:   40,  d:  ...
+        dual: rop:  ≈2^35.5,  m:      311,  red:  ≈2^35.5,  δ_0: 1.014423,  β:   40,  d:  ...
+        bkw: rop:  ≈2^52.6,  m:  ≈2^43.0,  mem:  ≈2^44.0,  b:   2,  t1:   0,  t2:  16,  l:  ...
 
 
     """
