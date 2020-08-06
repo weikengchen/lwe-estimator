@@ -21,6 +21,7 @@ pipelines:
           - export SAGE_PYTHON_VERSION=3
           - export SAGE_LOCAL="$SAGE_ROOT/local"
           - export DOT_SAGE=/home/sage/.sage/
-          - umask 0002 # allow to run doctests in  world writable directory
+          - chmod o-w . # otherwise Sage will refuse to run doctests
           - PYTHONIOENCODING=UTF-8 PYTHONPATH=`pwd` sage-runtests estimator.py
           - PYTHONIOENCODING=UTF-8 PYTHONPATH=`pwd` sage-runtests README.rst
+          - chmod o+w . # otherwise Sage will refuse to run doctests
