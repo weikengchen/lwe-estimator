@@ -719,7 +719,7 @@ class SDis:
         try:
             if float(secret_distribution) > 0:
                 return True
-        except:
+        except TypeError:
             pass
         try:
             (a, b), h = secret_distribution
