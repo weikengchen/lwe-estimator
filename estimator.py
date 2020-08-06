@@ -2068,9 +2068,12 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
 
     EXAMPLE::
 
-        sage: from estimator import _primal_scale_factor
+        sage: from estimator import _primal_scale_factor, alphaf
         sage: _primal_scale_factor(True, 8./2^15, 2^15)
         1.000000000...
+
+        sage: _primal_scale_factor(sqrt(2), alpha=alphaf(sqrt(16/3), 2^13, sigma_is_stddev=True), q=2^13)
+        1.63299316185545
 
         sage: _primal_scale_factor((-1,1), alpha=8./2^15, q=2^15)
         3.908820095...
@@ -2550,9 +2553,12 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
 
     EXAMPLE::
 
-        sage: from estimator import _dual_scale_factor
+        sage: from estimator import _dual_scale_factor, alphaf
         sage: _dual_scale_factor(True, 8./2^15, 2^15)
         (1.00000000000000, 3.19153824321146)
+
+        sage: _dual_scale_factor(sqrt(2), alpha=alphaf(sqrt(16/3), 2^13, sigma_is_stddev=True), q=2^13)
+        (1.63299316185545, 1.41421356237310)
 
         sage: _dual_scale_factor((-1,1), alpha=8./2^15, q=2^15)
         (3.90882009522336, 0.816496580927726)
@@ -2578,7 +2584,7 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
     stddev = RR(stddevf(alpha * q))
     # Calculate scaling in the case of bounded_uniform secret distribution
     # NOTE: We assume a <= 0 <= b
-    if SDis.is_bounded_uniform(secret_distribution):
+    if SDis.is_small(secret_distribution):
         stddev_s = SDis.variance(secret_distribution, alpha=alpha, q=q, n=n).sqrt()
         avg_s = SDis.mean(secret_distribution, q=q, n=n)
         if c is None:
