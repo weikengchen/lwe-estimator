@@ -9,6 +9,7 @@ Cost estimates for solving LWE.
 The following distributions for the secret are supported:
 
 - ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
+- ``x``: where x a positive real number, (discrete) Gaussian distribution with standard deviation x, variance x**2
 - ``"uniform"`` : uniform mod q (alias: ``False``)
 - ``(a,b)`` : uniform in the interval ``[a,…,b]``
 - ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]∖\\{0\\}``, all other components are zero
@@ -652,6 +653,12 @@ class SDis:
             sage: SDis.is_sparse(True)
             False
 
+            sage: SDis.is_sparse(1)
+            False
+
+            sage: SDis.is_sparse(1.2)
+            False
+
             sage: SDis.is_sparse(((-1, 1), 64))
             True
 
@@ -687,6 +694,12 @@ class SDis:
             sage: SDis.is_small("normal")
             True
 
+            sage: SDis.is_small(1)
+            True
+
+            sage: SDis.is_small(1.2)
+            True
+
             sage: SDis.is_small(((-1, 1), 64))
             True
 
@@ -703,6 +716,11 @@ class SDis:
 
         if secret_distribution == "normal" or secret_distribution is True:
             return True
+        try:
+            if float(secret_distribution) > 0:
+                return True
+        except:
+            pass
         try:
             (a, b), h = secret_distribution
             return True
@@ -728,6 +746,16 @@ class SDis:
             ValueError: Cannot extract bounds for secret.
 
             sage: SDis.bounds(True)
+            Traceback (most recent call last):
+            ...
+            ValueError: Cannot extract bounds for secret.
+
+            sage: SDis.bounds(1)
+            Traceback (most recent call last):
+            ...
+            ValueError: Cannot extract bounds for secret.
+
+            sage: SDis.bounds(1.2)
             Traceback (most recent call last):
             ...
             ValueError: Cannot extract bounds for secret.
@@ -766,6 +794,12 @@ class SDis:
             False
 
             sage: SDis.is_bounded_uniform(True)
+            False
+
+            sage: SDis.is_bounded_uniform(1)
+            False
+
+            sage: SDis.is_bounded_uniform(1.2)
             False
 
             sage: SDis.is_bounded_uniform(((-1, 1), 64))
@@ -809,6 +843,12 @@ class SDis:
             sage: SDis.is_ternary(True)
             False
 
+            sage: SDis.is_ternary(1)
+            False
+
+            sage: SDis.is_ternary(1.2)
+            False
+
             sage: SDis.is_ternary(((-1, 1), 64))
             True
 
@@ -843,6 +883,12 @@ class SDis:
             False
 
             sage: SDis.is_binary(True)
+            False
+
+            sage: SDis.is_binary(1)
+            False
+
+            sage: SDis.is_binary(1.2)
             False
 
             sage: SDis.is_binary(((-1, 1), 64))
@@ -905,6 +951,12 @@ class SDis:
             sage: SDis.mean(False, q=10)
             0
 
+            sage: SDis.mean(1)
+            0
+
+            sage: SDis.mean(1.2)
+            0
+
             sage: SDis.mean(((-3,3)))
             0
 
@@ -956,6 +1008,16 @@ class SDis:
             sage: SDis.variance(True, 8./2^15, 2^15).sqrt().n()
             3.19...
 
+            sage: from estimator import SDis
+            sage: SDis.variance("normal", 8./2^15, 2^15).sqrt().n()
+            3.19...
+
+            sage: SDis.variance(1)
+            1.00000000000000
+
+            sage: SDis.variance(1.2)
+            1.44000000000000
+
             sage: SDis.variance((-3,3), 8./2^15, 2^15)
             4
 
@@ -988,7 +1050,10 @@ class SDis:
                 a, b = SDis.bounds(secret_distribution)
             except ValueError:
                 # small with no bounds, it's normal
-                return stddevf(alpha * q) ** 2
+                if isinstance(secret_distribution, bool) or secret_distribution == "normal":
+                    return stddevf(alpha * q) ** 2
+                else:
+                    return RR(secret_distribution)**2
             try:
                 (a, b), h = secret_distribution
             except (TypeError, ValueError):
