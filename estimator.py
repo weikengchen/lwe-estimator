@@ -9,7 +9,7 @@ Cost estimates for solving LWE.
 The following distributions for the secret are supported:
 
 - ``"normal"`` : normal form instances, i.e. the secret follows the noise distribution (alias: ``True``)
-- ``x``: where x a positive real number, (discrete) Gaussian distribution with standard deviation x, variance x**2
+- ``alpha``: where α a positive real number, (discrete) Gaussian distribution with parameter α
 - ``"uniform"`` : uniform mod q (alias: ``False``)
 - ``(a,b)`` : uniform in the interval ``[a,…,b]``
 - ``((a,b), h)`` : exactly ``h`` components are ``∈ [a,…,b]∖\\{0\\}``, all other components are zero
@@ -653,10 +653,10 @@ class SDis:
             sage: SDis.is_sparse(True)
             False
 
-            sage: SDis.is_sparse(1)
+            sage: SDis.is_sparse(0.1)
             False
 
-            sage: SDis.is_sparse(1.2)
+            sage: SDis.is_sparse(0.2)
             False
 
             sage: SDis.is_sparse(((-1, 1), 64))
@@ -750,12 +750,12 @@ class SDis:
             ...
             ValueError: Cannot extract bounds for secret.
 
-            sage: SDis.bounds(1)
+            sage: SDis.bounds(0.1)
             Traceback (most recent call last):
             ...
             ValueError: Cannot extract bounds for secret.
 
-            sage: SDis.bounds(1.2)
+            sage: SDis.bounds(0.12)
             Traceback (most recent call last):
             ...
             ValueError: Cannot extract bounds for secret.
@@ -796,10 +796,10 @@ class SDis:
             sage: SDis.is_bounded_uniform(True)
             False
 
-            sage: SDis.is_bounded_uniform(1)
+            sage: SDis.is_bounded_uniform(0.1)
             False
 
-            sage: SDis.is_bounded_uniform(1.2)
+            sage: SDis.is_bounded_uniform(0.12)
             False
 
             sage: SDis.is_bounded_uniform(((-1, 1), 64))
@@ -843,10 +843,10 @@ class SDis:
             sage: SDis.is_ternary(True)
             False
 
-            sage: SDis.is_ternary(1)
+            sage: SDis.is_ternary(0.1)
             False
 
-            sage: SDis.is_ternary(1.2)
+            sage: SDis.is_ternary(0.12)
             False
 
             sage: SDis.is_ternary(((-1, 1), 64))
@@ -885,10 +885,10 @@ class SDis:
             sage: SDis.is_binary(True)
             False
 
-            sage: SDis.is_binary(1)
+            sage: SDis.is_binary(0.1)
             False
 
-            sage: SDis.is_binary(1.2)
+            sage: SDis.is_binary(0.12)
             False
 
             sage: SDis.is_binary(((-1, 1), 64))
@@ -951,10 +951,10 @@ class SDis:
             sage: SDis.mean(False, q=10)
             0
 
-            sage: SDis.mean(1)
+            sage: SDis.mean(0.1)
             0
 
-            sage: SDis.mean(1.2)
+            sage: SDis.mean(0.12)
             0
 
             sage: SDis.mean(((-3,3)))
@@ -1004,7 +1004,7 @@ class SDis:
 
         EXAMPLE::
 
-            sage: from estimator import SDis
+            sage: from estimator import SDis, alphaf
             sage: SDis.variance(True, 8./2^15, 2^15).sqrt().n()
             3.19...
 
@@ -1012,10 +1012,10 @@ class SDis:
             sage: SDis.variance("normal", 8./2^15, 2^15).sqrt().n()
             3.19...
 
-            sage: SDis.variance(1)
+            sage: SDis.variance(alphaf(1.0, 100, True), q=100)
             1.00000000000000
 
-            sage: SDis.variance(1.2)
+            sage: SDis.variance(alphaf(1.2, 100, True), q=100)
             1.44000000000000
 
             sage: SDis.variance((-3,3), 8./2^15, 2^15)
@@ -1053,7 +1053,7 @@ class SDis:
                 if isinstance(secret_distribution, bool) or secret_distribution == "normal":
                     return stddevf(alpha * q) ** 2
                 else:
-                    return RR(secret_distribution)**2
+                    return RR(stddevf(secret_distribution * q))**2
             try:
                 (a, b), h = secret_distribution
             except (TypeError, ValueError):
@@ -2072,7 +2072,8 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
         sage: _primal_scale_factor(True, 8./2^15, 2^15)
         1.000000000...
 
-        sage: _primal_scale_factor(sqrt(2), alpha=alphaf(sqrt(16/3), 2^13, sigma_is_stddev=True), q=2^13)
+        sage: _primal_scale_factor(alphaf(sqrt(2), 2^13, True), \
+                                   alpha=alphaf(sqrt(16/3), 2^13, True), q=2^13)
         1.63299316185545
 
         sage: _primal_scale_factor((-1,1), alpha=8./2^15, q=2^15)
@@ -2558,8 +2559,9 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
         sage: _dual_scale_factor(True, 8./2^15, 2^15)
         (1.00000000000000, 3.19153824321146)
 
-        sage: _dual_scale_factor(sqrt(2), alpha=alphaf(sqrt(16/3), 2^13, sigma_is_stddev=True), q=2^13)
-        (1.63299316185545, 1.41421356237310)
+        sage: _dual_scale_factor(alphaf(sqrt(2), 2^13, True), \
+                                 alpha=alphaf(sqrt(16/3), 2^13, True), q=2^13)
+        (1.63299316185545, 1.41421356237309)
 
         sage: _dual_scale_factor((-1,1), alpha=8./2^15, q=2^15)
         (3.90882009522336, 0.816496580927726)
@@ -3296,7 +3298,7 @@ def estimate_lwe(  # noqa
 
     EXAMPLE::
 
-        sage: from estimator import estimate_lwe, Param, BKZ
+        sage: from estimator import estimate_lwe, Param, BKZ, alphaf
         sage: d = estimate_lwe(*Param.Regev(128))
         usvp: rop:  ≈2^57.3,  red:  ≈2^57.3,  δ_0: 1.009214,  β:  101,  d:  349,  m:      220
          dec: rop:  ≈2^61.9,  m:      229,  red:  ≈2^61.9,  δ_0: 1.009595,  β:   93,  d:  357,  ...
@@ -3326,12 +3328,10 @@ def estimate_lwe(  # noqa
         dual: rop:  ≈2^35.5,  m:      311,  red:  ≈2^35.5,  δ_0: 1.014423,  β:   40,  d:  311,  ...
          bkw: rop:  ≈2^53.6,  m:  ≈2^43.5,  mem:  ≈2^44.5,  b:   2,  t1:   5,  t2:  18,  l:   1,  ...
 
-        sage: d = estimate_lwe(n=100, secret_distribution=1, alpha=8/2^20, q=2^20, skip="arora-gb")
-        mitm: rop: ≈2^329.2,  m:       23,  mem: ≈2^321.5
+        sage: d = estimate_lwe(n=100, secret_distribution=alphaf(1, 2^20, True), alpha=8/2^20, q=2^20)
         usvp: rop:  ≈2^32.2,  red:  ≈2^32.2,  δ_0: 1.013310,  β:   40,  d:  127,  m:       26
-        dec: rop:  ≈2^34.0,  m:      156,  red:  ≈2^34.0,  δ_0: 1.021398,  β:   40,  d:  ...
+         dec: rop:  ≈2^34.0,  m:      156,  red:  ≈2^34.0,  δ_0: 1.021398,  β:   40,  d:  ...
         dual: rop:  ≈2^35.5,  m:      311,  red:  ≈2^35.5,  δ_0: 1.014423,  β:   40,  d:  ...
-        bkw: rop:  ≈2^52.6,  m:  ≈2^43.0,  mem:  ≈2^44.0,  b:   2,  t1:   0,  t2:  16,  l:  ...
 
 
     """
