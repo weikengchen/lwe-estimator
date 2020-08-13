@@ -2352,7 +2352,7 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
         alpha.parent().is_NaN
         RR = alpha.parent()
 
-    except:
+    except AttributeError:
         RR = RealField(128)
 
     step = RDF(1)
