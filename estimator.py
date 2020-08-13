@@ -2348,10 +2348,11 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
     """
     target_success_probability = success_probability
 
-    if alpha.parent() is not QQ:
+    try:
+        alpha.parent().is_NaN
         RR = alpha.parent()
 
-    else:
+    except:
         RR = RealField(128)
 
     step = RDF(1)
