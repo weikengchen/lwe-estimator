@@ -2348,7 +2348,12 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
     """
     target_success_probability = success_probability
 
-    RR = alpha.parent()
+    if alpha.parent() is not QQ:
+        RR = alpha.parent()
+
+    else:
+        RR = RealField(128)
+
     step = RDF(1)
 
     B = BKZ.GSA(n, q, delta_0, m)
