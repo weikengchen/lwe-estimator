@@ -16,9 +16,9 @@ Usage Examples
     sage: load("estimator.py")
     sage: n, alpha, q = Param.Regev(128)
     sage: costs = estimate_lwe(n, alpha, q)
-    usvp: rop:  ≈2^57.2,  red:  ≈2^57.2,  δ_0: 1.009214,  β:  101,  d:  349,  m:      220
-     dec: rop:  ≈2^61.5,  m:      229,  red:  ≈2^61.5,  δ_0: 1.009595,  β:   93,  d:  357,  babai:  ≈2^46.8,  babai_op:  ≈2^61.9,  repeat:      293,  ε: 0.015625
-    dual: rop:  ≈2^81.4,  m:      376,  red:  ≈2^81.4,  δ_0: 1.008810,  β:  111,  d:  376,  |v|:  736.521,  repeat:  ≈2^19.0,  ε: 0.003906
+    usvp: rop:  ≈2^57.3,  red:  ≈2^57.3,  δ_0: 1.009214,  β:  101,  d:  349,  m:      220
+     dec: rop:  ≈2^61.9,  m:      229,  red:  ≈2^61.9,  δ_0: 1.009595,  β:   93,  d:  357,  babai:  ≈2^46.8,  babai_op:  ≈2^61.9,  repeat:      293,  ε: 0.015625
+    dual: rop:  ≈2^81.1,  m:      380,  red:  ≈2^81.1,  δ_0: 1.008631,  β:  115,  d:  380,  |v|:  688.951,  repeat:  ≈2^17.0,  ε: 0.007812
 
 Online
 ------
