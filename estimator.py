@@ -2349,8 +2349,8 @@ def enumeration_cost(n, alpha, q, success_probability, delta_0, m, clocks_per_en
     target_success_probability = success_probability
 
     try:
-        alpha.parent().is_NaN
         RR = alpha.parent()
+        RR(alpha).is_NaN()
 
     except AttributeError:
         RR = RealField(128)
