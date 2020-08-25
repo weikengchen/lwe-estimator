@@ -81,15 +81,16 @@ below in your pull requests.
 
 At present, this estimator is maintained by Martin Albrecht. Contributors are:
 
--  Martin Albrecht
--  Ben Curtis
--  Florian Göpfert
--  Cedric Lefebvre
--  James Owen
--  Rachel Player
--  Markus Schmidt
--  Sam Scott
--  Fernando Virdia
+- Benjamin Curtis
+- Cedric Lefebvre
+- Fernando Virdia
+- Florian Göpfert
+- James Owen
+- Léo Ducas
+- Markus Schmidt
+- Martin Albrecht
+- Rachel Player
+- Sam Scott
 
 Please follow `PEP8 <https://www.python.org/dev/peps/pep-0008/>`__ in your submissions. You can use
 `flake8 <http://flake8.pycqa.org/en/latest/>`__ to check for compliance. We use the following flake8
