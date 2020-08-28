@@ -2171,11 +2171,44 @@ def _primal_usvp(
 
     C = (stddev ** 2 * (block_size - 1) + kannan_coeff ** 2).log() / 2
 
+    # find the smallest d \in [n,m] s.t. a*d^2 + b*d + c >= 0
+    # if no such d exists, return the upper bound m
+    def solve_for_d(n, m, a, b, c):
+        if a*n*n + b*n + c >= 0: # trivial case
+            return n
+
+        # solve for ad^2 + bd + c == 0
+
+        disc = b*b - 4*a*c # the discriminant
+        if disc < 0: # no solution, return m
+            return m
+
+        # compute the two solutions
+        d1 = (-b + sqrt(disc))/(2*a)
+        d2 = (-b - sqrt(disc))/(2*a)
+        if a > 0: # the only possible solution is ceiling(d2)
+            return min(m, ceil(d2))
+
+        # the case a<=0:
+
+        # if n is to the left of d1 then the first solution is ceil(d1)
+        if n <= d1:
+            return min(m, ceil(d1))
+
+        # otherwise, n must be larger than d2 (since an^2+bn+c<0) so no solution
+        return m
+
     # we have m samples → the largest permissible dimension d is m+1
     if d is None:
-        for d in range(n, m + 2):
-            if log_b_star(d) - C >= 0:
-                break
+    #   for d in range(n, m + 2):
+    #       if log_b_star(d) - C >= 0:
+    #           break
+        aa = -delta_0.log()
+        bb = delta_0.log()*2*block_size + q.log() - C
+        cc = kannan_coeff.log() + n * scale.log() - (n + 1) * q.log()
+    #    assert d == solve_for_d(n, m+1, aa, bb, cc)
+        d = solve_for_d(n, m+1, aa, bb, cc)
+
     assert d <= m + 1
 
     def ineq(d):
