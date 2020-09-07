@@ -2174,19 +2174,19 @@ def _primal_usvp(
     # find the smallest d \in [n,m] s.t. a*d^2 + b*d + c >= 0
     # if no such d exists, return the upper bound m
     def solve_for_d(n, m, a, b, c):
-        if a*n*n + b*n + c >= 0: # trivial case
+        if a*n*n + b*n + c >= 0:  # trivial case
             return n
 
         # solve for ad^2 + bd + c == 0
 
-        disc = b*b - 4*a*c # the discriminant
-        if disc < 0: # no solution, return m
+        disc = b*b - 4*a*c  # the discriminant
+        if disc < 0:  # no solution, return m
             return m
 
         # compute the two solutions
         d1 = (-b + sqrt(disc))/(2*a)
         d2 = (-b - sqrt(disc))/(2*a)
-        if a > 0: # the only possible solution is ceiling(d2)
+        if a > 0:  # the only possible solution is ceiling(d2)
             return min(m, ceil(d2))
 
         # the case a<=0:
@@ -2200,13 +2200,13 @@ def _primal_usvp(
 
     # we have m samples → the largest permissible dimension d is m+1
     if d is None:
-    #   for d in range(n, m + 2):
-    #       if log_b_star(d) - C >= 0:
-    #           break
+        #   for d in range(n, m + 2):
+        #       if log_b_star(d) - C >= 0:
+        #           break
         aa = -delta_0.log()
         bb = delta_0.log()*2*block_size + q.log() - C
         cc = kannan_coeff.log() + n * scale.log() - (n + 1) * q.log()
-    #    assert d == solve_for_d(n, m+1, aa, bb, cc)
+        #    assert d == solve_for_d(n, m+1, aa, bb, cc)
         d = solve_for_d(n, m+1, aa, bb, cc)
 
     assert d <= m + 1
