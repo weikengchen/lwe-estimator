@@ -189,13 +189,10 @@ always.
      sage: alpha_0 = alphaf(sqrt(10/4.0), q, sigma_is_stddev=True)  # error
      sage: alpha_1 = alphaf(sqrt(21/4.0), q, sigma_is_stddev=True)  # secret
      sage: primal_usvp(n, alpha_0, q, secret_distribution=alpha_1, m=n, reduction_cost_model=BKZ.ADPS16)  # not enough samples
-             rop:    2^inf
-             red:    2^inf
-         delta_0: 1.012950
-            beta:       40
-               d:      513
-               m:      512
-  
+     Traceback (most recent call last):
+     ...
+     NotImplementedError: secret size 0.000701 > error size 0.000484
+
      sage: primal_usvp(n, alpha_1, q, secret_distribution=alpha_0, m=n, reduction_cost_model=BKZ.ADPS16)
              rop:  2^118.0
              red:  2^118.0

@@ -720,7 +720,10 @@ class SDis:
         try:
             if float(secret_distribution) > 0:
                 if alpha is not None:
-                    return secret_distribution <= alpha
+                    if secret_distribution <= alpha:
+                        return True
+                    else:
+                        raise NotImplementedError("secret size %f > error size %f"%(secret_distribution, alpha))
                 return True
         except TypeError:
             pass
