@@ -180,3 +180,26 @@ always.
     usvp: rop: ≈2^129.7,  red: ≈2^129.7,  δ_0: 1.004479,  β:  337,  d: 3914,  m:     1865,  repeat:        1,  k:        0,  postprocess:        0
      dec: rop: ≈2^144.4,  m:  ≈2^11.1,  red: ≈2^144.4,  δ_0: 1.004154,  β:  377,  d: 4272,  babai: ≈2^131.2,  babai_op: ≈2^146.3,  repeat:        7,  ε: 0.500000
     dual: rop: ≈2^134.2,  m:  ≈2^11.0,  red: ≈2^134.2,  δ_0: 1.004353,  β:  352,  repeat:  ≈2^59.6,  d: 4091,  c:    3.909,  k:       32,  postprocess:       10
+
+`LightSaber <https://www.esat.kuleuven.be/cosic/pqcrypto/saber/files/SABER_KEM_Round_2.zip>`__ ::
+
+     sage: load("estimator.py")
+     sage: n = 512
+     sage: q = 8192
+     sage: alpha_0 = alphaf(sqrt(10/4.0), q, sigma_is_stddev=True)  # error
+     sage: alpha_1 = alphaf(sqrt(21/4.0), q, sigma_is_stddev=True)  # secret
+     sage: primal_usvp(n, alpha_0, q, secret_distribution=alpha_1, m=n, reduction_cost_model=BKZ.ADPS16)  # not enough samples
+             rop:    2^inf
+             red:    2^inf
+         delta_0: 1.012950
+            beta:       40
+               d:      513
+               m:      512
+  
+     sage: primal_usvp(n, alpha_1, q, secret_distribution=alpha_0, m=n, reduction_cost_model=BKZ.ADPS16)
+             rop:  2^118.0
+             red:  2^118.0
+         delta_0: 1.003955
+            beta:      404
+               d:     1022
+               m:      509

@@ -677,10 +677,11 @@ class SDis:
             return False
 
     @staticmethod
-    def is_small(secret_distribution):
+    def is_small(secret_distribution, alpha=None):
         """Return true if the secret distribution is small
 
         :param secret_distribution: distribution of secret, see module level documentation for details
+        :param alpha: optional, used for comparing with `secret_distribution`
 
         EXAMPLES::
 
@@ -718,6 +719,8 @@ class SDis:
             return True
         try:
             if float(secret_distribution) > 0:
+                if alpha is not None:
+                    return secret_distribution <= alpha
                 return True
         except TypeError:
             pass
@@ -2111,7 +2114,7 @@ def _primal_scale_factor(secret_distribution, alpha=None, q=None, n=None):
     # NOTE: We assume a <= 0 <= b
 
     scale = RR(1)
-    if SDis.is_small(secret_distribution):
+    if SDis.is_small(secret_distribution, alpha=alpha):
         # target same same shortest vector length as in Kannan's embedding of same dimension
         stddev = stddevf(alpha * q)
         var_s = SDis.variance(secret_distribution, alpha, q, n=n)
@@ -2325,7 +2328,7 @@ def primal_usvp(
     n, alpha, q, success_probability = Param.preprocess(n, alpha, q, success_probability)
 
     # allow for a larger embedding lattice dimension, using Bai and Galbraith's
-    if SDis.is_small(secret_distribution):
+    if SDis.is_small(secret_distribution, alpha=alpha):
         m += n
 
     scale = _primal_scale_factor(secret_distribution, alpha, q, n)
@@ -2356,7 +2359,7 @@ def primal_usvp(
             break
         cost = t
 
-    if SDis.is_small(secret_distribution):
+    if SDis.is_small(secret_distribution, alpha=alpha):
         cost["m"] = cost["d"] - n - 1
     else:
         cost["m"] = cost["d"] - 1
@@ -2509,7 +2512,7 @@ def _primal_decode(
     if m < 1:
         raise InsufficientSamplesError("m=%d < 1" % m)
 
-    if SDis.is_small(secret_distribution):
+    if SDis.is_small(secret_distribution, alpha=alpha):
         m_ = m + n
     else:
         m_ = m
@@ -2534,7 +2537,7 @@ def _primal_decode(
             current[key] = bkz[key]
         for key in enum:
             current[key] = enum[key]
-        current[u"m"] = m_ - n if SDis.is_small(secret_distribution) else m_
+        current[u"m"] = m_ - n if SDis.is_small(secret_distribution, alpha=alpha) else m_
         return current
 
     depth = 6
@@ -2626,7 +2629,7 @@ def _dual_scale_factor(secret_distribution, alpha=None, q=None, n=None, c=None):
     stddev = RR(stddevf(alpha * q))
     # Calculate scaling in the case of bounded_uniform secret distribution
     # NOTE: We assume a <= 0 <= b
-    if SDis.is_small(secret_distribution):
+    if SDis.is_small(secret_distribution, alpha=alpha):
         stddev_s = SDis.variance(secret_distribution, alpha=alpha, q=q, n=n).sqrt()
         if c is None:
             # |<v,s>| = |<w,e>| → c * \sqrt{n} * \sqrt{σ_{s_i}^2 + E(s_i)^2} == \sqrt{m} * σ
@@ -2722,7 +2725,7 @@ def _dual(
     RR = parent(alpha)
     f = lambda eps: RR(sqrt(log(1 / eps) / pi))  # noqa
 
-    if SDis.is_small(secret_distribution):
+    if SDis.is_small(secret_distribution, alpha=alpha):
         m = m + n
     log_delta_0 = log(f(success_probability) / alpha, 2) ** 2 / (4 * n * log(q, 2))
     delta_0 = min(RR(2) ** log_delta_0, RR(1.02190))  # at most LLL
@@ -2821,7 +2824,7 @@ def dual_scale(
 
     m_max = m
 
-    if not SDis.is_small(secret_distribution):
+    if not SDis.is_small(secret_distribution, alpha=alpha):
         m_max -= n  # We transform to normal form, spending n samples
 
     c, stddev_s = _dual_scale_factor(secret_distribution, alpha=alpha, q=q, n=n, c=c)
@@ -2900,7 +2903,7 @@ def mitm(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.99):
     ret = Cost()
     RR = alpha.parent()
 
-    if not SDis.is_small(secret_distribution):
+    if not SDis.is_small(secret_distribution, alpha=alpha):
         m = m - n
         secret_distribution = True
         ret["m"] = n
@@ -3069,7 +3072,7 @@ def _bkw_coded(n, alpha, q, secret_distribution=True, m=oo, success_probability=
     m = (t1 + t2) * (q ** b - 1) / 2 + M
     cost["m"] = RR(m)
 
-    if not SDis.is_small(secret_distribution):
+    if not SDis.is_small(secret_distribution, alpha=alpha):
         # Equation (7)
         n_ = n - t1 * b
         C0 = (m - n_) * (n + 1) * ceil(n_ / (b - 1))
@@ -3252,7 +3255,7 @@ def arora_gb(n, alpha, q, secret_distribution=True, m=oo, success_probability=0.
     if stddev >= 1.1 * sqrt(n):
         return {"rop": oo}
 
-    if SDis.is_small(secret_distribution):
+    if SDis.is_small(secret_distribution, alpha=alpha):
         try:
             a, b = SDis.bounds(secret_distribution)
             d2 = b - a + 1
@@ -3417,7 +3420,7 @@ def estimate_lwe(  # noqa
             algorithms["dual"] = partial(
                 drop_and_solve, dual_scale, reduction_cost_model=reduction_cost_model, postprocess=True
             )
-        elif SDis.is_small(secret_distribution):
+        elif SDis.is_small(secret_distribution, alpha=alpha):
             algorithms["dual"] = partial(dual_scale, reduction_cost_model=reduction_cost_model)
         else:
             algorithms["dual"] = partial(dual, reduction_cost_model=reduction_cost_model)
@@ -3426,9 +3429,9 @@ def estimate_lwe(  # noqa
         algorithms["bkw"] = bkw_coded
 
     if "arora-gb" not in skip:
-        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution):
+        if SDis.is_sparse(secret_distribution) and SDis.is_small(secret_distribution, alpha=alpha):
             algorithms["arora-gb"] = partial(drop_and_solve, arora_gb)
-        elif SDis.is_small(secret_distribution):
+        elif SDis.is_small(secret_distribution, alpha=alpha):
             algorithms["arora-gb"] = partial(switch_modulus, arora_gb)
         else:
             algorithms["arora-gb"] = arora_gb
