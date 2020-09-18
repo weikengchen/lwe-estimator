@@ -3190,34 +3190,38 @@ def have_magma():
         return False
 
 
-def gb_cost(n, D, omega=2):
+def gb_cost(n, D, omega=2, prec=None):
     """
     Estimate the complexity of computing a Gröbner basis.
 
     :param n: number of variables `n > 0`
     :param D: tuple of `(d,m)` pairs where `m` is number polynomials and `d` is a degree
     :param omega: linear algebra exponent, i.e. matrix-multiplication costs `O(n^ω)` operations.
+    :param prec: compute power series up to this precision (default: `2n`)
 
     """
+    prec = 2*n if prec is None else prec
 
     if have_magma():
-        R = magma.PowerSeriesRing(QQ, 2 * n)
+        R = magma.PowerSeriesRing(QQ, prec)
         z = R.gen(1)
         coeff = lambda f, d: f.Coefficient(d)  # noqa
+        s = 1
     else:
-        R = PowerSeriesRing(QQ, "z", 2 * n)
+        R = PowerSeriesRing(QQ, "z", prec)
         z = R.gen()
+        z = z.add_bigoh(prec)
         coeff = lambda f, d: f[d]  # noqa
+        s = R(1)
+        s = s.add_bigoh(prec)
 
-    s = 1
     for d, m in D:
         s *= (1 - z ** d) ** m
-
-    s = s / (1 - z) ** n
+    s /= (1 - z) ** n
 
     retval = Cost([("rop", oo), ("Dreg", oo)])
 
-    for dreg in range(2 * n):
+    for dreg in range(prec):
         if coeff(s, dreg) < 0:
             break
     else:
